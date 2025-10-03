@@ -2,7 +2,7 @@
   "publisher": "kermanx",
   "name": "p2p-live-share",
   "displayName": "P2P Live Share",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": true,
   "packageManager": "pnpm@10.15.1",
   "author": {
