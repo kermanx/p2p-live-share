@@ -170,3 +170,17 @@ export async function copyShareUri(config: ConnectionConfig, isHosting = false) 
     }
   }
 }
+
+export function validateShareLink(value: string) {
+  if (!value.trim().startsWith(`${ClientUriScheme}://`)) {
+    return `URI must start with ${ClientUriScheme}://`
+  }
+  try {
+    const parsed = parseTrackUri(Uri.parse(value.trim()))
+    if (parsed) {
+      return null
+    }
+  }
+  catch {}
+  return `Invalid share link. A valid link looks like: p2p-live-share://ws.room.domain:port/ or p2p-live-share://trystero.room.mqtt/`
+}

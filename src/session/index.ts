@@ -1,7 +1,7 @@
 import { computed, createSingletonComposable, onScopeDispose, shallowRef, useCommand, useVscodeContext, watch } from 'reactive-vscode'
 import { commands, env, Uri, window, workspace } from 'vscode'
 import { ClientUriScheme } from '../fs/provider'
-import { copyShareUri, inquireHostConfig, makeTrackUri, parseTrackUri } from '../sync/share'
+import { copyShareUri, inquireHostConfig, makeTrackUri, parseTrackUri, validateShareLink } from '../sync/share'
 import { useUsers } from '../ui/users'
 import { useWebview } from '../ui/webview/webview'
 import { createClientSession } from './client'
@@ -95,25 +95,12 @@ export const useActiveSession = createSingletonComposable(() => {
     }
     isJoining.value = true
     try {
-      function validateInput(value: string) {
-        if (!value.trim().startsWith(`${ClientUriScheme}://`)) {
-          return `URI must start with ${ClientUriScheme}://`
-        }
-        try {
-          const parsed = parseTrackUri(Uri.parse(value.trim()))
-          if (parsed) {
-            return null
-          }
-        }
-        catch {}
-        return `Invalid share link. A valid link looks like: p2p-live-share://ws.room.domain:port/ or p2p-live-share://trystero.room.mqtt/`
-      }
       const clipboard = await env.clipboard.readText()
       const uriStr = await window.showInputBox({
         prompt: 'Enter URI',
         // placeHolder: 'room-id',
-        value: validateInput(clipboard) === null ? clipboard : undefined,
-        validateInput,
+        value: validateShareLink(clipboard) === null ? clipboard : undefined,
+        validateInput: validateShareLink,
       })
       if (!uriStr) {
         return
