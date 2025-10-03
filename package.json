@@ -1,0 +1,413 @@
+{
+  "publisher": "kermanx",
+  "name": "p2p-live-share",
+  "displayName": "P2P Live Share",
+  "version": "0.0.5",
+  "private": true,
+  "packageManager": "pnpm@10.15.1",
+  "author": {
+    "name": "_Kerman",
+    "email": "kermanx@qq.com",
+    "url": "https://github.com/kermanx"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kermanx/p2p-live-share.git"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "icon": "./assets/icon.png",
+  "browser": "./dist/browser.js",
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "activationEvents": [
+    "onFileSystem:p2p-live-share"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "p2p-live-share.host",
+        "title": "Host a Session",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.join",
+        "title": "Join a Session",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.joinNewWindow",
+        "title": "Join a Session in New Window",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.leave",
+        "title": "Leave Session",
+        "icon": "$(sign-out)",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.stop",
+        "title": "Stop Session",
+        "icon": "$(stop-circle)",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.focusParticipant",
+        "title": "Focus Participant",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.followParticipant",
+        "title": "Follow Participant",
+        "icon": "$(eye)",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.unfollowParticipant",
+        "title": "Unfollow Participant",
+        "icon": "$(eye-closed)",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.copyShareLink",
+        "title": "Copy Share Link",
+        "icon": "$(share)",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.createSharedTerminal",
+        "title": "Create Shared Terminal",
+        "icon": "$(add)",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.focusSharedTerminal",
+        "title": "Focus Shared Terminal",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.closeSharedTerminal",
+        "title": "Close Shared Terminal",
+        "icon": "$(close)",
+        "category": "P2P Live Share"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "p2p-live-share-panel",
+          "title": "P2P Live Share",
+          "icon": "./assets/panel-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "p2p-live-share-panel": [
+        {
+          "id": "p2p-live-share.participants",
+          "name": "Participants",
+          "type": "tree",
+          "when": "p2p-live-share:inSession",
+          "initialSize": 1
+        },
+        {
+          "id": "p2p-live-share.terminals",
+          "name": "Terminals",
+          "type": "tree",
+          "when": "p2p-live-share:inSession",
+          "initialSize": 1
+        },
+        {
+          "id": "p2p-live-share.webview",
+          "name": "",
+          "type": "webview",
+          "initialSize": 1
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "p2p-live-share.copyShareLink",
+          "when": "view == p2p-live-share.participants && p2p-live-share:inSession",
+          "group": "navigation"
+        },
+        {
+          "command": "p2p-live-share.stop",
+          "when": "view == p2p-live-share.participants && p2p-live-share:isHost",
+          "group": "navigation"
+        },
+        {
+          "command": "p2p-live-share.leave",
+          "when": "view == p2p-live-share.participants && p2p-live-share:isClient",
+          "group": "navigation"
+        },
+        {
+          "command": "p2p-live-share.createSharedTerminal",
+          "when": "view == p2p-live-share.terminals && p2p-live-share:inSession",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "p2p-live-share.followParticipant",
+          "when": "view == p2p-live-share.participants && viewItem == not-following",
+          "group": "inline"
+        },
+        {
+          "command": "p2p-live-share.unfollowParticipant",
+          "when": "view == p2p-live-share.participants && viewItem == following",
+          "group": "inline"
+        },
+        {
+          "command": "p2p-live-share.closeSharedTerminal",
+          "when": "view == p2p-live-share.terminals",
+          "group": "inline"
+        }
+      ],
+      "statusBar/remoteIndicator": [
+        {
+          "command": "p2p-live-share.host",
+          "group": "virtualfs_00_p2p-live-share_kermanx",
+          "when": "!p2p-live-share:inSession"
+        },
+        {
+          "command": "p2p-live-share.join",
+          "group": "virtualfs_00_p2p-live-share_kermanx",
+          "when": "!p2p-live-share:inSession"
+        },
+        {
+          "command": "p2p-live-share.joinNewWindow",
+          "group": "virtualfs_00_p2p-live-share_kermanx",
+          "when": "!p2p-live-share:inSession"
+        },
+        {
+          "command": "p2p-live-share.stop",
+          "group": "virtualfs_00_p2p-live-share_kermanx",
+          "when": "p2p-live-share:isHost"
+        },
+        {
+          "command": "p2p-live-share.leave",
+          "group": "virtualfs_00_p2p-live-share_kermanx",
+          "when": "p2p-live-share:isClient"
+        },
+        {
+          "command": "p2p-live-share.copyShareLink",
+          "group": "virtualfs_00_p2p-live-share_kermanx",
+          "when": "p2p-live-share:inSession"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "p2p-live-share.host",
+          "when": "!p2p-live-share:inSession"
+        },
+        {
+          "command": "p2p-live-share.join",
+          "when": "!p2p-live-share:inSession"
+        },
+        {
+          "command": "p2p-live-share.joinNewWindow",
+          "when": "!p2p-live-share:inSession"
+        },
+        {
+          "command": "p2p-live-share.stop",
+          "when": "p2p-live-share:isHost"
+        },
+        {
+          "command": "p2p-live-share.leave",
+          "when": "p2p-live-share:isClient"
+        },
+        {
+          "command": "p2p-live-share.focusParticipant",
+          "when": "p2p-live-share:inSession"
+        },
+        {
+          "command": "p2p-live-share.followParticipant",
+          "when": "p2p-live-share:inSession"
+        },
+        {
+          "command": "p2p-live-share.unfollowParticipant",
+          "when": "p2p-live-share:inSession"
+        },
+        {
+          "command": "p2p-live-share.copyShareLink",
+          "when": "p2p-live-share:inSession"
+        },
+        {
+          "command": "p2p-live-share.createSharedTerminal",
+          "when": "p2p-live-share:inSession"
+        },
+        {
+          "command": "p2p-live-share.focusSharedTerminal",
+          "when": "false"
+        },
+        {
+          "command": "p2p-live-share.closeSharedTerminal",
+          "when": "false"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "p2p-live-share.participants",
+        "contents": "Invite others to join your session by sharing the link. \n[Copy Link](command:p2p-live-share.copyShareLink)",
+        "when": "p2p-live-share:inSession"
+      },
+      {
+        "view": "p2p-live-share.terminals",
+        "contents": "A shared terminal allows all participants to see the terminal output and input commands. \n[Create Terminal](command:p2p-live-share.createSharedTerminal)",
+        "when": "p2p-live-share:inSession"
+      }
+    ],
+    "configuration": {
+      "title": "P2P Live Share",
+      "properties": {
+        "p2p-live-share.servers": {
+          "type": "array",
+          "default": [],
+          "description": "List of custom servers",
+          "items": {
+            "type": "string"
+          }
+        },
+        "p2p-live-share.userName": {
+          "type": "string",
+          "default": "",
+          "description": "User name to display to other participants. If empty, will detect from available accounts or ask for a name."
+        },
+        "p2p-live-share.trysteroConfig": {
+          "type": "object",
+          "default": {},
+          "description": "The first parameter of trystero.joinRoom, see https://github.com/dmotz/trystero."
+        }
+      }
+    },
+    "terminal": {
+      "profiles": [
+        {
+          "id": "p2p-live-share.sharedTerminal",
+          "title": "Shared Terminal",
+          "icon": "live-share"
+        }
+      ]
+    },
+    "colors": [
+      {
+        "id": "p2pliveshare.participant.loading",
+        "description": "Color for loading participant",
+        "defaults": {
+          "dark": "#808080",
+          "light": "#808080"
+        }
+      },
+      {
+        "id": "p2pliveshare.participant.1",
+        "description": "Color for participant 1",
+        "defaults": {
+          "dark": "#ffb900",
+          "light": "#ffb900"
+        }
+      },
+      {
+        "id": "p2pliveshare.participant.2",
+        "description": "Color for participant 2",
+        "defaults": {
+          "dark": "#107c10",
+          "light": "#107c10"
+        }
+      },
+      {
+        "id": "p2pliveshare.participant.3",
+        "description": "Color for participant 3",
+        "defaults": {
+          "dark": "#b4009e",
+          "light": "#b4009e"
+        }
+      },
+      {
+        "id": "p2pliveshare.participant.4",
+        "description": "Color for participant 4",
+        "defaults": {
+          "dark": "#ff8c00",
+          "light": "#ff8c00"
+        }
+      },
+      {
+        "id": "p2pliveshare.participant.5",
+        "description": "Color for participant 5",
+        "defaults": {
+          "dark": "#e3008c",
+          "light": "#e3008c"
+        }
+      },
+      {
+        "id": "p2pliveshare.participant.6",
+        "description": "Color for participant 6",
+        "defaults": {
+          "dark": "#5c2d91",
+          "light": "#5c2d91"
+        }
+      },
+      {
+        "id": "p2pliveshare.participant.7",
+        "description": "Color for participant 7",
+        "defaults": {
+          "dark": "#fff100",
+          "light": "#fff100"
+        }
+      },
+      {
+        "id": "p2pliveshare.participant.8",
+        "description": "Color for participant 8",
+        "defaults": {
+          "dark": "#b4a0ff",
+          "light": "#b4a0ff"
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsdown --env.NODE_ENV production --minify --clean",
+    "dev": "tsdown --watch ./src --env.NODE_ENV development",
+    "typecheck": "tsc --noEmit",
+    "vscode:prepublish": "pnpm run build",
+    "browser": "vscode-test-web --browser none --extensionDevelopmentPath=. ./test-workspace",
+    "wsserver": "bun --watch ./src/sync/ws/server.ts",
+    "lint": "eslint . --cache",
+    "release": "bumpp package.json src/sync/ws/package.json"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^5.3.0",
+    "@types/bun": "^1.2.23",
+    "@types/node": "^24.4.0",
+    "@types/vscode": "^1.99.0",
+    "@vscode-elements/elements": "^2.3.1",
+    "@vscode/test-web": "^0.0.73",
+    "@vscode/windows-process-tree": "^0.6.0",
+    "@y/protocols": "1.0.6-0",
+    "birpc": "^2.5.0",
+    "bumpp": "^10.2.3",
+    "eslint": "^9.35.0",
+    "eslint-plugin-format": "^1.0.1",
+    "get-port": "^7.1.0",
+    "lib0": "^0.2.114",
+    "nanoid": "^5.1.6",
+    "node-pty": "^1.0.0",
+    "reactive-vscode": "^0.3.3",
+    "trystero": "^0.21.8",
+    "tsdown": "^0.15.0",
+    "typescript": "^5.9.2",
+    "vscode-languageclient": "^10.0.0-next.17",
+    "vscode-languageserver": "^10.0.0-next.14",
+    "vue": "^3.5.21",
+    "y-array": "^10.1.4",
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.27"
+  }
+}

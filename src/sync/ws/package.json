@@ -1,0 +1,26 @@
+{
+  "name": "p2p-live-share-ws-server",
+  "version": "0.0.5",
+  "description": "WebSocket server for P2P Live Share",
+  "author": {
+    "name": "_Kerman",
+    "email": "kermanx@qq.com",
+    "url": "https://github.com/kermanx"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kermanx/p2p-live-share.git"
+  },
+  "bin": {
+    "p2p-live-share-ws": "./server.ts"
+  },
+  "files": [
+    "README.md",
+    "protocol.ts",
+    "server.ts"
+  ],
+  "engines": {
+    "bun": ">=1.2.0"
+  }
+}

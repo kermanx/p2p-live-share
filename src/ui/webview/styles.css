@@ -1,0 +1,28 @@
+body {
+  padding: 0 16px !important;
+}
+
+/* Chat message backgrounds */
+.chat-message-self {
+  background: rgba(30, 111, 210, 0.18);
+}
+
+.chat-message-other {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.chat-file-attachment {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+body.vscode-dark .chat-message-self {
+  background: rgba(56, 132, 255, 0.28);
+}
+
+body.vscode-dark .chat-message-other {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+body.vscode-dark .chat-file-attachment {
+  background: rgba(255, 255, 255, 0.06);
+}
