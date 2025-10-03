@@ -32,6 +32,7 @@ export interface ExtensionFunctions extends TrysteroHandlers {
   join: (newWindow: boolean | 'auto') => void
   leave: () => void
 
+  getPlatform: () => 'web' | 'desktop'
   sendChatMessage: (content: any) => void
   ping: (peerId: string) => Promise<number>
   getSelfName: () => Promise<string | null>
@@ -58,6 +59,9 @@ export const useWebview = createSingletonComposable(() => {
   const webviewEvent = useEventEmitter<any>()
   const rpc = createBirpc<WebviewFunctions, ExtensionFunctions>(
     {
+      getPlatform() {
+        return import.meta.env.TARGET === 'browser' ? 'web' : 'desktop'
+      },
       onTrysteroError(message) {
         trysteroHandlers.value?.onTrysteroError(message)
       },

@@ -13,7 +13,7 @@ export default defineConfig([
       'vscode',
     ],
     define: {
-      'process.env.TARGET': '"node"',
+      'import.meta.env.TARGET': '"node"',
     },
     inputOptions: {
       resolve: {
@@ -83,7 +83,7 @@ export default defineConfig([
       'vscode',
     ],
     define: {
-      'process.env.TARGET': '"browser"',
+      'import.meta.env.TARGET': '"browser"',
     },
     inputOptions: {
       resolve: {
@@ -102,7 +102,7 @@ export default defineConfig([
     format: ['esm'],
     target: 'es2020',
     define: {
-      'process.env.TARGET': '"webview"',
+      'import.meta.env.TARGET': '"webview"',
       '__VUE_OPTIONS_API__': 'false',
       '__VUE_PROD_DEVTOOLS__': 'false',
       '__VUE_PROD_HYDRATION_MISMATCH_DETAILS__': 'false',

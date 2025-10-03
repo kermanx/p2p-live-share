@@ -12,6 +12,10 @@ A Peer-to-Peer and Open-Source alternative to [Live Share](https://visualstudio.
 - Shared terminal
 - Chat
 
+## VSCode Web
+
+This extension also works in [VSCode Web](https://vscode.dev/). You can join a session on your browser after installing the extension, and enjoy the same collaborative editing features, terminals and language service provided by the host.
+
 ## Connectivity
 
 ### Secure Peer-to-Peer Connections
