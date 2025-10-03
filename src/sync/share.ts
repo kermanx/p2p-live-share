@@ -33,7 +33,8 @@ export function parseTrackUri(uri: Uri): ConnectionConfig & { path: string } | n
     return null
   }
   const [typeAndRoomId, folderIndex] = uri.authority.split('|', 2)
-  const [type, roomId, domain] = typeAndRoomId.split('.', 3)
+  const [type, roomId, ...domainParts] = typeAndRoomId.split('.')
+  const domain = domainParts.join('.')
   if (!type || !roomId || !domain) {
     return null
   }

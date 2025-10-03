@@ -58,9 +58,10 @@ export function useWebSocketConnection(config: ConnectionConfig): InternalConnec
     }
   }
 
-  socket.onerror = (event) => {
-    onError.fire(`WebSocket error: ${event.type}`)
-    readyReject(new Error(`WebSocket error: ${event.type}`))
+  socket.onerror = (event: any) => {
+    console.error(event)
+    onError.fire(`WebSocket error: ${event.type} ${event.message || ''}`)
+    readyReject(new Error(`WebSocket error: ${event.type} ${event.message || ''}`))
   }
 
   return {
