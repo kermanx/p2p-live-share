@@ -66,6 +66,15 @@ Bun.serve({
   hostname,
   fetch(req: Request, server: Server) {
     const url = new URL(req.url)
+    if (req.method === 'GET' && url.pathname === '/') {
+      return new Response(
+        `P2P Live Share WebSocket Signaling Server. ${rooms.size} active room(s).`,
+        {
+          headers: { 'Content-Type': 'text/plain' },
+        },
+      )
+    }
+
     const match = url.pathname.match(/^\/([\w-]+)\/([\w-]+)$/)
 
     if (match) {

@@ -15,7 +15,11 @@ export function useWebSocketConnection(config: ConnectionConfig): InternalConnec
   const peers = ref<string[]>([])
 
   let readyResolve: () => void
-  const ready = new Promise<void>(resolve => readyResolve = resolve)
+  let readyReject: (reason?: Error) => void
+  const ready = new Promise<void>((resolve, reject) => {
+    readyResolve = resolve
+    readyReject = reject
+  })
   socket.onopen = readyResolve!
 
   const onMessage = useEventEmitter<Parameters<InternalReceiver>>()
@@ -56,6 +60,7 @@ export function useWebSocketConnection(config: ConnectionConfig): InternalConnec
 
   socket.onerror = (event) => {
     onError.fire(`WebSocket error: ${event.type}`)
+    readyReject(new Error(`WebSocket error: ${event.type}`))
   }
 
   return {
