@@ -95,6 +95,30 @@
         "title": "Close Shared Terminal",
         "icon": "$(close)",
         "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.shareServer",
+        "title": "Share Server",
+        "icon": "$(add)",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.stopSharingServer",
+        "title": "Stop Sharing Server",
+        "icon": "$(stop-circle)",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.connectToSharedServer",
+        "title": "Connect to Shared Server",
+        "icon": "$(link)",
+        "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.disconnectFromSharedServer",
+        "title": "Disconnect from Shared Server",
+        "icon": "$(unlink)",
+        "category": "P2P Live Share"
       }
     ],
     "viewsContainers": {
@@ -123,6 +147,13 @@
           "initialSize": 1
         },
         {
+          "id": "p2p-live-share.tunnels",
+          "name": "Shared Servers",
+          "type": "tree",
+          "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels",
+          "initialSize": 1
+        },
+        {
           "id": "p2p-live-share.webview",
           "name": "",
           "type": "webview",
@@ -134,7 +165,7 @@
       "view/title": [
         {
           "command": "p2p-live-share.copyShareLink",
-          "when": "view == p2p-live-share.participants && p2p-live-share:inSession",
+          "when": "view == p2p-live-share.participants",
           "group": "navigation"
         },
         {
@@ -149,7 +180,12 @@
         },
         {
           "command": "p2p-live-share.createSharedTerminal",
-          "when": "view == p2p-live-share.terminals && p2p-live-share:inSession",
+          "when": "view == p2p-live-share.terminals",
+          "group": "navigation"
+        },
+        {
+          "command": "p2p-live-share.shareServer",
+          "when": "view == p2p-live-share.tunnels",
           "group": "navigation"
         }
       ],
@@ -167,6 +203,21 @@
         {
           "command": "p2p-live-share.closeSharedTerminal",
           "when": "view == p2p-live-share.terminals",
+          "group": "inline"
+        },
+        {
+          "command": "p2p-live-share.stopSharingServer",
+          "when": "view == p2p-live-share.tunnels && viewItem == serving",
+          "group": "inline"
+        },
+        {
+          "command": "p2p-live-share.connectToSharedServer",
+          "when": "view == p2p-live-share.tunnels && viewItem == available",
+          "group": "inline"
+        },
+        {
+          "command": "p2p-live-share.disconnectFromSharedServer",
+          "when": "view == p2p-live-share.tunnels && viewItem == connected",
           "group": "inline"
         }
       ],
@@ -250,6 +301,22 @@
         {
           "command": "p2p-live-share.closeSharedTerminal",
           "when": "false"
+        },
+        {
+          "command": "p2p-live-share.shareServer",
+          "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
+        },
+        {
+          "command": "p2p-live-share.stopSharingServer",
+          "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
+        },
+        {
+          "command": "p2p-live-share.connectToSharedServer",
+          "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
+        },
+        {
+          "command": "p2p-live-share.disconnectFromSharedServer",
+          "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
         }
       ]
     },
@@ -263,6 +330,11 @@
         "view": "p2p-live-share.terminals",
         "contents": "A shared terminal allows all participants to see the terminal output and input commands. \n[Create Terminal](command:p2p-live-share.createSharedTerminal)",
         "when": "p2p-live-share:inSession"
+      },
+      {
+        "view": "p2p-live-share.tunnels",
+        "contents": "Share a local server with all participants. \n[Share Server](command:p2p-live-share.shareServer)",
+        "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
       }
     ],
     "configuration": {

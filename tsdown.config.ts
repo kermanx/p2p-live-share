@@ -3,6 +3,12 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'tsdown'
 
+const needsStub = [
+  'src/session/host.ts',
+  'src/tunnel/index.ts',
+  'src/ui/tunnels.ts',
+]
+
 export default defineConfig([
   {
     entry: ['src/extension.ts'],
@@ -88,9 +94,12 @@ export default defineConfig([
     inputOptions: {
       resolve: {
         conditionNames: ['browser', 'module', 'main'],
-        alias: {
-          [resolve(import.meta.dirname, './src/session/host.ts')]: resolve(import.meta.dirname, './src/session/host.stub.ts'),
-        },
+        alias: Object.fromEntries(
+          needsStub.map(path => [
+            resolve(import.meta.dirname, path),
+            resolve(import.meta.dirname, path.replace(/\.ts$/, '.stub.ts')),
+          ]),
+        ),
       },
     },
   },

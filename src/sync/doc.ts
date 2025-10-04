@@ -1,6 +1,6 @@
 import type { WatchSource } from 'reactive-vscode'
 import type { Connection } from './connection'
-import { onScopeDispose, ref, watch } from 'reactive-vscode'
+import { onScopeDispose, readonly, ref, shallowReactive, watch } from 'reactive-vscode'
 import * as Y from 'yjs'
 
 interface PeerInfo {
@@ -11,9 +11,18 @@ interface PeerInfo {
   cleanup: () => void
 }
 
+type Metadata = {
+  event: 'update'
+  gsn: number
+} | {
+  event: 'update-ack'
+  applied: number
+  received: number[]
+}
+
 export function useDocSync(connection: Connection, doc: Y.Doc) {
   const { peers } = connection
-  const [send, recv] = connection.makeAction<Uint8Array>('doc')
+  const [send, recv] = connection.makeAction<Uint8Array, Metadata>('doc')
 
   const peerInfos = new Map<string, PeerInfo>()
   watch(peers, (newPeers) => {
@@ -127,7 +136,7 @@ export function useDocSync(connection: Connection, doc: Y.Doc) {
   recv(async (message, peerId, metadata) => {
     const event = metadata?.event
     if (event === 'update') {
-      const { gsn } = metadata
+      const { gsn } = metadata!
       const peerInfo = usePeer(peerId)
       if (peerInfo.lastApplied === -1) {
         peerInfo.lastApplied = gsn - 1
@@ -143,7 +152,7 @@ export function useDocSync(connection: Connection, doc: Y.Doc) {
       }
     }
     else if (event === 'update-ack') {
-      const { applied, received } = metadata
+      const { applied, received } = metadata!
       const peerInfo = peerInfos.get(peerId)
       if (peerInfo) {
         peerInfo.lastSeen = Date.now()
@@ -187,4 +196,32 @@ export function useObserverDeep<T extends Y.AbstractType<any>>(
     onCleanup(() => target.unobserveDeep(wrappedObserver))
   }, { immediate: true })
   return versionCounter
+}
+
+export function useShallowYMap<V>(map: WatchSource<Y.Map<V> | undefined>) {
+  const result = shallowReactive<Record<string, V>>({})
+  useObserverDeep(
+    map,
+    (events) => {
+      for (const event of events) {
+        if (event.transaction.local || event.path.length !== 0) {
+          continue
+        }
+        for (const [key, { action }] of event.keys) {
+          if (action === 'delete') {
+            delete result[key]
+          }
+          else {
+            result[key] = event.target.get(key)
+          }
+        }
+      }
+    },
+    (map) => {
+      for (const [key, value] of map) {
+        result[key] = value
+      }
+    },
+  )
+  return readonly(result)
 }
