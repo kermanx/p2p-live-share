@@ -14,7 +14,32 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/workflows/build.yaml
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          registry-url: https://registry.npmjs.org/
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build Extension
+        run: |
+          pnpm install
+          pnpm build
+
+      - name: Build Go WS Server
+        working-directory: ./src/sync/ws/go
+        run: |
+          chmod +x build.sh
+          ./build.sh
 
       - run: npm i -g npm@latest
       - run: pnpm i
