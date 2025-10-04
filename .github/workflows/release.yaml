@@ -46,9 +46,7 @@ jobs:
 
       - name: Download WS Server Artifact
         uses: actions/download-artifact@v4
-        with:
-          name: ws-server serverless.zip
-      
+
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
