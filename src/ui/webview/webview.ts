@@ -1,7 +1,8 @@
 import type * as trystero from 'trystero'
 import type { Connection, InternalReceiver, InternalSender } from '../../sync/connection'
+import type { ChatMessage } from './components/Chat'
 import { createBirpc } from 'birpc'
-import { computed, createSingletonComposable, extensionContext, ref, shallowRef, useEventEmitter, useWebviewView, watchEffect } from 'reactive-vscode'
+import { computed, createSingletonComposable, extensionContext, onScopeDispose, ref, shallowRef, useEventEmitter, useWebviewView, watchEffect } from 'reactive-vscode'
 import { commands, Uri } from 'vscode'
 import { useActiveSession } from '../../session'
 import { logger } from '../../utils'
@@ -17,7 +18,7 @@ export interface WebviewFunctions {
   trysteroListenAction: (action: string) => void
   trysteroLeaveRoom: () => void
 
-  recvChatMessage: (message: any) => void
+  recvChatMessage: (message: ChatMessage | 'clear') => void
   updateUIState: (state: UIState) => void
 }
 
@@ -154,10 +155,11 @@ export const useWebview = createSingletonComposable(() => {
   }
 
   const sendChatMessage = ref<(content: any) => void>()
-  function setupChat(connection: Connection) {
-    const [send, recv] = connection.makeAction('chat')
+  function useChat(connection: Connection) {
+    const [send, recv] = connection.makeAction<ChatMessage>('chat')
     sendChatMessage.value = send
     recv(message => rpc.recvChatMessage(message))
+    onScopeDispose(() => rpc.recvChatMessage('clear'))
   }
 
   setTimeout(() => {
@@ -194,6 +196,6 @@ export const useWebview = createSingletonComposable(() => {
     },
     showWebview,
     ensureReady,
-    setupChat,
+    useChat,
   }
 })

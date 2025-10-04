@@ -1,5 +1,5 @@
 import { customAlphabet } from 'nanoid'
-import { ConfigurationTarget, env, Uri, window, workspace } from 'vscode'
+import { ConfigurationTarget, env, ThemeIcon, Uri, window, workspace } from 'vscode'
 import { configs } from '../configs'
 import { ClientUriScheme } from '../fs/provider'
 import { useUsers } from '../ui/users'
@@ -84,18 +84,31 @@ export async function inquireHostConfig(): Promise<ConnectionConfig | null> {
 
   return {
     ...server,
-    roomId: generateRoomId(),
+    roomId: generateRoomId(folderIndex),
     workspace: folderIndex,
   }
 }
 
 async function inquireServer() {
+  let servers = [...configs.servers]
+  const updateServers = (newServers: string[]) => {
+    servers = newServers
+    configs.$update('servers', newServers, ConfigurationTarget.Global)
+  }
+
   const quickPick = window.createQuickPick()
   quickPick.title = 'Choose server'
   quickPick.placeholder = 'Enter websocket server URL (wss://) or choose a Trystero strategy'
   quickPick.value = ''
-  const allItems = quickPick.items = [
-    ...configs.servers.map(s => ({ label: s, description: 'Saved server' })),
+  let allItems = quickPick.items = [
+    ...servers.map(s => ({
+      label: s,
+      description: 'Saved server',
+      buttons: [{
+        iconPath: new ThemeIcon('trash'),
+        tooltip: 'Remove server',
+      }],
+    })),
     { label: 'trystero:mqtt', description: 'Trystero with MQTT strategy' },
     { label: 'trystero:nostr', description: 'Trystero with Nostr strategy' },
   ]
@@ -107,6 +120,14 @@ async function inquireServer() {
       }
     }
     quickPick.items = allItems
+  })
+  quickPick.onDidTriggerItemButton((e) => {
+    const { label } = e.item
+    if (e.button.tooltip === 'Remove server') {
+      updateServers(servers.filter(s => s !== label))
+      allItems = allItems.filter(i => i.label !== label)
+      quickPick.items = quickPick.items.filter(i => i.label !== label)
+    }
   })
   const result = await new Promise<string | undefined>((resolve) => {
     quickPick.onDidAccept(() => resolve(quickPick.selectedItems[0]?.label || quickPick.value || undefined))
@@ -138,10 +159,10 @@ async function inquireServer() {
     window.showErrorMessage('Websocket server URL should not contain path, query or hash')
     return null
   }
-  configs.$update('servers', [
+  updateServers([
     result,
-    ...configs.servers.filter(s => s !== result),
-  ], ConfigurationTarget.Global)
+    ...servers.filter(s => s !== result),
+  ])
   return {
     type: url.protocol === 'wss:' ? 'wss' as const : 'ws' as const,
     domain: url.host,
@@ -149,14 +170,21 @@ async function inquireServer() {
 }
 
 const roomIdNanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 6)
+const folderToRoomId = new Map<string, string>()
 
-function generateRoomId() {
+function generateRoomId(folderIndex: number) {
   if (import.meta.env.NODE_ENV === 'development') {
     return 'testtest'
   }
-
-  const workspaceName = (workspace.name || 'unknown').split(/[^a-z0-9]+/i).filter(Boolean).join('-').toLowerCase()
-  const roomId = `${workspaceName}-${roomIdNanoid()}`
+  const folderUri = workspace.workspaceFolders![folderIndex].uri.toString()
+  const existing = folderToRoomId.get(folderUri)
+  if (existing) {
+    return existing
+  }
+  const originalName = workspace.workspaceFolders![folderIndex].name || workspace.name || 'unknown'
+  const normalizedName = originalName.split(/[^a-z0-9]+/i).filter(Boolean).join('-').toLowerCase()
+  const roomId = `${normalizedName}-${roomIdNanoid()}`
+  folderToRoomId.set(folderUri, roomId)
   return roomId
 }
 

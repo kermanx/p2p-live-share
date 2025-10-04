@@ -12,8 +12,9 @@ export function useSteroConnection(config: ConnectionConfig): InternalConnection
   const { domain: strategy, roomId } = config
   const { rpc, trysteroHandlers, trysteroSelfId } = useWebview()
 
-  const onError = useEventEmitter<string>()
   const onMessage = useEventEmitter<Parameters<InternalReceiver>>()
+  const onError = useEventEmitter<string>()
+  const onClose = useEventEmitter<void>()
   const peers = shallowRef<string[]>([])
   let closed = false
 
@@ -45,5 +46,6 @@ export function useSteroConnection(config: ConnectionConfig): InternalConnection
     },
     onMessage: onMessage.event,
     onError: onError.event,
+    onClose: onClose.event,
   }
 }

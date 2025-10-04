@@ -231,6 +231,34 @@ export const useActiveSession = createSingletonComposable(() => {
   }
 })
 
+export function onSessionClosed(options: {
+  title: string
+  detail: string
+}) {
+  const { state } = useActiveSession()
+  if (!state.value) {
+    return
+  }
+  const config = state.value.connection.config
+  const creator = state.value.role === 'host' ? createHostSession : createClientSession
+
+  state.value = null
+  const delay = new Promise(resolve => setTimeout(resolve, 500))
+  window.showErrorMessage(
+    options.title,
+    {
+      modal: true,
+      detail: options.detail,
+    },
+    'Reconnect',
+  ).then(async (choice) => {
+    if (choice === 'Reconnect') {
+      await delay
+      state.value = await creator(config)
+    }
+  })
+}
+
 export const HostVersion = '20251003'
 export const ClientCompatibleVersions = [
   HostVersion,

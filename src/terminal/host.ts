@@ -33,9 +33,7 @@ export function useHostTerminals(doc: Y.Doc) {
       }
     },
     (id) => {
-      if (createdTerminals.has(id)) {
-        killSharedTerminal(id)
-      }
+      killSharedTerminal(id)
     },
   )
 

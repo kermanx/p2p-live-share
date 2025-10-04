@@ -1,6 +1,6 @@
 import type { ExtensionTerminalOptions, Terminal, TerminalDimensions } from 'vscode'
 import type * as Y from 'yjs'
-import { effectScope, onScopeDispose, readonly, ref, shallowReactive, useDisposable, useEventEmitter } from 'reactive-vscode'
+import { effectScope, onScopeDispose, readonly, ref, shallowReactive, useEventEmitter } from 'reactive-vscode'
 import { ThemeIcon, window } from 'vscode'
 
 export type TerminalData = Y.Text
@@ -38,6 +38,7 @@ export function useShadowTerminals(
             updateDimension(id, dims)
           },
           close() {
+            onCloseTerminal(id)
             scope.stop()
           },
           handleInput(content: string) {
@@ -61,16 +62,19 @@ export function useShadowTerminals(
         }
       }
 
+      onScopeDispose(() => {
+        const terminalInstance = window.terminals.find(t => extractTerminalId(t) === id)
+        if (terminalInstance) {
+          terminalInstance.dispose()
+        }
+      })
+
       return {
         id,
         createOptions,
         writable,
         createdAt: Date.now(),
-        create: () => {
-          return scope.run(() => {
-            return useDisposable(window.createTerminal(createOptions))
-          })!
-        },
+        create: () => window.createTerminal(createOptions),
         dispose: () => {
           scope.stop()
           idToTerminal.delete(id)
@@ -87,16 +91,6 @@ export function useShadowTerminals(
     idToTerminal.set(id, terminal)
     return terminal
   }
-
-  useDisposable(window.onDidCloseTerminal((terminal) => {
-    const id = extractTerminalId(terminal)
-    if (!id) {
-      return
-    }
-    if (idToTerminal.delete(id)) {
-      onCloseTerminal(id)
-    }
-  }))
 
   onScopeDispose(() => {
     for (const terminal of idToTerminal.values()) {

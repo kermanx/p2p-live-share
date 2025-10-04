@@ -2,7 +2,7 @@ import { selfId } from 'trystero'
 import { defineComponent, nextTick, onMounted, ref, watchEffect } from 'vue'
 import { rpc, state } from '../main'
 
-interface ChatMessage {
+export interface ChatMessage {
   sender: string
   senderName: string
   content?: string
@@ -18,8 +18,13 @@ interface ChatMessage {
 
 const chatMessages = ref<ChatMessage[]>([])
 
-export function recvChatMessage(message: ChatMessage) {
-  chatMessages.value.push(message)
+export function recvChatMessage(message: ChatMessage | 'clear') {
+  if (message === 'clear') {
+    chatMessages.value = []
+  }
+  else {
+    chatMessages.value.push(message)
+  }
 }
 
 export default defineComponent(() => {

@@ -24,6 +24,7 @@ export function useWebSocketConnection(config: ConnectionConfig): InternalConnec
 
   const onMessage = useEventEmitter<Parameters<InternalReceiver>>()
   const onError = useEventEmitter<string>()
+  const onClose = useEventEmitter<void>()
   let closed = false
 
   async function sendMessage(action: string, data: any, targetPeers?: TargetPeers, metadata?: any) {
@@ -54,6 +55,7 @@ export function useWebSocketConnection(config: ConnectionConfig): InternalConnec
   socket.onclose = () => {
     if (!closed) {
       onError.fire('WebSocket closed unexpectedly')
+      onClose.fire()
       closed = true
     }
   }
@@ -72,5 +74,6 @@ export function useWebSocketConnection(config: ConnectionConfig): InternalConnec
     sendMessage,
     onMessage: onMessage.event,
     onError: onError.event,
+    onClose: onClose.event,
   }
 }

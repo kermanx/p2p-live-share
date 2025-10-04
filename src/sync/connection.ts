@@ -1,15 +1,17 @@
 import type { Ref } from 'reactive-vscode'
-import type { JsonValue, TargetPeers } from 'trystero'
+import type { TargetPeers } from 'trystero'
 import type { Event } from 'vscode'
 import type { ConnectionConfig } from './share'
 import { nanoid } from 'nanoid'
 import { Uri, window, workspace } from 'vscode'
+import { onSessionClosed } from '../session'
 import { makeTrackUri, parseTrackUri } from './share'
 import { useSteroConnection } from './trystero'
 import { useWebSocketConnection } from './ws/client'
 
-export type { JsonValue, TargetPeers } from 'trystero'
+export type { TargetPeers } from 'trystero'
 
+export type JsonValue = null | boolean | number | string | any[] | { [key: string]: any }
 export type DataPayload = JsonValue | Uint8Array
 export type Sender<T extends DataPayload = any, M extends JsonValue = any> = (data: T, targetPeers?: TargetPeers, metadata?: M) => Promise<void>
 export type Receiver<T extends DataPayload = any, M extends JsonValue = any> = (data: T, peerId: string, metadata?: M) => void
@@ -25,6 +27,7 @@ export interface InternalConnection {
   sendMessage: InternalSender
   onMessage: Event<Parameters<InternalReceiver>>
   onError: Event<string>
+  onClose: Event<void>
 }
 
 export function useConnection(config: ConnectionConfig) {
@@ -55,6 +58,13 @@ export function useConnection(config: ConnectionConfig) {
   internal.onError((err) => {
     console.error('P2P Connection Error:', err)
     window.showErrorMessage(`Connection Error: ${err}`)
+  })
+
+  internal.onClose(() => {
+    onSessionClosed({
+      title: 'P2P Live Share: Connection closed.',
+      detail: 'The connection has been closed. This may be due to network issues or the relay server going offline.',
+    })
   })
 
   const [sendPing, recvPing] = makeAction<string>('__ping__')

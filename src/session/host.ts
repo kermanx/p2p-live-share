@@ -35,7 +35,7 @@ export async function createHostSession(config: ConnectionConfig) {
     useHostRpc(connection, fs, terminals)
     useHostLs(connection)
     useHostDiagnostics(connection, doc)
-    useWebview().setupChat(connection)
+    useWebview().useChat(connection)
     useCurrentUser()
 
     return {

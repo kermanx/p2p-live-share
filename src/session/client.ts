@@ -2,7 +2,6 @@ import type { ConnectionConfig } from '../sync/share'
 import { effectScope, watchEffect } from 'reactive-vscode'
 import { ProgressLocation, window } from 'vscode'
 import * as Y from 'yjs'
-import { ClientCompatibleVersions, useActiveSession } from '.'
 import { useClientDiagnostics } from '../diagnostics/client'
 import { useClientFs } from '../fs/client'
 import { useClientLs } from '../ls/client'
@@ -12,6 +11,7 @@ import { useDocSync } from '../sync/doc'
 import { useClientTerminals } from '../terminal/client'
 import { useCurrentUser } from '../ui/users'
 import { useWebview } from '../ui/webview/webview'
+import { ClientCompatibleVersions, onSessionClosed } from './index'
 
 export async function createClientSession(config: ConnectionConfig) {
   const scope = effectScope(true)
@@ -72,27 +72,15 @@ export async function createClientSession(config: ConnectionConfig) {
     const { shadowTerminals } = useClientTerminals(doc, rpc)
     useClientLs(connection, hostId)
     useClientDiagnostics(doc)
-    useWebview().setupChat(connection)
+    useWebview().useChat(connection)
     useCurrentUser()
 
     watchEffect(() => {
       if (!connection.peers.value.includes(hostId)) {
         setTimeout(() => {
-          const { state } = useActiveSession()
-          state.value = null
-          const delay = new Promise(resolve => setTimeout(resolve, 500))
-          window.showErrorMessage(
-            'P2P Live Share: Host has disconnected.',
-            {
-              modal: true,
-              detail: 'This may be due to network issues, or the host may have closed the session.',
-            },
-            'Reconnect',
-          ).then(async (choice) => {
-            if (choice === 'Reconnect') {
-              await delay
-              state.value = await createClientSession(config)
-            }
+          onSessionClosed({
+            title: 'P2P Live Share: Host has disconnected.',
+            detail: 'This may be due to network issues, or the host may have closed the session.',
           })
         })
       }
