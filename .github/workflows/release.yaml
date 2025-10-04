@@ -7,27 +7,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    uses: ./.github/workflows/build.yaml
-
   release:
-    needs: build
     permissions:
       id-token: write
       contents: write
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: lts/*
-          registry-url: https://registry.npmjs.org/
+      - uses: ./.github/workflows/build.yaml
 
       - run: npm i -g npm@latest
       - run: pnpm i
@@ -44,13 +31,10 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
 
-      - name: Download WS Server Artifact
-        uses: actions/download-artifact@v4
-
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ws-server, serverless.zip
+          artifacts: ./src/sync/ws/ws-server, ./src/sync/ws/serverless.zip
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}

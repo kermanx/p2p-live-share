@@ -21,6 +21,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: lts/*
+          registry-url: https://registry.npmjs.org/
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -37,15 +38,3 @@ jobs:
         run: |
           chmod +x build.sh
           ./build.sh
-      
-      - name: Upload WS Server Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ws-server
-          path: ./src/sync/ws/go/ws-server
-
-      - name: Upload Serverless Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: serverless.zip
-          path: ./src/sync/ws/go/ws-server.zip

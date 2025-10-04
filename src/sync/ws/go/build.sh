@@ -17,5 +17,5 @@ GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ws-server
 
 echo "Build complete! Binary: ./ws-server"
 
-zip ws-server.zip ws-server scf_bootstrap
-echo "Zipped binary: ./ws-server.zip"
+zip serverless.zip ws-server scf_bootstrap
+echo "Zipped binary: ./serverless.zip"
