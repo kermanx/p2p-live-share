@@ -31,7 +31,7 @@ bunx p2p-live-share-ws-server@latest
 # Supports --port and --hostname options
 ```
 
-Or you can deploy the pre-built binary [ws-server](https://github.com/kermanx/p2p-live-share/releases/download/latest/ws-server).
+Or you can deploy the pre-built binary [ws-server](https://github.com/kermanx/p2p-live-share/releases/latest/download/ws-server).
 
 #### 腾讯云 Serverless
 
@@ -46,7 +46,7 @@ Or you can deploy the pre-built binary [ws-server](https://github.com/kermanx/p2
    - "从头开始"
    - 函数类型：Web函数
    - 运行环境：Go 1
-   - 函数代码："本地上传zip包"，上传 [serverless.zip](https://github.com/kermanx/p2p-live-share/releases/download/latest/serverless.zip)
+   - 函数代码："本地上传zip包"，上传 [serverless.zip](https://github.com/kermanx/p2p-live-share/releases/latest/download/serverless.zip)
    - 高级配置：
      - 内存：64MB
      - 请求多并发：自定义静态并发：100
