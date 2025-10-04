@@ -59,7 +59,7 @@ jobs:
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ./src/sync/ws/ws-server, ./src/sync/ws/serverless.zip
+          artifacts: ./src/sync/ws/go/ws-server, ./src/sync/ws/go/serverless.zip
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
