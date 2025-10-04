@@ -22,15 +22,19 @@ jobs:
         with:
           node-version: lts/*
 
-      - run: npm i -g npm@latest
-      - run: pnpm i
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
 
       - name: Build Extension
         run: pnpm build
 
       - name: Build Go WS Server
         working-directory: ./src/sync/ws/go
-        run: ./build.sh
+        run: |
+          chmod +x build.sh
+          ./build.sh
       
       - name: Upload WS Server Artifact
         uses: actions/upload-artifact@v4
