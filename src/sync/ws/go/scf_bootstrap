@@ -1,0 +1,5 @@
+#!/bin/bash
+# Copy to /tmp (writable directory) and set executable permission
+cp ./ws-server /tmp/ws-server
+chmod +x /tmp/ws-server
+/tmp/ws-server --port 9000

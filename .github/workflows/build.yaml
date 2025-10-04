@@ -1,0 +1,45 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+
+      - run: npm i -g npm@latest
+      - run: pnpm i
+
+      - name: Build Extension
+        run: pnpm build
+
+      - name: Build Go WS Server
+        working-directory: ./src/sync/ws/go
+        run: ./build.sh
+      
+      - name: Upload WS Server Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ws-server
+          path: ./src/sync/ws/go/ws-server
+
+      - name: Upload Serverless Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: serverless.zip
+          path: ./src/sync/ws/go/ws-server.zip

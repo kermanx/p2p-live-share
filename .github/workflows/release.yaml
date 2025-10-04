@@ -7,7 +7,11 @@ on:
   workflow_dispatch:
 
 jobs:
+  build:
+    uses: ./.github/workflows/build.yaml
+
   release:
+    needs: build
     permissions:
       id-token: write
       contents: write
@@ -35,7 +39,20 @@ jobs:
         run: pnpx ovsx publish --no-dependencies -p ${{secrets.OVSX_TOKEN}}
 
       - name: Publish to NPM
-        run: npm publish --access public
         working-directory: ./src/sync/ws/
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+
+      - name: Download WS Server Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ws-server
+      
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: ws-server.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
