@@ -28,7 +28,9 @@ jobs:
           go-version: '1.21'
 
       - name: Build Extension
-        run: pnpm build
+        run: |
+          pnpm install
+          pnpm build
 
       - name: Build Go WS Server
         working-directory: ./src/sync/ws/go
