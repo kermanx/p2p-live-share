@@ -1,6 +1,6 @@
 {
   "name": "p2p-live-share-ws-server",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "WebSocket server for P2P Live Share",
   "author": {
     "name": "_Kerman",
