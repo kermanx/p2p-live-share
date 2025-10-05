@@ -1,7 +1,7 @@
 import type { EffectScope } from 'reactive-vscode'
 import type * as Y from 'yjs'
 import type { Connection } from '../sync/connection'
-import type { ServerInfo, SocketData, SocketEventMeta, SocketMeta } from './types'
+import type { ServerInfo, SocketEventMeta, SocketMeta } from './types'
 import net from 'node:net'
 import { nanoid } from 'nanoid'
 import { effectScope, onScopeDispose, readonly, shallowReactive } from 'reactive-vscode'
@@ -10,8 +10,8 @@ import { useSyncController } from '../sync/controller'
 import { SocketEventType } from './types'
 
 export function useTunnelServers(connection: Connection, serversMap: Y.Map<ServerInfo>) {
-  const [send_, recv] = connection.makeAction<SocketData, SocketMeta>('tunnel')
-  const receivers = new Map<string, (data: SocketData, metadata: SocketMeta) => void>()
+  const [send_, recv] = connection.makeAction<Uint8Array, SocketMeta>('tunnel')
+  const receivers = new Map<string, (data: Uint8Array, metadata: SocketMeta) => void>()
   recv((data, _peerId, metadata) => {
     const receiver = receivers.get(metadata!.linkId)
     if (!receiver) {
@@ -27,7 +27,7 @@ export function useTunnelServers(connection: Connection, serversMap: Y.Map<Serve
     port: number,
     host: string,
   ) {
-    const { send, recv, cleanup } = useSyncController<SocketData, SocketEventMeta>(
+    const { send, recv, cleanup } = useSyncController<SocketEventMeta>(
       (data, metadata) => {
         send_(data, peerId, {
           ...metadata,

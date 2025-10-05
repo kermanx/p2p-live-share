@@ -5,6 +5,7 @@ import type { ConnectionConfig } from './share'
 import { nanoid } from 'nanoid'
 import { Uri, window, workspace } from 'vscode'
 import { onSessionClosed } from '../session'
+import { normalizeUint8Array } from '../utils'
 import { makeTrackUri, parseTrackUri } from './share'
 import { useSteroConnection } from './trystero'
 import { useWebSocketConnection } from './ws/client'
@@ -50,7 +51,17 @@ export function useConnection(config: ConnectionConfig) {
   function makeAction<T extends DataPayload = any, M extends JsonValue = any>(action: string) {
     internal.ready.then(() => internal.listenMessage(action))
     return [
-      (data: T, targetPeers?: TargetPeers, metadata?: M) => internal.sendMessage(action, data, targetPeers, metadata),
+      (data: T, targetPeers?: TargetPeers, metadata?: M) => {
+        if (import.meta.env.NODE_ENV === 'development') {
+          if (metadata && !(data instanceof Uint8Array)) {
+            throw new Error('Trystero only supports metadata when data is binary')
+          }
+        }
+        if (data instanceof Uint8Array) {
+          data = normalizeUint8Array(data)
+        }
+        return internal.sendMessage(action, data, targetPeers, metadata)
+      },
       (receiver: Receiver<T, M>) => {
         const oldReceiver = receivers[action]
         if (oldReceiver) {

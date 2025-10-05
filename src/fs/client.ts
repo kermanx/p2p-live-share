@@ -4,7 +4,7 @@ import type { ClientFunctions, HostFunctions } from '../rpc/types'
 import type { FileContent, FilesMap } from './types'
 import { FileChangeType, FileSystemError, FileType, Uri, window, workspace } from 'vscode'
 import * as Y from 'yjs'
-import { logger } from '../utils'
+import { logger, normalizeUint8Array } from '../utils'
 import { applyTextDocumentDelta, useTextDocumentWatcher } from './common'
 import { ClientUriScheme, useFsProvider } from './provider'
 import { getName, getParent, isContentTracked, isDirectory, toFileType } from './types'
@@ -176,9 +176,7 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
         // TODO: Written by other extension?
       }
       else {
-        // Workaround: YJS checks value.constructor === Uint8Array
-        const array = new Uint8Array(content.buffer, content.byteOffset, content.byteLength)
-        files.set(uri.toString(), array)
+        files.set(uri.toString(), normalizeUint8Array(content))
       }
     },
     async delete(uri, options) {

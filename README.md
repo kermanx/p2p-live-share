@@ -60,15 +60,16 @@ Or you can run the pre-built binary [ws-server](https://github.com/kermanx/p2p-l
 1. 打开腾讯云 Serverless 云函数（不是 Serverless Container）
 
 2. 新建函数，选择以下配置：
-  - 创建方式：从头开始
-  - 函数类型：Web函数
-  - 运行环境：Go 1
-  - 函数代码：选择“本地上传 zip 包”，上传 [serverless.zip](https://github.com/kermanx/p2p-live-share/releases/latest/download/serverless.zip)
-  - 高级配置：
-    - 内存：64MB
-    - 请求多并发：自定义静态并发，设置为 100
-    - WebSocket 支持：启用，空闲时间设置为 120 秒
-  - 函数 URL 配置：开启公网访问
+
+- 创建方式：从头开始
+- 函数类型：Web函数
+- 运行环境：Go 1
+- 函数代码：选择“本地上传 zip 包”，上传 [serverless.zip](https://github.com/kermanx/p2p-live-share/releases/latest/download/serverless.zip)
+- 高级配置：
+  - 内存：64MB
+  - 请求多并发：自定义静态并发，设置为 100
+  - WebSocket 支持：启用，空闲时间设置为 120 秒
+- 函数 URL 配置：开启公网访问
 
 3. 部署完成后，进入“函数 URL”栏目，复制公网访问的 `wss://` 地址。在 VSCode 中点击 Share 后，填入该地址即可。
 

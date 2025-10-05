@@ -12,7 +12,6 @@ export interface SocketEventMeta {
   event: SocketEventType
 }
 
-export type SocketData = Uint8Array | null
 export type SocketMeta = SocketEventMeta & ControllerMeta & {
   linkId: string
 }

@@ -16,13 +16,12 @@ export type ControllerMeta = {
   [key: string]: any
 }
 
-export function useSyncController<T, M>(
-  send: (data: T | null, metadata: M & ControllerMeta) => void,
-  recv: (data: T, metadata: M) => void,
-
+export function useSyncController<M>(
+  send: (data: Uint8Array, metadata: M & ControllerMeta) => void,
+  recv: (data: Uint8Array, metadata: M) => void,
 ): {
-  send: (data: T, metadata: M) => void
-  recv: (data: T | null, metadata: M & ControllerMeta) => void
+  send: (data: Uint8Array | null, metadata: M) => void
+  recv: (data: Uint8Array, metadata: M & ControllerMeta) => void
   cleanup: () => void
 } {
   // Sending
@@ -31,7 +30,7 @@ export function useSyncController<T, M>(
   let suspendedAt: number | null = null
   const pendingUpdates = new Map<number, {
     timestamp: number
-    data: T
+    data: Uint8Array
     metadata: M
   }>()
   async function intervalCheck() {
@@ -52,7 +51,7 @@ export function useSyncController<T, M>(
           return
         }
       }
-      send(null, {
+      send(new Uint8Array(), {
         ctrl: ControllerEvent.Ack,
         applied: lastApplied,
         received: [...notApplied.keys()],
@@ -67,7 +66,7 @@ export function useSyncController<T, M>(
   // Receiving
   let lastApplied = -1
   const notApplied = new Map<number, {
-    data: T
+    data: Uint8Array
     metadata: M
   }>()
   let lastSeen = Date.now()
@@ -85,6 +84,7 @@ export function useSyncController<T, M>(
 
   return {
     send(data, metadata) {
+      data = data || new Uint8Array()
       selfGsn++
       send(data, {
         ...metadata,
