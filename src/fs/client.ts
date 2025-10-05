@@ -7,7 +7,7 @@ import * as Y from 'yjs'
 import { logger } from '../utils'
 import { applyTextDocumentDelta, useTextDocumentWatcher } from './common'
 import { useFsProvider } from './provider'
-import { getName, getParent, isContentTracked, toFileType } from './types'
+import { getName, getParent, isContentTracked, isDirectory, toFileType } from './types'
 
 export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFunctions>) {
   const files = doc.getMap('fs') as FilesMap
@@ -111,7 +111,7 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
     },
     async readDirectory(uri) {
       const file = await trackedGet(uri)
-      if (file === FileType.Directory) {
+      if (isDirectory(file)) {
         const result = await rpc.trackDirectory(uri.toString())
         if (!result)
           throw new Error('Failed to read directory')
@@ -138,7 +138,7 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
       if (file === undefined) {
         throw FileSystemError.FileNotFound(uri)
       }
-      if (file === FileType.Directory) {
+      if (isDirectory(file)) {
         throw FileSystemError.FileIsADirectory(uri)
       }
       if (!isContentTracked(file)) {
@@ -164,7 +164,7 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
       else if (!options.overwrite) {
         throw FileSystemError.FileExists(uri)
       }
-      if (file === FileType.Directory) {
+      if (isDirectory(file)) {
         throw FileSystemError.FileIsADirectory(uri)
       }
       const editor = window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString())
@@ -172,7 +172,9 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
         // TODO: Written by other extension?
       }
       else {
-        files.set(uri.toString(), content)
+        // Workaround: YJS checks value.constructor === Uint8Array
+        const array = new Uint8Array(content.buffer, content.byteOffset, content.byteLength)
+        files.set(uri.toString(), array)
       }
     },
     async delete(uri, options) {
@@ -180,7 +182,7 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
       if (file === undefined) {
         throw FileSystemError.FileNotFound(uri)
       }
-      if (!options.recursive && file === FileType.Directory) {
+      if (!options.recursive && isDirectory(file)) {
         return
       }
       files.delete(uri.toString())

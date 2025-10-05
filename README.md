@@ -2,7 +2,6 @@
 
 [![Version](https://img.shields.io/github/v/release/kermanx/p2p-live-share)](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share) [![Installs](https://img.shields.io/visual-studio-marketplace/i/kermanx.p2p-live-share)](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share) [![Reactive VSCode](https://img.shields.io/badge/made_with-reactive--vscode-%23007ACC?style=flat&labelColor=%23229863)](https://kermanx.com/reactive-vscode/)
 
-
 A Peer-to-Peer and Open-Source alternative to [Live Share](https://visualstudio.microsoft.com/services/live-share/).
 
 This VSCode extension enables real-time collaborative editing, and...

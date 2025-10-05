@@ -5,7 +5,7 @@ import { FileSystemError, FileType, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
 import { logger } from '../utils'
 import { applyTextDocumentDelta, useTextDocumentWatcher } from './common'
-import { getParent, isContentTracked } from './types'
+import { getParent, isContentTracked, isDirectory } from './types'
 
 export function useHostFs(connection: Connection, doc: Y.Doc) {
   const { toHostUri, toTrackUri } = connection
@@ -90,7 +90,7 @@ export function useHostFs(connection: Connection, doc: Y.Doc) {
       return
     }
     const stat = await workspace.fs.stat(uri)
-    const content = stat.type === FileType.File ? await workspace.fs.readFile(uri) : null
+    const content = stat.type & FileType.File ? await workspace.fs.readFile(uri) : null
     doc.transact(() => {
       const existing = files.get(trackedUri.toString())
       if (!existing || !isContentTracked(existing)) {
@@ -136,14 +136,14 @@ export function useHostFs(connection: Connection, doc: Y.Doc) {
       files.set(uri, type)
       file = type
     }
-    if (file !== FileType.Directory) {
+    if (!isDirectory(file)) {
       logger.error('Directory requested but not a directory in YJSFS:', uri)
       return
     }
     const children = await workspace.fs.readDirectory(uri_)
     for (const [name, type] of children) {
       const childUri = Uri.joinPath(Uri.parse(uri), name).toString()
-      if (type === FileType.File) {
+      if (type & FileType.File) {
         const file = files.get(childUri)
         if (file === undefined || typeof file === 'number') {
           files.set(childUri, FileType.File)

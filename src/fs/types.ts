@@ -9,6 +9,14 @@ export function isContentTracked(file: FileContent): file is Uint8Array | Y.Text
   return typeof file !== 'number'
 }
 
+export function isDirectory(file: FileContent | undefined): file is FileType {
+  return typeof file === 'number' && !!(file & FileType.Directory)
+}
+
+export function isFile(file: FileContent | undefined): file is FileType {
+  return typeof file === 'number' && !!(file & FileType.File)
+}
+
 export function toFileType(file: FileContent) {
   return typeof file === 'number' ? file : FileType.File
 }

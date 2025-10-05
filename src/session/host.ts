@@ -20,17 +20,17 @@ export async function createHostSession(config: ConnectionConfig) {
 
   const doc = new Y.Doc()
 
-  const [sendInit] = connection.makeAction<Uint8Array>('init')
-  watch(connection.peers, (newPeers, oldPeers) => {
-    for (const peerId of newPeers) {
-      if (!oldPeers.includes(peerId)) {
-        sendInit(Y.encodeStateAsUpdate(doc), peerId, { version: HostVersion })
-      }
-    }
-  })
-
   return scope.run(() => {
     useDocSync(connection, doc)
+    const [sendInit] = connection.makeAction<Uint8Array>('init')
+    watch(connection.peers, (newPeers, oldPeers) => {
+      for (const peerId of newPeers) {
+        if (!oldPeers?.includes(peerId)) {
+          sendInit(Y.encodeStateAsUpdate(doc), peerId, { version: HostVersion })
+        }
+      }
+    }, { immediate: true })
+
     const fs = useHostFs(connection, doc)
     const terminals = useHostTerminals(doc)
     useHostRpc(connection, fs, terminals)
