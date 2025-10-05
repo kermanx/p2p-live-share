@@ -61,11 +61,18 @@ export function useTunnelClients(connection: Connection) {
       socket.on('close', () => send(null, { socketId, event: SocketEventType.Close }))
       socket.on('error', err => console.error('Tunnel client error:', err))
     })
-
     const ready = new Promise<void>((resolve) => {
       server.listen(port, host, resolve)
     })
+
     onScopeDispose(() => {
+      for (const socket of sockets.values()) {
+        try {
+          socket.end()
+          socket.destroy()
+        }
+        catch {}
+      }
       server.close()
       receivers.delete(linkId)
       cleanup()
@@ -100,6 +107,7 @@ export function useTunnelClients(connection: Connection) {
     },
     closeClient(serverId: string) {
       clients.get(serverId)?.scope.stop()
+      clients.delete(serverId)
     },
   }
 }

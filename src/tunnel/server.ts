@@ -101,7 +101,7 @@ export function useTunnelServers(connection: Connection, serversMap: Y.Map<Serve
       const serverInfo: ServerInfo = {
         serverId,
         peerId: connection.selfId,
-        name: `Server ${serverId}`,
+        name: `${host}:${port}`,
         host,
         port,
         createdAt: Date.now(),
@@ -148,6 +148,14 @@ export function useTunnelServers(connection: Connection, serversMap: Y.Map<Serve
         useServer(peerId, linkId, info.port, info.host)
       })
       return linkId
+    },
+    unlinkTunnel(serverId: string, peerId: string) {
+      const scope = servers.get(serverId)?.get(peerId)
+      if (!scope) {
+        throw new Error(`Link not found for peer ${peerId}`)
+      }
+      scope.stop()
+      servers.get(serverId)?.delete(peerId)
     },
   }
 }

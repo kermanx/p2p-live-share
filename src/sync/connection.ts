@@ -51,7 +51,18 @@ export function useConnection(config: ConnectionConfig) {
     internal.ready.then(() => internal.listenMessage(action))
     return [
       (data: T, targetPeers?: TargetPeers, metadata?: M) => internal.sendMessage(action, data, targetPeers, metadata),
-      (receiver: Receiver<T, M>) => { receivers[action] = receiver },
+      (receiver: Receiver<T, M>) => {
+        const oldReceiver = receivers[action]
+        if (oldReceiver) {
+          receivers[action] = (data, peerId, metadata) => {
+            oldReceiver(data, peerId, metadata)
+            receiver(data, peerId, metadata)
+          }
+        }
+        else {
+          receivers[action] = receiver
+        }
+      },
     ] as const
   }
 

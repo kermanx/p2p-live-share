@@ -8,11 +8,13 @@ import { useTunnelServers } from './server'
 export function useTunnels(connection: Connection, doc: Y.Doc) {
   const serversMap = doc.getMap<ServerInfo>('tunnel')
 
-  const { sharedServers, createTunnel, closeTunnel, linkTunnel } = useTunnelServers(connection, serversMap)
+  const { sharedServers, createTunnel, closeTunnel, linkTunnel, unlinkTunnel } = useTunnelServers(connection, serversMap)
   const { connectedServers, createClient, closeClient } = useTunnelClients(connection)
 
   const [sendLink, recvLink] = connection.makeAction<string>('tunnel-link')
   recvLink((serverId, peerId) => linkTunnel(serverId, peerId))
+  const [sendUnlink, recvUnlink] = connection.makeAction<string>('tunnel-unlink')
+  recvUnlink((serverId, peerId) => unlinkTunnel(serverId, peerId))
 
   return {
     serversMap: useShallowYMap(() => serversMap),
@@ -28,6 +30,13 @@ export function useTunnels(connection: Connection, doc: Y.Doc) {
       await sendLink(serverId, info.peerId)
       await createClient(info, targetPort, targetHost)
     },
-    closeClient,
+    async unlinkTunnel(serverId: string) {
+      const info = serversMap.get(serverId)
+      if (!info) {
+        throw new Error(`Server not found: ${serverId}`)
+      }
+      sendUnlink(serverId, info.peerId)
+      closeClient(serverId)
+    },
   }
 }

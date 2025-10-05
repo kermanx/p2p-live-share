@@ -119,6 +119,11 @@
         "title": "Disconnect from Shared Server",
         "icon": "$(debug-disconnect)",
         "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.copySharedServerLocalURL",
+        "title": "Copy Shared Server Local URL",
+        "category": "P2P Live Share"
       }
     ],
     "viewsContainers": {
@@ -317,6 +322,10 @@
         {
           "command": "p2p-live-share.disconnectFromSharedServer",
           "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
+        },
+        {
+          "command": "p2p-live-share.copySharedServerLocalURL",
+          "when": "false"
         }
       ]
     },

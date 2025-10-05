@@ -1,6 +1,7 @@
+import type { Command } from 'vscode'
 import getPort, { portNumbers } from 'get-port'
 import { computed, createSingletonComposable, useCommands, useTreeView, useVscodeContext } from 'reactive-vscode'
-import { ThemeIcon, window } from 'vscode'
+import { env, ThemeIcon, window } from 'vscode'
 import { useActiveSession } from '../session'
 import { useUsers } from './users'
 
@@ -27,14 +28,53 @@ export const useTunnelsTree = createSingletonComposable(() => {
     computed(() => [...hostByMe.value, ...connected.value, ...available.value].map((tunnel) => {
       const serving = sharedServers.value?.get(tunnel.serverId)
       const client = connectedServers.value?.get(tunnel.serverId)
+
+      const servedBy = serving ? 'You' : useUsers().getUserInfo(tunnel.peerId)?.name || `Unknown (${tunnel.peerId})`
+
+      let description: string
+      if (serving) {
+        description = `(${serving.size} clients)`
+      }
+      else if (client) {
+        description = `(Local URL: ${client.host}:${client.port})`
+      }
+      else {
+        description = '(Click to connect)'
+      }
+
+      let tooltip: string | undefined
+      if (serving) {
+        tooltip = `Clients connected:\n${getClientsNames(serving).map(s => `- ${s}`).join('\n')}`
+      }
+
+      let command: Command | undefined
+      if (serving) {
+        command = undefined
+      }
+      else if (client) {
+        command = {
+          command: 'p2p-live-share.copySharedServerLocalURL',
+          title: 'Copy Local URL',
+          arguments: [tunnel],
+        }
+      }
+      else {
+        command = {
+          command: 'p2p-live-share.connectToSharedServer',
+          title: 'Connect to Shared Server',
+          arguments: [tunnel],
+        }
+      }
+
       return {
         treeItem: {
           serverId: tunnel.serverId,
-          label: tunnel.name,
-          description: serving ? `(Serving) (${serving.size} clients)` : client ? `-> ${client.host}:${client.port}` : '',
-          tooltip: `${tunnel.host}:${tunnel.port} (ID: ${tunnel.serverId})`,
-          iconPath: new ThemeIcon(serving ? 'server' : client ? 'link' : 'globe'),
+          label: `${tunnel.name} by ${servedBy}`,
+          description,
+          tooltip,
+          iconPath: new ThemeIcon(serving ? 'cloud-upload' : client ? 'cloud-download' : 'cloud'),
           contextValue: serving ? 'serving' : client ? 'connected' : 'available',
+          command,
         },
       }
     })),
@@ -78,7 +118,7 @@ export const useTunnelsTree = createSingletonComposable(() => {
         return
       }
       const { closeTunnel } = tunnels.value
-      let serverId = item?.treeItem?.serverId
+      let serverId = (item?.treeItem || item)?.serverId
       if (!serverId) {
         serverId = await window.showQuickPick(
           hostByMe.value.map(info => ({
@@ -98,11 +138,7 @@ export const useTunnelsTree = createSingletonComposable(() => {
         window.showWarningMessage(`Server not found or not shared by you: ${serverId}`)
         return
       }
-      const { getUserInfo } = useUsers()
-      const clients = Array.from(shareInfo.keys()).map((peerId) => {
-        const user = getUserInfo(peerId)
-        return user?.name || `Unknown (${peerId})`
-      }).map(s => `- ${s}`).join('\n')
+      const clients = getClientsNames(shareInfo).map(s => `- ${s}`).join('\n')
       const result = await window.showInformationMessage(
         `Stopped sharing server ${info.name}`,
         {
@@ -121,7 +157,7 @@ export const useTunnelsTree = createSingletonComposable(() => {
         return
       }
       const { serversMap, linkTunnel } = tunnels.value
-      let serverId = item?.treeItem?.serverId
+      let serverId = (item?.treeItem || item)?.serverId
       if (!serverId) {
         serverId = await window.showQuickPick(
           available.value.map(info => ({
@@ -135,17 +171,27 @@ export const useTunnelsTree = createSingletonComposable(() => {
       if (!serverId) {
         return
       }
-      const serverInfo = serversMap.get(serverId)!
-      const port = await getPort({ port: portNumbers(serverInfo.port, serverInfo.port + 100) })
-      linkTunnel(serverId, port, '127.0.0.1')
+      const port = await window.withProgress({
+        location: { viewId: 'p2p-live-share.tunnels' },
+        title: 'Connecting to shared server...',
+        cancellable: false,
+      }, async () => {
+        const serverInfo = serversMap.get(serverId)!
+        const port = await getPort({ port: portNumbers(serverInfo.port, serverInfo.port + 100) })
+        await linkTunnel(serverId, port, 'localhost')
+        return port
+      })
+
+      await env.clipboard.writeText(`localhost:${port}`)
+      window.showInformationMessage(`Connected to server. Local address localhost:${port} has been copied to clipboard.`)
     },
     'p2p-live-share.disconnectFromSharedServer': async (item?: any) => {
       if (!tunnels.value) {
         window.showWarningMessage('No active session or not supported.')
         return
       }
-      const { closeClient } = tunnels.value
-      let serverId = item?.treeItem?.serverId
+      const { unlinkTunnel } = tunnels.value
+      let serverId = (item?.treeItem || item)?.serverId
       if (!serverId) {
         serverId = await window.showQuickPick(
           connected.value.map(info => ({
@@ -159,9 +205,36 @@ export const useTunnelsTree = createSingletonComposable(() => {
       if (!serverId) {
         return
       }
-      closeClient(serverId)
+      unlinkTunnel(serverId)
+    },
+    'p2p-live-share.copySharedServerLocalURL': async (item?: any) => {
+      if (!tunnels.value) {
+        window.showWarningMessage('No active session or not supported.')
+        return
+      }
+      const { connectedServers } = tunnels.value
+      const serverId = (item?.treeItem || item)?.serverId
+      if (!serverId) {
+        throw new Error('Server ID is required.')
+      }
+      const client = connectedServers.get(serverId)
+      if (!client) {
+        window.showWarningMessage('Not connected to the selected server.')
+        return
+      }
+      const localURL = `${client.host}:${client.port}`
+      await env.clipboard.writeText(localURL)
+      window.showInformationMessage(`Local address ${localURL} has been copied to clipboard.`)
     },
   })
+
+  function getClientsNames(shareInfo: ReadonlyMap<string, unknown>) {
+    const { getUserInfo } = useUsers()
+    return Array.from(shareInfo.keys()).map((peerId) => {
+      const user = getUserInfo(peerId)
+      return user?.name || `Unknown (${peerId})`
+    })
+  }
 })
 
 /**
@@ -191,7 +264,7 @@ function parsePortOrUrl(input: string) {
   if (parts.length === 1) {
     const host = parts[0]
     if (defaultPort === null) {
-      return 'Port is required.'
+      return 'Invalid input. Port is required.'
     }
     return { port: defaultPort, host }
   }
