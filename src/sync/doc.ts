@@ -199,27 +199,28 @@ export function useObserverDeep<T extends Y.AbstractType<any>>(
 }
 
 export function useShallowYMap<V>(map: WatchSource<Y.Map<V> | undefined>) {
-  const result = shallowReactive<Record<string, V>>({})
+  const result = shallowReactive(new Map<string, V>())
   useObserverDeep(
     map,
     (events) => {
       for (const event of events) {
-        if (event.transaction.local || event.path.length !== 0) {
+        if (event.path.length !== 0) {
+          console.warn('Ignoring non-top-level event in Y.Map', event)
           continue
         }
         for (const [key, { action }] of event.keys) {
           if (action === 'delete') {
-            delete result[key]
+            result.delete(key)
           }
           else {
-            result[key] = event.target.get(key)
+            result.set(key, event.target.get(key))
           }
         }
       }
     },
     (map) => {
       for (const [key, value] of map) {
-        result[key] = value
+        result.set(key, value)
       }
     },
   )

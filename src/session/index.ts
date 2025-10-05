@@ -172,17 +172,18 @@ export const useActiveSession = createSingletonComposable(() => {
       return
     }
 
+    const wasClient = session.value.role === 'client'
+
     const res = await window.showInformationMessage(
-      'Confirm to leave the session?',
+      wasClient ? 'Confirm to leave the session?' : 'Confirm to stop sharing the session?',
       {
         modal: true,
-        detail: 'Unsaved changes may be lost.',
+        detail: wasClient ? 'Unsaved changes may be lost.' : 'You will stop sharing the workspace and all clients will be disconnected.',
       },
       'Leave',
     )
 
     if (res === 'Leave') {
-      const wasClient = session.value.role === 'client'
       session.value = null
       if (wasClient) {
         workspace.updateWorkspaceFolders(0, workspace.workspaceFolders?.length)

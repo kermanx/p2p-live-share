@@ -35,7 +35,7 @@ export const useParticipantsTree = createSingletonComposable(() => {
 
   useTreeView(
     'p2p-live-share.participants',
-    () => orderedPeers.value.map<TreeViewNode>((peerId) => {
+    computed(() => orderedPeers.value.map<TreeViewNode>((peerId) => {
       const user = getUserInfo(peerId)
       const selections = getSelection(peerId)
 
@@ -73,6 +73,6 @@ export const useParticipantsTree = createSingletonComposable(() => {
           peerId,
         },
       }
-    }),
+    })),
   )
 })

@@ -33,7 +33,7 @@ export const useTerminalsTree = createSingletonComposable(() => {
 
   useTreeView(
     'p2p-live-share.terminals',
-    () => sortedTerminals.value.map((terminal) => {
+    computed(() => sortedTerminals.value.map((terminal) => {
       const label = terminal.createOptions.name.slice(0, -' [shared]'.length)
 
       return {
@@ -49,6 +49,6 @@ export const useTerminalsTree = createSingletonComposable(() => {
           terminalId: terminal.id,
         },
       }
-    }),
+    })),
   )
 })

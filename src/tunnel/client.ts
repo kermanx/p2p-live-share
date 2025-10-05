@@ -86,7 +86,7 @@ export function useTunnelClients(connection: Connection) {
   })
 
   return {
-    tunnelClients: readonly(clients),
+    clientsMap: readonly(clients),
     async createClient(info: ServerInfo, targetPort: number, targetHost: string) {
       const linkId = `${info.serverId}/${connection.selfId}`
       const scope = effectScope(true)

@@ -5,10 +5,11 @@ import type { ServerInfo, SocketData, SocketEventMeta, SocketMeta } from './type
 import net from 'node:net'
 import { nanoid } from 'nanoid'
 import { effectScope, onScopeDispose } from 'reactive-vscode'
+import { window } from 'vscode'
 import { useSyncController } from '../sync/controller'
 import { SocketEventType } from './types'
 
-export function useTunnelServers(connection: Connection, servers: Y.Map<ServerInfo>) {
+export function useTunnelServers(connection: Connection, serversMap: Y.Map<ServerInfo>) {
   const [send_, recv] = connection.makeAction<SocketData, SocketMeta>('tunnel')
   const receivers = new Map<string, (data: SocketData, metadata: SocketMeta) => void>()
   recv((data, _peerId, metadata) => {
@@ -69,14 +70,12 @@ export function useTunnelServers(connection: Connection, servers: Y.Map<ServerIn
 
     onScopeDispose(() => {
       for (const socket of sockets.values()) {
+        socket.end()
         socket.destroy()
       }
       receivers.delete(linkId)
       cleanup()
     })
-
-    return {
-    }
   }
 
   const scopes = new Map<string, EffectScope>()
@@ -87,9 +86,9 @@ export function useTunnelServers(connection: Connection, servers: Y.Map<ServerIn
   })
 
   return {
-    createTunnel(host: string, port: number) {
+    createTunnel(port: number, host: string) {
       const serverId = nanoid(9)
-      servers.set(serverId, {
+      serversMap.set(serverId, {
         serverId,
         peerId: connection.selfId,
         name: `Server ${serverId}`,
@@ -99,8 +98,28 @@ export function useTunnelServers(connection: Connection, servers: Y.Map<ServerIn
       })
       return serverId
     },
+    closeTunnel(serverId: string) {
+      const info = serversMap.get(serverId)
+      if (!info) {
+        window.showWarningMessage(`Server not found: ${serverId}`)
+        return
+      }
+      if (info.peerId !== connection.selfId) {
+        window.showWarningMessage(`You are not the owner of server ${serverId}`)
+        return
+      }
+      serversMap.delete(serverId)
+      const linkIdPrefix = `${serverId}/`
+      for (const linkId of Array.from(scopes.keys())) {
+        if (linkId.startsWith(linkIdPrefix)) {
+          const scope = scopes.get(linkId)!
+          scope.stop()
+          scopes.delete(linkId)
+        }
+      }
+    },
     async linkTunnel(serverId: string, peerId: string) {
-      const info = servers.get(serverId)
+      const info = serversMap.get(serverId)
       if (!info) {
         throw new Error(`Server not found: ${serverId}`)
       }
