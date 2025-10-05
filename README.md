@@ -46,28 +46,33 @@ Or you can run the pre-built binary [ws-server](https://github.com/kermanx/p2p-l
 
 #### Tencent Cloud Serverless
 
-对于中国用户而言，目前作者找到的较好方案是使用腾讯云的 Serverless 云函数：
+对于中国用户，若需自行部署，目前作者找到的较好方案是腾讯云的 Serverless 云函数：
 
 - 新用户前三个月免费
-- 假设每月调用30次，每次60分钟，流量共300M，则费用约为1元
+- 假设每月调用 30 次，每次 60 分钟，流量共 300M，则费用约为 1 元
 - 实测单程延迟（client -> host）约为 35ms
+
+<details>
+<summary>腾讯云 Serverless 云函数部署步骤</summary>
 
 **部署步骤：**
 
 1. 打开腾讯云 Serverless 云函数（不是 Serverless Container）
 
-2. 新建
-   - "从头开始"
-   - 函数类型：Web函数
-   - 运行环境：Go 1
-   - 函数代码："本地上传zip包"，上传 [serverless.zip](https://github.com/kermanx/p2p-live-share/releases/latest/download/serverless.zip)
-   - 高级配置：
-     - 内存：64MB
-     - 请求多并发：自定义静态并发：100
-     - WebSocket支持：启用，空闲时间 120秒
-   - 函数URL配置：开启公网访问
+2. 新建函数，选择以下配置：
+  - 创建方式：从头开始
+  - 函数类型：Web函数
+  - 运行环境：Go 1
+  - 函数代码：选择“本地上传 zip 包”，上传 [serverless.zip](https://github.com/kermanx/p2p-live-share/releases/latest/download/serverless.zip)
+  - 高级配置：
+    - 内存：64MB
+    - 请求多并发：自定义静态并发，设置为 100
+    - WebSocket 支持：启用，空闲时间设置为 120 秒
+  - 函数 URL 配置：开启公网访问
 
-3. 部署后，进入 "函数 URL" 栏目下，复制公网访问的 `wss://` 地址。在 VSCode 中点击 Share 后，填入该地址即可。
+3. 部署完成后，进入“函数 URL”栏目，复制公网访问的 `wss://` 地址。在 VSCode 中点击 Share 后，填入该地址即可。
+
+</details>
 
 ## Disclaimer
 
