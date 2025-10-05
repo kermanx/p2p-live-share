@@ -59,6 +59,7 @@ export function useTunnelClients(connection: Connection) {
       socket.on('data', data => send(data, { socketId, event: SocketEventType.Data }))
       socket.on('end', () => send(null, { socketId, event: SocketEventType.End }))
       socket.on('close', () => send(null, { socketId, event: SocketEventType.Close }))
+      socket.on('error', err => console.error('Tunnel client error:', err))
     })
 
     const ready = new Promise<void>((resolve) => {
@@ -77,7 +78,8 @@ export function useTunnelClients(connection: Connection) {
 
   const clients = shallowReactive(new Map<string, {
     scope: EffectScope
-    serverId: string
+    host: string
+    port: number
   }>())
   onScopeDispose(() => {
     for (const { scope } of clients.values()) {
@@ -86,15 +88,18 @@ export function useTunnelClients(connection: Connection) {
   })
 
   return {
-    clientsMap: readonly(clients),
+    connectedServers: readonly(clients),
     async createClient(info: ServerInfo, targetPort: number, targetHost: string) {
-      const linkId = `${info.serverId}/${connection.selfId}`
       const scope = effectScope(true)
-      clients.set(linkId, { scope, serverId: info.serverId })
+      clients.set(info.serverId, { scope, host: targetHost, port: targetPort })
       await scope.run(() => {
+        const linkId = `${info.serverId}/${connection.selfId}`
         const client = useClient(info.peerId, linkId, targetPort, targetHost)
         return client.ready
       })
+    },
+    closeClient(serverId: string) {
+      clients.get(serverId)?.scope.stop()
     },
   }
 }

@@ -1,52 +1,40 @@
+import getPort, { portNumbers } from 'get-port'
 import { computed, createSingletonComposable, useCommands, useTreeView, useVscodeContext } from 'reactive-vscode'
 import { ThemeIcon, window } from 'vscode'
 import { useActiveSession } from '../session'
+import { useUsers } from './users'
 
 export const useTunnelsTree = createSingletonComposable(() => {
   useVscodeContext('p2p-live-share:supportsTunnels', true)
 
   const { tunnels, selfId } = useActiveSession()
 
-  const connectedServers = computed(() => {
-    if (!tunnels.value) {
-      return new Set<string>()
-    }
-    const allClients = Array.from(tunnels.value.clientsMap.values())
-    return new Set(allClients.map(c => c.serverId))
-  })
-
-  const sortedTunnels = computed(() => {
-    if (!tunnels.value) {
-      return []
-    }
-    const allTunnels = Array.from(tunnels.value.serversMap.values())
-
-    const hostByMe = allTunnels
-      .filter(t => t.peerId === selfId.value)
-      .sort((a, b) => b.createdAt - a.createdAt)
-    const connected = allTunnels
-      .filter(t => connectedServers.value.has(t.serverId))
-      .sort((a, b) => b.createdAt - a.createdAt)
-    const others = allTunnels
-      .filter(t => t.peerId !== selfId.value && !connectedServers.value.has(t.serverId))
-      .sort((a, b) => b.createdAt - a.createdAt)
-
-    return [...hostByMe, ...connected, ...others]
-  })
+  const sharedServers = computed(() => tunnels.value?.sharedServers)
+  const connectedServers = computed(() => tunnels.value?.connectedServers)
+  const allTunnels = computed(() => tunnels.value ? Array.from(tunnels.value.serversMap.values()) : [])
+  const hostByMe = computed(() => allTunnels.value
+    .filter(t => t.peerId === selfId.value)
+    .sort((a, b) => b.createdAt - a.createdAt))
+  const connected = computed(() => allTunnels.value
+    .filter(t => connectedServers.value?.has(t.serverId))
+    .sort((a, b) => b.createdAt - a.createdAt))
+  const available = computed(() => allTunnels.value
+    .filter(t => t.peerId !== selfId.value && !connectedServers.value?.has(t.serverId))
+    .sort((a, b) => b.createdAt - a.createdAt))
 
   useTreeView(
     'p2p-live-share.tunnels',
-    computed(() => sortedTunnels.value.map((tunnel) => {
-      const serving = tunnel.peerId === selfId.value
-      const connected = connectedServers.value.has(tunnel.serverId)
+    computed(() => [...hostByMe.value, ...connected.value, ...available.value].map((tunnel) => {
+      const serving = sharedServers.value?.get(tunnel.serverId)
+      const client = connectedServers.value?.get(tunnel.serverId)
       return {
         treeItem: {
           serverId: tunnel.serverId,
-          label: tunnel.name || `${tunnel.host}:${tunnel.port}`,
-          description: serving ? '(Serving)' : '',
+          label: tunnel.name,
+          description: serving ? `(Serving) (${serving.size} clients)` : client ? `-> ${client.host}:${client.port}` : '',
           tooltip: `${tunnel.host}:${tunnel.port} (ID: ${tunnel.serverId})`,
-          iconPath: new ThemeIcon(serving ? 'server' : connected ? 'link' : 'globe'),
-          contextValue: serving ? 'serving' : connected ? 'connected' : 'available',
+          iconPath: new ThemeIcon(serving ? 'server' : client ? 'link' : 'globe'),
+          contextValue: serving ? 'serving' : client ? 'connected' : 'available',
         },
       }
     })),
@@ -89,30 +77,89 @@ export const useTunnelsTree = createSingletonComposable(() => {
         window.showWarningMessage('No active session or not supported.')
         return
       }
-      const { serversMap, closeTunnel } = tunnels.value
+      const { closeTunnel } = tunnels.value
       let serverId = item?.treeItem?.serverId
       if (!serverId) {
         serverId = await window.showQuickPick(
-          Array.from(serversMap.values())
-            .filter(info => info.peerId === selfId.value)
-            .map(info => ({
-              label: info.name,
-              description: `${info.host}:${info.port}`,
-              serverId: info.serverId,
-            })),
+          hostByMe.value.map(info => ({
+            label: info.name,
+            description: `${info.host}:${info.port}`,
+            serverId: info.serverId,
+          })),
           { placeHolder: 'Select a server to stop sharing' },
         ).then(item => item?.serverId)
       }
       if (!serverId) {
         return
       }
-      closeTunnel(serverId)
+      const info = tunnels.value.serversMap.get(serverId)
+      const shareInfo = sharedServers.value?.get(serverId)
+      if (!info || !shareInfo) {
+        window.showWarningMessage(`Server not found or not shared by you: ${serverId}`)
+        return
+      }
+      const { getUserInfo } = useUsers()
+      const clients = Array.from(shareInfo.keys()).map((peerId) => {
+        const user = getUserInfo(peerId)
+        return user?.name || `Unknown (${peerId})`
+      }).map(s => `- ${s}`).join('\n')
+      const result = await window.showInformationMessage(
+        `Stopped sharing server ${info.name}`,
+        {
+          modal: true,
+          detail: `You have ${shareInfo.size} active client(s) connected:\n${clients}`,
+        },
+        'Stop Sharing',
+      )
+      if (result === 'Stop Sharing') {
+        closeTunnel(serverId)
+      }
     },
-    'p2p-live-share.connectToSharedServer': () => {
-
+    'p2p-live-share.connectToSharedServer': async (item?: any) => {
+      if (!tunnels.value) {
+        window.showWarningMessage('No active session or not supported.')
+        return
+      }
+      const { serversMap, linkTunnel } = tunnels.value
+      let serverId = item?.treeItem?.serverId
+      if (!serverId) {
+        serverId = await window.showQuickPick(
+          available.value.map(info => ({
+            label: info.name,
+            description: `${info.host}:${info.port}`,
+            serverId: info.serverId,
+          })),
+          { placeHolder: 'Select a shared server to connect' },
+        ).then(item => item?.serverId)
+      }
+      if (!serverId) {
+        return
+      }
+      const serverInfo = serversMap.get(serverId)!
+      const port = await getPort({ port: portNumbers(serverInfo.port, serverInfo.port + 100) })
+      linkTunnel(serverId, port, '127.0.0.1')
     },
-    'p2p-live-share.disconnectFromSharedServer': () => {
-
+    'p2p-live-share.disconnectFromSharedServer': async (item?: any) => {
+      if (!tunnels.value) {
+        window.showWarningMessage('No active session or not supported.')
+        return
+      }
+      const { closeClient } = tunnels.value
+      let serverId = item?.treeItem?.serverId
+      if (!serverId) {
+        serverId = await window.showQuickPick(
+          connected.value.map(info => ({
+            label: info.name,
+            description: `${info.host}:${info.port}`,
+            serverId: info.serverId,
+          })),
+          { placeHolder: 'Select a shared server to connect' },
+        ).then(item => item?.serverId)
+      }
+      if (!serverId) {
+        return
+      }
+      closeClient(serverId)
     },
   })
 })

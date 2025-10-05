@@ -12,6 +12,28 @@
       "outFiles": [
         "${workspaceFolder}/dist/**/*.js"
       ]
+    },
+    {
+      "name": "Run Extension (2)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/../p2p-live-share-2",
+        "--folder-uri=p2p-live-share://ws.testtest.localhost:8080/"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Two Instances",
+      "configurations": [
+        "Run Extension",
+        "Run Extension (2)"
+      ],
+      "stopAll": true
     }
   ]
 }

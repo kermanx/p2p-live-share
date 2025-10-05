@@ -111,13 +111,13 @@
       {
         "command": "p2p-live-share.connectToSharedServer",
         "title": "Connect to Shared Server",
-        "icon": "$(link)",
+        "icon": "$(plug)",
         "category": "P2P Live Share"
       },
       {
         "command": "p2p-live-share.disconnectFromSharedServer",
         "title": "Disconnect from Shared Server",
-        "icon": "$(unlink)",
+        "icon": "$(debug-disconnect)",
         "category": "P2P Live Share"
       }
     ],

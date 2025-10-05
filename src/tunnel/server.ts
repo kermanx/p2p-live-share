@@ -4,7 +4,7 @@ import type { Connection } from '../sync/connection'
 import type { ServerInfo, SocketData, SocketEventMeta, SocketMeta } from './types'
 import net from 'node:net'
 import { nanoid } from 'nanoid'
-import { effectScope, onScopeDispose } from 'reactive-vscode'
+import { effectScope, onScopeDispose, readonly, shallowReactive } from 'reactive-vscode'
 import { window } from 'vscode'
 import { useSyncController } from '../sync/controller'
 import { SocketEventType } from './types'
@@ -66,6 +66,7 @@ export function useTunnelServers(connection: Connection, serversMap: Y.Map<Serve
       socket.on('data', data => send(data, { socketId, event: SocketEventType.Data }))
       socket.on('end', () => send(null, { socketId, event: SocketEventType.End }))
       socket.on('close', () => send(null, { socketId, event: SocketEventType.Close }))
+      socket.on('error', err => console.error('Tunnel server error:', err))
     }
 
     onScopeDispose(() => {
@@ -78,25 +79,36 @@ export function useTunnelServers(connection: Connection, serversMap: Y.Map<Serve
     })
   }
 
-  const scopes = new Map<string, EffectScope>()
+  const servers = shallowReactive(new Map<string, Map<string, EffectScope>>())
   onScopeDispose(() => {
-    for (const scope of scopes.values()) {
-      scope.stop()
+    for (const links of servers.values()) {
+      for (const scope of links.values()) {
+        scope.stop()
+      }
     }
   })
 
   return {
+    sharedServers: readonly(servers),
     createTunnel(port: number, host: string) {
+      for (const info of serversMap.values()) {
+        if (info.peerId === connection.selfId && info.port === port && info.host === host) {
+          window.showErrorMessage(`You are already sharing ${host}:${port} as server ${info.serverId}`)
+          return
+        }
+      }
       const serverId = nanoid(9)
-      serversMap.set(serverId, {
+      const serverInfo: ServerInfo = {
         serverId,
         peerId: connection.selfId,
         name: `Server ${serverId}`,
         host,
         port,
         createdAt: Date.now(),
-      })
-      return serverId
+      }
+      serversMap.set(serverId, serverInfo)
+      servers.set(serverId, shallowReactive(new Map()))
+      return serverInfo
     },
     closeTunnel(serverId: string) {
       const info = serversMap.get(serverId)
@@ -109,14 +121,10 @@ export function useTunnelServers(connection: Connection, serversMap: Y.Map<Serve
         return
       }
       serversMap.delete(serverId)
-      const linkIdPrefix = `${serverId}/`
-      for (const linkId of Array.from(scopes.keys())) {
-        if (linkId.startsWith(linkIdPrefix)) {
-          const scope = scopes.get(linkId)!
-          scope.stop()
-          scopes.delete(linkId)
-        }
+      for (const scope of servers.get(serverId)?.values() || []) {
+        scope.stop()
       }
+      servers.delete(serverId)
     },
     async linkTunnel(serverId: string, peerId: string) {
       const info = serversMap.get(serverId)
@@ -126,9 +134,16 @@ export function useTunnelServers(connection: Connection, serversMap: Y.Map<Serve
       if (info.peerId !== connection.selfId) {
         throw new Error(`Server ${serverId} is not owned by ${connection.selfId}`)
       }
-      const linkId = `${serverId}/${peerId}`
       const scope = effectScope(true)
-      scopes.set(linkId, scope)
+      const links = servers.get(serverId)
+      if (!links) {
+        throw new Error(`Server not found: ${serverId}`)
+      }
+      if (links.has(peerId)) {
+        throw new Error(`Link already exists for peer ${peerId}`)
+      }
+      links.set(peerId, scope)
+      const linkId = `${serverId}/${peerId}`
       scope.run(() => {
         useServer(peerId, linkId, info.port, info.host)
       })
