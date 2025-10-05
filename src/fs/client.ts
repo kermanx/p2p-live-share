@@ -6,7 +6,7 @@ import { FileChangeType, FileSystemError, FileType, Uri, window, workspace } fro
 import * as Y from 'yjs'
 import { logger } from '../utils'
 import { applyTextDocumentDelta, useTextDocumentWatcher } from './common'
-import { useFsProvider } from './provider'
+import { ClientUriScheme, useFsProvider } from './provider'
 import { getName, getParent, isContentTracked, isDirectory, toFileType } from './types'
 
 export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFunctions>) {
@@ -65,7 +65,11 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
     fileChanged(result)
   })
 
-  useTextDocumentWatcher(doc, files, uri => uri.toString())
+  useTextDocumentWatcher(doc, files, (uri) => {
+    if (uri.scheme === ClientUriScheme) {
+      return uri.toString()
+    }
+  })
 
   useSetActiveProvider({
     watch(uri_, { recursive, excludes }) {
