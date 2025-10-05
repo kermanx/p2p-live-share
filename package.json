@@ -141,28 +141,24 @@
           "id": "p2p-live-share.participants",
           "name": "Participants",
           "type": "tree",
-          "when": "p2p-live-share:inSession",
-          "initialSize": 1
+          "when": "p2p-live-share:inSession"
         },
         {
           "id": "p2p-live-share.terminals",
           "name": "Terminals",
           "type": "tree",
-          "when": "p2p-live-share:inSession",
-          "initialSize": 1
+          "when": "p2p-live-share:inSession"
         },
         {
           "id": "p2p-live-share.tunnels",
           "name": "Shared Servers",
           "type": "tree",
-          "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels",
-          "initialSize": 1
+          "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
         },
         {
           "id": "p2p-live-share.webview",
           "name": "",
-          "type": "webview",
-          "initialSize": 1
+          "type": "webview"
         }
       ]
     },

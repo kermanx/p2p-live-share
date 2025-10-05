@@ -1,18 +1,30 @@
-# P2P Live Share
+![P2P Live Share](https://raw.githubusercontent.com/kermanx/p2p-live-share/main/assets/internal/social-preview.png)
 
-[![Version](https://img.shields.io/visual-studio-marketplace/v/kermanx.p2p-live-share)](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share) [![Installs](https://img.shields.io/visual-studio-marketplace/i/kermanx.p2p-live-share)](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share) [![Reactive VSCode](https://img.shields.io/badge/made_with-reactive--vscode-%23007ACC?style=flat&labelColor=%23229863)](https://kermanx.com/reactive-vscode/)
+[![Version](https://img.shields.io/github/v/release/kermanx/p2p-live-share)](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share) [![Installs](https://img.shields.io/visual-studio-marketplace/i/kermanx.p2p-live-share)](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share) [![Reactive VSCode](https://img.shields.io/badge/made_with-reactive--vscode-%23007ACC?style=flat&labelColor=%23229863)](https://kermanx.com/reactive-vscode/)
+
 
 A Peer-to-Peer and Open-Source alternative to [Live Share](https://visualstudio.microsoft.com/services/live-share/).
 
-## Features
+This VSCode extension enables real-time collaborative editing, and...
 
-- Collaborative editing
-- Workspace files sync
-- Remote LSP & Diagnostics
-- Shared terminal
-- Chat
+- Remote Language Service
+- Terminal Sharing
+- Port Forwarding
+- Chat with Images
+- Text Selection Sharing
+- Workspace Files Sync
 
-## VSCode Web
+You can install this extension by searching "[**P2P Live Share**](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share)" in the [extension panel](https://code.visualstudio.com/docs/getstarted/extensions#_browse-extensions) of VSCode or Cursor.
+
+To start sharing, click the "Share" button in the P2P Live Share panel, which you can find on the [Activity Bar](https://code.visualstudio.com/docs/getstarted/userinterface#_basic-layout).
+
+![Screenshot](https://raw.githubusercontent.com/kermanx/p2p-live-share/main/assets/internal/screenshot.png)
+
+#### No Account Required
+
+You won't need to sign in any account to use it. You can also improve it's security and connectivity by [self-hosting a relay server](#self-hosting). By default, it uses public signaling servers listed by [trystero](https://github.com/dmotz/trystero).
+
+#### VSCode Web Support
 
 This extension also works in [VSCode Web](https://vscode.dev/). You can join a session on your browser after installing the extension, and enjoy the same collaborative editing features, terminals and language service provided by the host.
 
@@ -31,9 +43,11 @@ bunx p2p-live-share-ws-server@latest
 # Supports --port and --hostname options
 ```
 
-Or you can deploy the pre-built binary [ws-server](https://github.com/kermanx/p2p-live-share/releases/latest/download/ws-server).
+Or you can run the pre-built binary [ws-server](https://github.com/kermanx/p2p-live-share/releases/latest/download/ws-server).
 
-#### 腾讯云 Serverless
+#### Tencent Cloud Serverless
+
+对于中国用户而言，目前作者找到的较好方案是使用腾讯云的 Serverless 云函数：
 
 - 新用户前三个月免费
 - 假设每月调用30次，每次60分钟，流量共300M，则费用约为1元
@@ -42,6 +56,7 @@ Or you can deploy the pre-built binary [ws-server](https://github.com/kermanx/p2
 **部署步骤：**
 
 1. 打开腾讯云 Serverless 云函数（不是 Serverless Container）
+
 2. 新建
    - "从头开始"
    - 函数类型：Web函数
@@ -54,3 +69,13 @@ Or you can deploy the pre-built binary [ws-server](https://github.com/kermanx/p2
    - 函数URL配置：开启公网访问
 
 3. 部署后，进入 "函数 URL" 栏目下，复制公网访问的 `wss://` 地址。在 VSCode 中点击 Share 后，填入该地址即可。
+
+## Disclaimer
+
+This project is released under the MIT License. It is not affiliated with, endorsed by, or sponsored by Microsoft Corporation.
+
+This project is not intended to replace Live Share, but to provide a free and open-source alternative for users who need it. As a official product, Live Share has access to [VSCode Proposed APIs](https://code.visualstudio.com/api/advanced-topics/using-proposed-api), which enables more advanced features such as sharing any opened terminals.
+
+This project is not stable yet. Please make sure to only share non-sensitive files. The author is not responsible for any data loss or leakage.
+
+Part of the code under the `src/terminal/pty` folder is adapted from VSCode.
