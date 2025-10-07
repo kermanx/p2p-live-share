@@ -5,6 +5,7 @@
   "version": "0.0.16",
   "private": true,
   "packageManager": "pnpm@10.15.1",
+  "description": "VSCode collaboration extension - a Peer-to-Peer and Open-Source alternative to Live Share.",
   "author": {
     "name": "_Kerman",
     "email": "kermanx@qq.com",
@@ -19,7 +20,7 @@
     "Other"
   ],
   "main": "./dist/extension.js",
-  "icon": "./assets/icon.png",
+  "icon": "assets/icon.png",
   "browser": "./dist/browser.js",
   "engines": {
     "vscode": "^1.99.0"

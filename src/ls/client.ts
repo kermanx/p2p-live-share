@@ -16,7 +16,7 @@ export function useClientLs(connection: Connection, hostId: string) {
 
   const client = useDisposable(new PatchedLanguageClient(
     'P2PLiveShare',
-    'P2PLiveShare Language Client',
+    'P2P Live Share Language Client',
     async () => lc,
     {
       documentSelector: [{ scheme: ClientUriScheme }],

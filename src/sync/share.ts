@@ -13,7 +13,7 @@ export interface ConnectionConfig {
 
 export function makeTrackUri(config: ConnectionConfig, uri_: Uri) {
   const folder = workspace.getWorkspaceFolder(uri_)
-  if (!folder) {
+  if (!folder || folder.uri.scheme !== uri_.scheme) {
     return null
   }
   const path = uri_.toString().slice(folder.uri.toString().length)
