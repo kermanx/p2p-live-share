@@ -475,7 +475,7 @@
     "get-port": "^7.1.0",
     "lib0": "^0.2.114",
     "nanoid": "^5.1.6",
-    "node-pty": "^1.0.0",
+    "node-pty": "^1.0.0-beta35",
     "reactive-vscode": "^0.3.3",
     "trystero": "^0.21.8",
     "tsdown": "^0.15.0",

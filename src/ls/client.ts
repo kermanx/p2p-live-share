@@ -1,20 +1,28 @@
+import type { InitializeParams } from 'vscode-languageclient/browser'
 import type { Connection } from '../sync/connection'
 import { useDisposable } from 'reactive-vscode'
 import { CloseAction, ErrorAction, LanguageClient, RevealOutputChannelOn } from 'vscode-languageclient/browser'
 import { ClientUriScheme } from '../fs/provider'
 import { useLsConnection } from './common'
 
+class PatchedLanguageClient extends LanguageClient {
+  protected fillInitializeParams(params: InitializeParams): void {
+    params.processId = null
+  }
+}
+
 export function useClientLs(connection: Connection, hostId: string) {
   const lc = useLsConnection(connection, hostId)
 
-  const client = useDisposable(new LanguageClient(
+  const client = useDisposable(new PatchedLanguageClient(
     'P2PLiveShare',
     'P2PLiveShare Language Client',
     async () => lc,
     {
       documentSelector: [{ scheme: ClientUriScheme }],
       revealOutputChannelOn: RevealOutputChannelOn.Debug,
-      middleware: {},
+      middleware: {
+      },
       errorHandler: {
         error: (error, message, count) => {
           console.error('Language client error:', { error, message, count })

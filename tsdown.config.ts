@@ -1,6 +1,5 @@
 import { copyFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'tsdown'
 
 const needsStub = [
@@ -26,16 +25,8 @@ export default defineConfig([
         alias: {
           'vscode-languageserver/browser': 'vscode-languageserver/node',
           'vscode-languageclient/browser': 'vscode-languageclient/node',
-
-          [
-          resolve(fileURLToPath(import.meta.resolve('node-pty')), '..', '../build/Release/pty.node')
-          ]: resolve(import.meta.dirname, './src/terminal/pty/shims/pty.node.ts'),
-          [
-          resolve(fileURLToPath(import.meta.resolve('node-pty')), '..', '../build/Release/conpty.node')
-          ]: resolve(import.meta.dirname, './src/terminal/pty/shims/conpty.node.ts'),
-          [
-          resolve(fileURLToPath(import.meta.resolve('@vscode/windows-process-tree')), '..', '../build/Release/windows_process_tree.node')
-          ]: resolve(import.meta.dirname, './src/terminal/pty/shims/windows_process_tree.node.ts'),
+          'node-pty': resolve(import.meta.dirname, './src/terminal/pty/shims/node-pty.ts'),
+          '@vscode/windows-process-tree': resolve(import.meta.dirname, './src/terminal/pty/shims/windows-process-tree.ts'),
         },
       },
     },

@@ -11,9 +11,9 @@ export function useTunnels(connection: Connection, doc: Y.Doc) {
   const { sharedServers, createTunnel, closeTunnel, linkTunnel, unlinkTunnel } = useTunnelServers(connection, serversMap)
   const { connectedServers, createClient, closeClient } = useTunnelClients(connection)
 
-  const [sendLink, recvLink] = connection.makeAction<string>('tunnel-link')
+  const [sendLink, recvLink] = connection.makeAction<string>('t-link')
   recvLink((serverId, peerId) => linkTunnel(serverId, peerId))
-  const [sendUnlink, recvUnlink] = connection.makeAction<string>('tunnel-unlink')
+  const [sendUnlink, recvUnlink] = connection.makeAction<string>('t-unlink')
   recvUnlink((serverId, peerId) => unlinkTunnel(serverId, peerId))
 
   return {

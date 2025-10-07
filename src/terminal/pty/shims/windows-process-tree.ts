@@ -1,4 +1,4 @@
 import { resolveAsset } from './utils'
 
 // eslint-disable-next-line ts/no-require-imports
-module.exports = require(resolveAsset('node-pty/build/Release/pty.node'))
+module.exports = require(resolveAsset('@vscode/windows-process-tree/lib/index.js'))

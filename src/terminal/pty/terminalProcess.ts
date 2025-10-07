@@ -255,7 +255,7 @@ export class TerminalProcess extends Disposable implements ITerminalChildProcess
       return undefined
     }
     catch (err: any) {
-      // this._logService.trace('node-pty.node-pty.IPty#spawn native exception', err)
+      console.error('node-pty.node-pty.IPty#spawn native exception', err)
       return { message: `A native exception occurred during launch (${err.message})` }
     }
   }
