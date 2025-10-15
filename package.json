@@ -2,7 +2,7 @@
   "publisher": "kermanx",
   "name": "p2p-live-share",
   "displayName": "P2P Live Share",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "private": true,
   "packageManager": "pnpm@10.15.1",
   "description": "VSCode collaboration extension - a Peer-to-Peer and Open-Source alternative to Live Share.",
