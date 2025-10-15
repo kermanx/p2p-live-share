@@ -7,6 +7,7 @@ import { useLsConnection } from './common'
 
 class PatchedLanguageClient extends LanguageClient {
   protected fillInitializeParams(params: InitializeParams): void {
+    super.fillInitializeParams(params)
     params.processId = null
   }
 }

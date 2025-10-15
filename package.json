@@ -75,9 +75,9 @@
         "category": "P2P Live Share"
       },
       {
-        "command": "p2p-live-share.copyShareLink",
-        "title": "Copy Share Link",
-        "icon": "$(share)",
+        "command": "p2p-live-share.copyInviteLink",
+        "title": "Copy Invite Link",
+        "icon": "$(add)",
         "category": "P2P Live Share"
       },
       {
@@ -166,13 +166,13 @@
     "menus": {
       "view/title": [
         {
-          "command": "p2p-live-share.copyShareLink",
-          "when": "view == p2p-live-share.participants",
+          "command": "p2p-live-share.stop",
+          "when": "view == p2p-live-share.participants && p2p-live-share:isHost",
           "group": "navigation"
         },
         {
-          "command": "p2p-live-share.stop",
-          "when": "view == p2p-live-share.participants && p2p-live-share:isHost",
+          "command": "p2p-live-share.copyInviteLink",
+          "when": "view == p2p-live-share.participants",
           "group": "navigation"
         },
         {
@@ -250,7 +250,7 @@
           "when": "p2p-live-share:isClient"
         },
         {
-          "command": "p2p-live-share.copyShareLink",
+          "command": "p2p-live-share.copyInviteLink",
           "group": "virtualfs_00_p2p-live-share_kermanx",
           "when": "p2p-live-share:inSession"
         }
@@ -289,7 +289,7 @@
           "when": "p2p-live-share:inSession"
         },
         {
-          "command": "p2p-live-share.copyShareLink",
+          "command": "p2p-live-share.copyInviteLink",
           "when": "p2p-live-share:inSession"
         },
         {
@@ -329,7 +329,7 @@
     "viewsWelcome": [
       {
         "view": "p2p-live-share.participants",
-        "contents": "Invite others to join your session by sharing the link. \n[Copy Link](command:p2p-live-share.copyShareLink)",
+        "contents": "Invite others to join your session by sharing the link. \n[Copy Link](command:p2p-live-share.copyInviteLink)",
         "when": "p2p-live-share:inSession"
       },
       {
@@ -455,7 +455,7 @@
     "dev": "tsdown --watch ./src --env.NODE_ENV development",
     "typecheck": "tsc --noEmit",
     "vscode:prepublish": "pnpm run build",
-    "browser": "vscode-test-web --browser none --extensionDevelopmentPath=. ./test-workspace",
+    "browser": "vscode-test-web --quality stable --browser none --extensionDevelopmentPath=. ./test-workspace",
     "wsserver": "bun --watch ./src/sync/ws/server.ts",
     "lint": "eslint . --cache",
     "release": "bumpp package.json src/sync/ws/package.json"

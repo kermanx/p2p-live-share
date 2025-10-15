@@ -111,8 +111,8 @@ export const useActiveSession = createSingletonComposable(() => {
         commands.executeCommand('vscode.openFolder', uri, newWindow === 'auto'
           ? undefined
           : {
-              forceNewWindow: true,
-              forceReuseWindow: false,
+              forceNewWindow: newWindow,
+              forceReuseWindow: !newWindow,
             })
       }
       else {
@@ -133,7 +133,7 @@ export const useActiveSession = createSingletonComposable(() => {
     const parsed = parseTrackUri(uri)
     if (!parsed) {
       window.showErrorMessage(
-        'P2P Live Share: Invalid Share Link.',
+        'P2P Live Share: Invalid Invite Link.',
         {
           modal: true,
           detail: 'The link you provided is not valid. Please check and try again. A valid link looks like: p2p-live-share://ws.room.domain:port/ or p2p-live-share://trystero.room.mqtt/',
@@ -204,7 +204,7 @@ export const useActiveSession = createSingletonComposable(() => {
   useCommand('p2p-live-share.joinNewWindow', () => join(true))
   useCommand('p2p-live-share.leave', leave)
   useCommand('p2p-live-share.stop', leave)
-  useCommand('p2p-live-share.copyShareLink', () => {
+  useCommand('p2p-live-share.copyInviteLink', () => {
     if (session.value?.connection) {
       copyShareUri(session.value?.connection.config)
     }

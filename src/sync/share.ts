@@ -192,7 +192,9 @@ export async function copyShareUri(config: ConnectionConfig, isHosting = false) 
   const shareUri = makeTrackUri(config, workspace.workspaceFolders![config.workspace].uri)!.toString()
   while (true) {
     env.clipboard.writeText(shareUri)
-    const res = await window.showInformationMessage(`${isHosting ? 'Hosting session. ' : ''}The share link has been copied to clipboard.`, 'Copy Again')
+    const res = await window.showInformationMessage(`${isHosting ? 'Hosting session. ' : ''}The invite link has been copied to clipboard.
+
+Others may join this session by clicking on the "Join" button and pasting this link.`, 'Copy Again')
     isHosting = false
     if (res !== 'Copy Again') {
       break
@@ -211,5 +213,5 @@ export function validateShareLink(value: string) {
     }
   }
   catch {}
-  return `Invalid share link. A valid link looks like: p2p-live-share://ws.room.domain:port/ or p2p-live-share://trystero.room.mqtt/`
+  return `Invalid invite link. A valid link looks like: p2p-live-share://ws.room.domain:port/ or p2p-live-share://trystero.room.mqtt/`
 }
