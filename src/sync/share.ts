@@ -191,7 +191,7 @@ function generateRoomId(folderIndex: number) {
 export async function copyShareUri(config: ConnectionConfig, isHosting = false) {
   const shareUri = makeTrackUri(config, workspace.workspaceFolders![config.workspace].uri)!.toString()
   while (true) {
-    env.clipboard.writeText(shareUri)
+    env.clipboard.writeText(shareUri.replace('%7C', '|'))
     const res = await window.showInformationMessage(`${isHosting ? 'Hosting session. ' : ''}The invite link has been copied to clipboard.
 
 Others may join this session by clicking on the "Join" button and pasting this link.`, 'Copy Again')
