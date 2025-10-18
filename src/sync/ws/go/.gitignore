@@ -1,4 +1,5 @@
 .DS_Store
+p2p-live-share-ws-server
 ws-server
 *.exe
 *.test
