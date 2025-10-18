@@ -1,15 +1,17 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/spf13/pflag"
 )
 
 type Client struct {
@@ -30,45 +32,27 @@ var (
 )
 
 func main() {
-	port := flag.String("port", "8080", "Port to listen on")
-	portShort := flag.String("p", "8080", "Port to listen on (short)")
-	hostname := flag.String("hostname", "localhost", "Hostname / interface to bind")
-	help := flag.Bool("help", false, "Show help message and exit")
-	helpShort := flag.Bool("h", false, "Show help message and exit (short)")
-
-	flag.Parse()
-
-	if *help || *helpShort {
-		fmt.Println("p2p-live-share WebSocket signaling server")
-		fmt.Println("")
-		fmt.Println("Usage:")
-		fmt.Println("  p2p-live-share-ws-server [options]")
-		fmt.Println("")
-		fmt.Println("Options:")
-		fmt.Println("  -p, --port <number>       Port to listen on (default: 8080)")
-		fmt.Println("      --hostname <host>     Hostname / interface to bind (default: localhost)")
-		fmt.Println("  -h, --help               Show this help message and exit")
-		fmt.Println("")
-		fmt.Println("Examples:")
-		fmt.Println("  p2p-live-share-ws-server")
-		fmt.Println("  p2p-live-share-ws-server -p 9000")
-		fmt.Println("  p2p-live-share-ws-server --port 9000 --hostname 0.0.0.0")
-		os.Exit(0)
+	var port, hostname string
+	pflag.StringVarP(&port, "port", "p", "8080", "Port to listen on")
+	pflag.StringVar(&hostname, "hostname", "localhost", "Hostname / interface to bind")
+	pflag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\nOptions:\n", os.Args[0])
+		pflag.PrintDefaults()
+		fmt.Fprintln(os.Stderr, strings.Join([]string{"",
+			"Examples:",
+			"  p2p-live-share-ws-server",
+			"  p2p-live-share-ws-server -p 9000",
+			"  p2p-live-share-ws-server --port 9000 --hostname 0.0.0.0",
+		}, "\n"))
 	}
+	pflag.Parse()
 
-	// Use the short flag value if the long one isn't set
-	if flag.Lookup("port").Value.String() == "8080" && *portShort != "8080" {
-		*port = *portShort
-	}
-
-	addr := fmt.Sprintf("%s:%s", *hostname, *port)
+	addr := net.JoinHostPort(hostname, port)
 
 	log.Println("Starting WebSocket server with Go...")
 	log.Printf("Listening on ws://%s/\n", addr)
 
-	http.HandleFunc("/", handleConnection)
-
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	if err := http.ListenAndServe(addr, http.HandlerFunc(handleConnection)); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
 }
