@@ -2,7 +2,7 @@ import type { EffectScope } from 'reactive-vscode'
 import type { Connection } from '../sync/connection'
 import type { API, Change, GitExtension, Repository, RepositoryState } from './git'
 import type { ScmChange, ScmGroup, ScmGroupMeta, ScmRepo, ScmRepoMeta } from './types'
-import { basename } from 'node:path'
+import { basename } from 'pathe'
 import { effectScope, getCurrentScope, useDisposable } from 'reactive-vscode'
 import { extensions } from 'vscode'
 import * as Y from 'yjs'
@@ -167,7 +167,7 @@ function useHostGitScm(api: API, connection: Connection, doc: Y.Doc) {
       return
     return {
       uri: uri.toString(),
-      state: change.status,
+      status: change.status,
     }
   }
 

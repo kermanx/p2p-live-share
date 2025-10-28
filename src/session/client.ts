@@ -74,7 +74,7 @@ export async function createClientSession(config: ConnectionConfig) {
     const { shadowTerminals } = useClientTerminals(doc, rpc)
     useClientLs(connection, hostId)
     useClientDiagnostics(doc)
-    useClientScm(connection, doc)
+    useClientScm(doc)
     const tunnels = useTunnels(connection, doc)
     useWebview().useChat(connection)
     useCurrentUser()

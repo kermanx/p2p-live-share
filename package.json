@@ -125,6 +125,39 @@
         "command": "p2p-live-share.copySharedServerLocalURL",
         "title": "Copy Shared Server Local URL",
         "category": "P2P Live Share"
+      },
+      {
+        "command": "p2p-live-share.scm.openChange",
+        "title": "%extension.liveshare.openChanges.title%",
+        "category": "Live Share Source Control",
+        "icon": {
+          "light": "images/light/open-change.svg",
+          "dark": "images/dark/open-change.svg"
+        }
+      },
+      {
+        "command": "p2p-live-share.scm.openFile",
+        "title": "%extension.liveshare.openFile.title%",
+        "category": "Live Share Source Control",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "p2p-live-share.scm.clean",
+        "title": "%extension.liveshare.discardChanges.title%",
+        "category": "Live Share Source Control",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "p2p-live-share.scm.cleanAll",
+        "title": "%extension.liveshare.discardAllChanges.title%",
+        "category": "Live Share Source Control",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "p2p-live-share.scm.revertChange",
+        "title": "%extension.liveshare.revertChange.title%",
+        "category": "Live Share Source Control",
+        "icon": "$(discard)"
       }
     ],
     "viewsContainers": {
@@ -255,6 +288,51 @@
           "when": "p2p-live-share:inSession"
         }
       ],
+      "scm/resourceGroup/context": [
+        {
+          "command": "p2p-live-share.scm.cleanAll",
+          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(clean\\)/",
+          "group": "inline"
+        },
+        {
+          "command": "p2p-live-share.scm.cleanAll",
+          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(clean\\)/",
+          "group": "1_modification"
+        }
+      ],
+      "scm/resourceState/context": [
+        {
+          "command": "p2p-live-share.scm.openFile",
+          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(openFile\\)/",
+          "group": "navigation"
+        },
+        {
+          "command": "p2p-live-share.scm.openChange",
+          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(openChanges\\)/",
+          "group": "navigation"
+        },
+        {
+          "command": "p2p-live-share.scm.clean",
+          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(clean\\)/",
+          "group": "1_modification"
+        },
+        {
+          "command": "p2p-live-share.scm.openFile",
+          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(openFile\\)/",
+          "group": "inline@0"
+        },
+        {
+          "command": "p2p-live-share.scm.clean",
+          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(clean\\)/",
+          "group": "inline@1"
+        }
+      ],
+      "scm/change/title": [
+        {
+          "command": "p2p-live-share.scm.revertChange",
+          "when": "originalResourceScheme == p2p-live-share-scm"
+        }
+      ],
       "commandPalette": [
         {
           "command": "p2p-live-share.host",
@@ -322,6 +400,26 @@
         },
         {
           "command": "p2p-live-share.copySharedServerLocalURL",
+          "when": "false"
+        },
+        {
+          "command": "p2p-live-share.scm.openFile",
+          "when": "false"
+        },
+        {
+          "command": "p2p-live-share.scm.openChange",
+          "when": "false"
+        },
+        {
+          "command": "p2p-live-share.scm.clean",
+          "when": "false"
+        },
+        {
+          "command": "p2p-live-share.scm.cleanAll",
+          "when": "false"
+        },
+        {
+          "command": "p2p-live-share.scm.revertChange",
           "when": "false"
         }
       ]
@@ -477,6 +575,7 @@
     "lib0": "^0.2.114",
     "nanoid": "^5.1.6",
     "node-pty": "^1.0.0-beta35",
+    "pathe": "^2.0.3",
     "reactive-vscode": "^0.3.3",
     "trystero": "^0.21.8",
     "tsdown": "^0.15.0",

@@ -1,15 +1,15 @@
-import type { SourceControlResourceState } from 'vscode'
+import type { SourceControlResourceGroup, SourceControlResourceState } from 'vscode'
 import type * as Y from 'yjs'
-import type { Connection } from '../sync/connection'
 import type { GitExtension } from './git'
 import type { ScmChange, ScmGroupMeta, ScmRepo } from './types'
-import { useDisposable, watchEffect } from 'reactive-vscode'
-import { extensions, l10n, scm, ThemeColor, Uri, workspace } from 'vscode'
+import { basename } from 'pathe'
+import { useCommands, useDisposable, watchEffect } from 'reactive-vscode'
+import { extensions, l10n, scm, ThemeColor, Uri, window, workspace } from 'vscode'
 import { useShallowYArray, useShallowYMapScopes } from '../sync/doc'
 import { lazy } from '../utils'
 import { Status } from './git'
 
-export function useClientScm(connection: Connection, doc: Y.Doc) {
+export function useClientScm(doc: Y.Doc) {
   const map = doc.getMap<ScmRepo>('scm')
 
   useShallowYMapScopes(
@@ -18,10 +18,54 @@ export function useClientScm(connection: Connection, doc: Y.Doc) {
       useScmRepo(data)
     },
   )
+
+  useCommands({
+    'p2p-live-share.scm.cleanAll': async (group: SourceControlResourceGroup) => {
+      const states = (group.resourceStates as ReturnType<typeof createResourceState>[])
+        .filter(({ groupMeta }) => groupMeta && groupMeta.supportsClean)
+      if (!states.length) {
+        return
+      }
+
+      const t = states.filter(({ status }) => status === Status.UNTRACKED).length
+      let message
+      let action = 'Discard Changes'
+
+      if (states.length === 1) {
+        if (t > 0) {
+          message = `Are you sure you want to DELETE ${basename(states[0].resourceUri.fsPath)}?`
+          action = 'Delete file'
+        }
+        else if (states[0].status === Status.DELETED) {
+          action = 'Restore file'
+          message = `Are you sure you want to restore ${basename(states[0].resourceUri.fsPath)}?`
+        }
+        else {
+          message = `Are you sure you want to discard changes in ${basename(states[0].resourceUri.fsPath)}?`
+        }
+      }
+      else {
+        if (states.every(({ status }) => status === Status.DELETED)) {
+          action = 'Restore files'
+          message = `Are you sure you want to restore ${states.length} files?`
+        }
+        else {
+          message = `Are you sure you want to discard changes in ${states.length} files?`
+        }
+        if (t > 0) {
+          message = `${message}\n\nThis will DELETE ${t} untracked files!`
+        }
+      }
+      if ((await window.showWarningMessage(message, { modal: true }, action)) === action) {
+        // await this.service.cleanResourcesAsync(
+        //   states.map(e => e.ResourceIdentity),
+        // )
+      }
+    },
+  })
 }
 
 function useScmRepo(repo: ScmRepo) {
-  const useIcons = areGitDecorationsEnabled()
   const [groups, meta] = repo.toArray()
   const sc = useDisposable(scm.createSourceControl('p2p-live-share-scm', meta.label, Uri.parse(meta.rootUri)))
   sc.inputBox.visible = false
@@ -44,46 +88,50 @@ function useScmRepo(repo: ScmRepo) {
 
   //   },
   // }
+}
 
-  function createResourceState(state: ScmChange, meta: ScmGroupMeta) {
-    return {
-      resourceUri: Uri.parse(state.uri),
-      command: {
-        command: 'p2p-live-share.openScmChange',
-        title: 'Open',
-        arguments: [meta.groupId, state.uri],
-      },
-      decorations: {
-        strikeThrough: getStrikeThrough(state),
-        faded: false,
-        tooltip: getTooltip(state),
-        light: useIcons
-          ? { iconPath: getIconPath('light', state) }
-          : undefined,
-        dark: useIcons
-          ? { iconPath: getIconPath('dark', state) }
-          : undefined,
-      },
-      letter: getLetter(state),
-      color: getColor(state),
-      priority: getPriority(state),
-      // resourceDecoration
-    } satisfies SourceControlResourceState & Record<string, unknown>
-  }
+function createResourceState({ uri, status }: ScmChange, meta: ScmGroupMeta) {
+  const useIcons = areGitDecorationsEnabled()
+  return {
+    resourceUri: Uri.parse(uri),
+    command: {
+      command: 'p2p-live-share.openScmChange',
+      title: 'Open',
+      arguments: [meta.groupId, uri],
+    },
+    decorations: {
+      strikeThrough: getStrikeThrough(status),
+      faded: false,
+      tooltip: getTooltip(status),
+      light: useIcons
+        ? { iconPath: getIconPath('light', status) }
+        : undefined,
+      dark: useIcons
+        ? { iconPath: getIconPath('dark', status) }
+        : undefined,
+    },
+    letter: getLetter(status),
+    color: getColor(status),
+    priority: getPriority(status),
+    // resourceDecoration
+
+    status,
+    groupMeta: meta,
+  } satisfies SourceControlResourceState & Record<string, unknown>
 }
 
 function createGroupId(meta: ScmGroupMeta) {
-  let prefix = ''
+  let groupId = meta.groupId
   if (meta.supportsClean) {
-    prefix += 'clean_'
+    groupId += '(clean)'
   }
   if (meta.supportsOpenChanges) {
-    prefix += 'openChanges_'
+    groupId += '(openChanges)'
   }
   if (meta.supportsOpenFile) {
-    prefix += 'openFile_'
+    groupId += '(openFile)'
   }
-  return prefix + meta.groupId.replace('~', '~~').replace('_', '~_')
+  return groupId
 }
 
 function areGitDecorationsEnabled(): boolean {
@@ -128,12 +176,12 @@ const getAllIcons = lazy(() => {
   }
 })
 
-function getIconPath(theme: 'light' | 'dark', { state }: ScmChange): Uri | undefined {
+function getIconPath(theme: 'light' | 'dark', status: Status): Uri | undefined {
   const Icons = getAllIcons()
   if (!Icons) {
     return undefined
   }
-  switch (state) {
+  switch (status) {
     case Status.INDEX_MODIFIED: return Icons[theme].Modified
     case Status.MODIFIED: return Icons[theme].Modified
     case Status.INDEX_ADDED: return Icons[theme].Added
@@ -156,8 +204,8 @@ function getIconPath(theme: 'light' | 'dark', { state }: ScmChange): Uri | undef
   }
 }
 
-function getPriority({ state }: ScmChange): number {
-  switch (state) {
+function getPriority(status: Status): number {
+  switch (status) {
     case Status.INDEX_MODIFIED:
     case Status.MODIFIED:
     case Status.INDEX_COPIED:
@@ -178,8 +226,8 @@ function getPriority({ state }: ScmChange): number {
   }
 }
 
-function getTooltip({ state }: ScmChange) {
-  switch (state) {
+function getTooltip(status: Status) {
+  switch (status) {
     case Status.INDEX_MODIFIED: return l10n.t('Index Modified')
     case Status.MODIFIED: return l10n.t('Modified')
     case Status.INDEX_ADDED: return l10n.t('Index Added')
@@ -203,8 +251,8 @@ function getTooltip({ state }: ScmChange) {
   }
 }
 
-function getLetter({ state }: ScmChange) {
-  switch (state) {
+function getLetter(status: Status) {
+  switch (status) {
     case Status.INDEX_MODIFIED:
     case Status.MODIFIED:
       return 'M'
@@ -236,8 +284,8 @@ function getLetter({ state }: ScmChange) {
   }
 }
 
-function getColor({ state }: ScmChange) {
-  switch (state) {
+function getColor(status: Status) {
+  switch (status) {
     case Status.INDEX_MODIFIED:
       return new ThemeColor('gitDecoration.stageModifiedResourceForeground')
     case Status.MODIFIED:
@@ -269,8 +317,8 @@ function getColor({ state }: ScmChange) {
   }
 }
 
-function getStrikeThrough({ state }: ScmChange) {
-  switch (state) {
+function getStrikeThrough(status: Status) {
+  switch (status) {
     case Status.DELETED:
     case Status.BOTH_DELETED:
     case Status.DELETED_BY_THEM:

@@ -23,5 +23,5 @@ export interface ScmGroupMeta {
 
 export interface ScmChange {
   uri: string
-  state: Status
+  status: Status
 }
