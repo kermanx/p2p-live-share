@@ -2,9 +2,10 @@ import type { EffectScope } from 'reactive-vscode'
 import type { Connection } from '../sync/connection'
 import type { API, Change, GitExtension, Repository, RepositoryState } from './git'
 import type { ScmChange, ScmGroup, ScmGroupMeta, ScmRepo, ScmRepoMeta } from './types'
+import process from 'node:process'
 import { basename } from 'pathe'
 import { effectScope, getCurrentScope, useDisposable } from 'reactive-vscode'
-import { extensions, Uri } from 'vscode'
+import { env, extensions, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
 import { YTuple } from '../sync/y-tuple'
 
@@ -32,6 +33,13 @@ export function useHostScm(connection: Connection, doc: Y.Doc) {
         const uri = toHostUri(Uri.parse(uri_))
         return uri.fsPath
       }))
+    },
+    scmShouldDiscardUntrackedChangesToTrash() {
+      const isLinux = process.platform === 'linux'
+      const isRemote = env.remoteName !== undefined
+      const isLinuxSnap = isLinux && !!process.env.SNAP && !!process.env.SNAP_REVISION
+      const config = workspace.getConfiguration('git')
+      return config.get<boolean>('discardUntrackedChangesToTrash', true) && !isRemote && !isLinuxSnap
     },
   }
 }

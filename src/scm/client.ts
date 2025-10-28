@@ -62,6 +62,41 @@ export function useClientScm(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientF
       }
     },
   })
+
+  //   async function getDiscardUntrackedChangesDialogDetails(resources: SourceControlResourceState[]): Promise<[string, string, string]> {
+  //     const isWindows = useActiveSession()!.hostMeta.value!.os === 'win32'
+  //     const discardUntrackedChangesToTrash = await rpc.scmShouldDiscardUntrackedChangesToTrash()
+
+  //     const messageWarning = !discardUntrackedChangesToTrash
+  //       ? resources.length === 1
+  //         ? `\n\n${l10n.t('This is IRREVERSIBLE!\nThis file will be FOREVER LOST if you proceed.')}`
+  //         : `\n\n${l10n.t('This is IRREVERSIBLE!\nThese files will be FOREVER LOST if you proceed.')}`
+  //       : ''
+
+  //     const message = resources.length === 1
+  //       ? l10n.t('Are you sure you want to DELETE the following untracked file: \'{0}\'?{1}', basename(resources[0].resourceUri.fsPath), messageWarning)
+  //       : l10n.t('Are you sure you want to DELETE the {0} untracked files?{1}', resources.length, messageWarning)
+
+  //     const messageDetail = discardUntrackedChangesToTrash
+  //       ? isWindows
+  //         ? resources.length === 1
+  //           ? l10n.t('You can restore this file from the Recycle Bin.')
+  //           : l10n.t('You can restore these files from the Recycle Bin.')
+  //         : resources.length === 1
+  //           ? l10n.t('You can restore this file from the Trash.')
+  //           : l10n.t('You can restore these files from the Trash.')
+  //       : ''
+
+  //     const primaryAction = discardUntrackedChangesToTrash
+  //       ? isWindows
+  //         ? l10n.t('Move to Recycle Bin')
+  //         : l10n.t('Move to Trash')
+  //       : resources.length === 1
+  //         ? l10n.t('Delete File')
+  //         : l10n.t('Delete All {0} Files', resources.length)
+
+//     return [message, messageDetail, primaryAction]
+//   }
 }
 
 function useScmRepo(uri: string, repo: ScmRepo) {
@@ -87,10 +122,24 @@ function useScmRepo(uri: string, repo: ScmRepo) {
 
   //   },
   // }
+
+  function createGroupId(meta: ScmGroupMeta) {
+    let groupId = meta.groupId
+    if (meta.supportsClean) {
+      groupId += '(clean)'
+    }
+    if (meta.supportsOpenChanges) {
+      groupId += '(openChanges)'
+    }
+    if (meta.supportsOpenFile) {
+      groupId += '(openFile)'
+    }
+    return groupId
+  }
 }
 
 function createResourceState({ uri, status }: ScmChange, meta: ScmGroupMeta, repoUri: string) {
-  const useIcons = areGitDecorationsEnabled()
+  const useIcons = !areGitDecorationsEnabled()
   return {
     resourceUri: Uri.parse(uri),
     command: {
@@ -99,46 +148,186 @@ function createResourceState({ uri, status }: ScmChange, meta: ScmGroupMeta, rep
       arguments: [meta.groupId, uri],
     },
     decorations: {
-      strikeThrough: getStrikeThrough(status),
+      strikeThrough: getStrikeThrough(),
       faded: false,
-      tooltip: getTooltip(status),
+      tooltip: getTooltip(),
       light: useIcons
-        ? { iconPath: getIconPath('light', status) }
+        ? { iconPath: getIconPath('light') }
         : undefined,
       dark: useIcons
-        ? { iconPath: getIconPath('dark', status) }
+        ? { iconPath: getIconPath('dark') }
         : undefined,
     },
-    letter: getLetter(status),
-    color: getColor(status),
-    priority: getPriority(status),
+    letter: getLetter(),
+    color: getColor(),
+    priority: getPriority(),
     // resourceDecoration
 
     repoUri,
     status,
     groupMeta: meta,
   } satisfies SourceControlResourceState & Record<string, unknown>
+
+  function getIconPath(theme: 'light' | 'dark'): Uri | undefined {
+    const Icons = getAllIcons()
+    if (!Icons) {
+      return undefined
+    }
+    switch (status) {
+      case Status.INDEX_MODIFIED: return Icons[theme].Modified
+      case Status.MODIFIED: return Icons[theme].Modified
+      case Status.INDEX_ADDED: return Icons[theme].Added
+      case Status.INDEX_DELETED: return Icons[theme].Deleted
+      case Status.DELETED: return Icons[theme].Deleted
+      case Status.INDEX_RENAMED: return Icons[theme].Renamed
+      case Status.INDEX_COPIED: return Icons[theme].Copied
+      case Status.UNTRACKED: return Icons[theme].Untracked
+      case Status.IGNORED: return Icons[theme].Ignored
+      case Status.INTENT_TO_ADD: return Icons[theme].Added
+      case Status.INTENT_TO_RENAME: return Icons[theme].Renamed
+      case Status.TYPE_CHANGED: return Icons[theme].TypeChanged
+      case Status.BOTH_DELETED: return Icons[theme].Conflict
+      case Status.ADDED_BY_US: return Icons[theme].Conflict
+      case Status.DELETED_BY_THEM: return Icons[theme].Conflict
+      case Status.ADDED_BY_THEM: return Icons[theme].Conflict
+      case Status.DELETED_BY_US: return Icons[theme].Conflict
+      case Status.BOTH_ADDED: return Icons[theme].Conflict
+      case Status.BOTH_MODIFIED: return Icons[theme].Conflict
+    }
+  }
+
+  function getPriority(): number {
+    switch (status) {
+      case Status.INDEX_MODIFIED:
+      case Status.MODIFIED:
+      case Status.INDEX_COPIED:
+      case Status.TYPE_CHANGED:
+        return 2
+      case Status.IGNORED:
+        return 3
+      case Status.BOTH_DELETED:
+      case Status.ADDED_BY_US:
+      case Status.DELETED_BY_THEM:
+      case Status.ADDED_BY_THEM:
+      case Status.DELETED_BY_US:
+      case Status.BOTH_ADDED:
+      case Status.BOTH_MODIFIED:
+        return 4
+      default:
+        return 1
+    }
+  }
+
+  function getTooltip() {
+    switch (status) {
+      case Status.INDEX_MODIFIED: return l10n.t('Index Modified')
+      case Status.MODIFIED: return l10n.t('Modified')
+      case Status.INDEX_ADDED: return l10n.t('Index Added')
+      case Status.INDEX_DELETED: return l10n.t('Index Deleted')
+      case Status.DELETED: return l10n.t('Deleted')
+      case Status.INDEX_RENAMED: return l10n.t('Index Renamed')
+      case Status.INDEX_COPIED: return l10n.t('Index Copied')
+      case Status.UNTRACKED: return l10n.t('Untracked')
+      case Status.IGNORED: return l10n.t('Ignored')
+      case Status.INTENT_TO_ADD: return l10n.t('Intent to Add')
+      case Status.INTENT_TO_RENAME: return l10n.t('Intent to Rename')
+      case Status.TYPE_CHANGED: return l10n.t('Type Changed')
+      case Status.BOTH_DELETED: return l10n.t('Conflict: Both Deleted')
+      case Status.ADDED_BY_US: return l10n.t('Conflict: Added By Us')
+      case Status.DELETED_BY_THEM: return l10n.t('Conflict: Deleted By Them')
+      case Status.ADDED_BY_THEM: return l10n.t('Conflict: Added By Them')
+      case Status.DELETED_BY_US: return l10n.t('Conflict: Deleted By Us')
+      case Status.BOTH_ADDED: return l10n.t('Conflict: Both Added')
+      case Status.BOTH_MODIFIED: return l10n.t('Conflict: Both Modified')
+      default: return ''
+    }
+  }
+
+  function getLetter() {
+    switch (status) {
+      case Status.INDEX_MODIFIED:
+      case Status.MODIFIED:
+        return 'M'
+      case Status.INDEX_ADDED:
+      case Status.INTENT_TO_ADD:
+        return 'A'
+      case Status.INDEX_DELETED:
+      case Status.DELETED:
+        return 'D'
+      case Status.INDEX_RENAMED:
+      case Status.INTENT_TO_RENAME:
+        return 'R'
+      case Status.TYPE_CHANGED:
+        return 'T'
+      case Status.UNTRACKED:
+        return 'U'
+      case Status.IGNORED:
+        return 'I'
+      case Status.INDEX_COPIED:
+        return 'C'
+      case Status.BOTH_DELETED:
+      case Status.ADDED_BY_US:
+      case Status.DELETED_BY_THEM:
+      case Status.ADDED_BY_THEM:
+      case Status.DELETED_BY_US:
+      case Status.BOTH_ADDED:
+      case Status.BOTH_MODIFIED:
+        return '!' // Using ! instead of ⚠, because the latter looks really bad on windows
+    }
+  }
+
+  function getColor() {
+    switch (status) {
+      case Status.INDEX_MODIFIED:
+        return new ThemeColor('gitDecoration.stageModifiedResourceForeground')
+      case Status.MODIFIED:
+      case Status.TYPE_CHANGED:
+        return new ThemeColor('gitDecoration.modifiedResourceForeground')
+      case Status.INDEX_DELETED:
+        return new ThemeColor('gitDecoration.stageDeletedResourceForeground')
+      case Status.DELETED:
+        return new ThemeColor('gitDecoration.deletedResourceForeground')
+      case Status.INDEX_ADDED:
+      case Status.INTENT_TO_ADD:
+        return new ThemeColor('gitDecoration.addedResourceForeground')
+      case Status.INDEX_COPIED:
+      case Status.INDEX_RENAMED:
+      case Status.INTENT_TO_RENAME:
+        return new ThemeColor('gitDecoration.renamedResourceForeground')
+      case Status.UNTRACKED:
+        return new ThemeColor('gitDecoration.untrackedResourceForeground')
+      case Status.IGNORED:
+        return new ThemeColor('gitDecoration.ignoredResourceForeground')
+      case Status.BOTH_DELETED:
+      case Status.ADDED_BY_US:
+      case Status.DELETED_BY_THEM:
+      case Status.ADDED_BY_THEM:
+      case Status.DELETED_BY_US:
+      case Status.BOTH_ADDED:
+      case Status.BOTH_MODIFIED:
+        return new ThemeColor('gitDecoration.conflictingResourceForeground')
+    }
+  }
+
+  function getStrikeThrough() {
+    switch (status) {
+      case Status.DELETED:
+      case Status.BOTH_DELETED:
+      case Status.DELETED_BY_THEM:
+      case Status.DELETED_BY_US:
+      case Status.INDEX_DELETED:
+        return true
+      default:
+        return false
+    }
+  }
 }
 
-function createGroupId(meta: ScmGroupMeta) {
-  let groupId = meta.groupId
-  if (meta.supportsClean) {
-    groupId += '(clean)'
-  }
-  if (meta.supportsOpenChanges) {
-    groupId += '(openChanges)'
-  }
-  if (meta.supportsOpenFile) {
-    groupId += '(openFile)'
-  }
-  return groupId
-}
-
-function areGitDecorationsEnabled(): boolean {
+const areGitDecorationsEnabled = lazy(() => {
   return workspace
     .getConfiguration('git')
     .get('decorations.enabled', true)
-}
+})
 
 const getAllIcons = lazy(() => {
   const gitExtension = extensions.getExtension<GitExtension>('vscode.git')
@@ -175,157 +364,3 @@ const getAllIcons = lazy(() => {
     },
   }
 })
-
-function getIconPath(theme: 'light' | 'dark', status: Status): Uri | undefined {
-  const Icons = getAllIcons()
-  if (!Icons) {
-    return undefined
-  }
-  switch (status) {
-    case Status.INDEX_MODIFIED: return Icons[theme].Modified
-    case Status.MODIFIED: return Icons[theme].Modified
-    case Status.INDEX_ADDED: return Icons[theme].Added
-    case Status.INDEX_DELETED: return Icons[theme].Deleted
-    case Status.DELETED: return Icons[theme].Deleted
-    case Status.INDEX_RENAMED: return Icons[theme].Renamed
-    case Status.INDEX_COPIED: return Icons[theme].Copied
-    case Status.UNTRACKED: return Icons[theme].Untracked
-    case Status.IGNORED: return Icons[theme].Ignored
-    case Status.INTENT_TO_ADD: return Icons[theme].Added
-    case Status.INTENT_TO_RENAME: return Icons[theme].Renamed
-    case Status.TYPE_CHANGED: return Icons[theme].TypeChanged
-    case Status.BOTH_DELETED: return Icons[theme].Conflict
-    case Status.ADDED_BY_US: return Icons[theme].Conflict
-    case Status.DELETED_BY_THEM: return Icons[theme].Conflict
-    case Status.ADDED_BY_THEM: return Icons[theme].Conflict
-    case Status.DELETED_BY_US: return Icons[theme].Conflict
-    case Status.BOTH_ADDED: return Icons[theme].Conflict
-    case Status.BOTH_MODIFIED: return Icons[theme].Conflict
-  }
-}
-
-function getPriority(status: Status): number {
-  switch (status) {
-    case Status.INDEX_MODIFIED:
-    case Status.MODIFIED:
-    case Status.INDEX_COPIED:
-    case Status.TYPE_CHANGED:
-      return 2
-    case Status.IGNORED:
-      return 3
-    case Status.BOTH_DELETED:
-    case Status.ADDED_BY_US:
-    case Status.DELETED_BY_THEM:
-    case Status.ADDED_BY_THEM:
-    case Status.DELETED_BY_US:
-    case Status.BOTH_ADDED:
-    case Status.BOTH_MODIFIED:
-      return 4
-    default:
-      return 1
-  }
-}
-
-function getTooltip(status: Status) {
-  switch (status) {
-    case Status.INDEX_MODIFIED: return l10n.t('Index Modified')
-    case Status.MODIFIED: return l10n.t('Modified')
-    case Status.INDEX_ADDED: return l10n.t('Index Added')
-    case Status.INDEX_DELETED: return l10n.t('Index Deleted')
-    case Status.DELETED: return l10n.t('Deleted')
-    case Status.INDEX_RENAMED: return l10n.t('Index Renamed')
-    case Status.INDEX_COPIED: return l10n.t('Index Copied')
-    case Status.UNTRACKED: return l10n.t('Untracked')
-    case Status.IGNORED: return l10n.t('Ignored')
-    case Status.INTENT_TO_ADD: return l10n.t('Intent to Add')
-    case Status.INTENT_TO_RENAME: return l10n.t('Intent to Rename')
-    case Status.TYPE_CHANGED: return l10n.t('Type Changed')
-    case Status.BOTH_DELETED: return l10n.t('Conflict: Both Deleted')
-    case Status.ADDED_BY_US: return l10n.t('Conflict: Added By Us')
-    case Status.DELETED_BY_THEM: return l10n.t('Conflict: Deleted By Them')
-    case Status.ADDED_BY_THEM: return l10n.t('Conflict: Added By Them')
-    case Status.DELETED_BY_US: return l10n.t('Conflict: Deleted By Us')
-    case Status.BOTH_ADDED: return l10n.t('Conflict: Both Added')
-    case Status.BOTH_MODIFIED: return l10n.t('Conflict: Both Modified')
-    default: return ''
-  }
-}
-
-function getLetter(status: Status) {
-  switch (status) {
-    case Status.INDEX_MODIFIED:
-    case Status.MODIFIED:
-      return 'M'
-    case Status.INDEX_ADDED:
-    case Status.INTENT_TO_ADD:
-      return 'A'
-    case Status.INDEX_DELETED:
-    case Status.DELETED:
-      return 'D'
-    case Status.INDEX_RENAMED:
-    case Status.INTENT_TO_RENAME:
-      return 'R'
-    case Status.TYPE_CHANGED:
-      return 'T'
-    case Status.UNTRACKED:
-      return 'U'
-    case Status.IGNORED:
-      return 'I'
-    case Status.INDEX_COPIED:
-      return 'C'
-    case Status.BOTH_DELETED:
-    case Status.ADDED_BY_US:
-    case Status.DELETED_BY_THEM:
-    case Status.ADDED_BY_THEM:
-    case Status.DELETED_BY_US:
-    case Status.BOTH_ADDED:
-    case Status.BOTH_MODIFIED:
-      return '!' // Using ! instead of ⚠, because the latter looks really bad on windows
-  }
-}
-
-function getColor(status: Status) {
-  switch (status) {
-    case Status.INDEX_MODIFIED:
-      return new ThemeColor('gitDecoration.stageModifiedResourceForeground')
-    case Status.MODIFIED:
-    case Status.TYPE_CHANGED:
-      return new ThemeColor('gitDecoration.modifiedResourceForeground')
-    case Status.INDEX_DELETED:
-      return new ThemeColor('gitDecoration.stageDeletedResourceForeground')
-    case Status.DELETED:
-      return new ThemeColor('gitDecoration.deletedResourceForeground')
-    case Status.INDEX_ADDED:
-    case Status.INTENT_TO_ADD:
-      return new ThemeColor('gitDecoration.addedResourceForeground')
-    case Status.INDEX_COPIED:
-    case Status.INDEX_RENAMED:
-    case Status.INTENT_TO_RENAME:
-      return new ThemeColor('gitDecoration.renamedResourceForeground')
-    case Status.UNTRACKED:
-      return new ThemeColor('gitDecoration.untrackedResourceForeground')
-    case Status.IGNORED:
-      return new ThemeColor('gitDecoration.ignoredResourceForeground')
-    case Status.BOTH_DELETED:
-    case Status.ADDED_BY_US:
-    case Status.DELETED_BY_THEM:
-    case Status.ADDED_BY_THEM:
-    case Status.DELETED_BY_US:
-    case Status.BOTH_ADDED:
-    case Status.BOTH_MODIFIED:
-      return new ThemeColor('gitDecoration.conflictingResourceForeground')
-  }
-}
-
-function getStrikeThrough(status: Status) {
-  switch (status) {
-    case Status.DELETED:
-    case Status.BOTH_DELETED:
-    case Status.DELETED_BY_THEM:
-    case Status.DELETED_BY_US:
-    case Status.INDEX_DELETED:
-      return true
-    default:
-      return false
-  }
-}
