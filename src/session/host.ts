@@ -6,6 +6,7 @@ import { useHostDiagnostics } from '../diagnostics/host'
 import { useHostFs } from '../fs/host'
 import { useHostLs } from '../ls/host'
 import { useHostRpc } from '../rpc/host'
+import { useHostScm } from '../scm/host'
 import { useConnection } from '../sync/connection'
 import { useDocSync } from '../sync/doc'
 import { useHostTerminals } from '../terminal/host'
@@ -36,6 +37,7 @@ export async function createHostSession(config: ConnectionConfig) {
     useHostRpc(connection, fs, terminals)
     useHostLs(connection)
     useHostDiagnostics(connection, doc)
+    useHostScm(connection, doc)
     const tunnels = useTunnels(connection, doc)
     useWebview().useChat(connection)
     useCurrentUser()

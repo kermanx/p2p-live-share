@@ -5,6 +5,7 @@ import path, { dirname } from 'node:path'
 import process from 'node:process'
 import { extensionContext } from 'reactive-vscode'
 import { env, Uri } from 'vscode'
+import { lazy } from '../../utils'
 
 export const isLinux = process.platform === 'linux'
 export const isMacintosh = process.platform === 'darwin'
@@ -167,12 +168,7 @@ export function format(value: string, ...args: any[]): string {
 }
 
 // Based on https://github.com/subframe7536/vscode-custom-ui-style/blob/main/src/path.ts
-let cachedAppRoot: string | undefined
-export function getAppRoot() {
-  if (cachedAppRoot) {
-    return cachedAppRoot
-  }
-
+export const getAppRoot = lazy(() => {
   function getDirectoryName(filePath: string): string {
     const lastSlashIndex = Math.max(
       filePath.lastIndexOf('/'),
@@ -198,8 +194,8 @@ export function getAppRoot() {
   }
 
   // `path.dirname(mainFilename)` will return '.' in extension, so here manually extract it
-  return cachedAppRoot = getDirectoryName(mainFilename)
-}
+  return getDirectoryName(mainFilename)
+})
 
 export const FileAccess = {
   asFileUri(path: string) {

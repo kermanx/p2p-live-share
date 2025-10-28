@@ -156,6 +156,7 @@ export const useActiveSession = createSingletonComposable(() => {
       session.value = await createClientSession(parsed)
     }
     catch (error: any) {
+      console.error(error)
       window.showErrorMessage(
         'P2P Live Share: Failed to join the session.',
         {

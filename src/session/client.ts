@@ -6,6 +6,7 @@ import { useClientDiagnostics } from '../diagnostics/client'
 import { useClientFs } from '../fs/client'
 import { useClientLs } from '../ls/client'
 import { useClientRpc } from '../rpc/client'
+import { useClientScm } from '../scm/client'
 import { useConnection } from '../sync/connection'
 import { useDocSync } from '../sync/doc'
 import { useClientTerminals } from '../terminal/client'
@@ -73,6 +74,7 @@ export async function createClientSession(config: ConnectionConfig) {
     const { shadowTerminals } = useClientTerminals(doc, rpc)
     useClientLs(connection, hostId)
     useClientDiagnostics(doc)
+    useClientScm(connection, doc)
     const tunnels = useTunnels(connection, doc)
     useWebview().useChat(connection)
     useCurrentUser()

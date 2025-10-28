@@ -15,3 +15,8 @@ export function normalizeUint8Array<T>(data: T): T {
   }
   return data
 }
+
+export function lazy<T>(factory: () => T): () => T {
+  let value: T | undefined
+  return () => value ??= factory()
+}
