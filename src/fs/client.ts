@@ -173,6 +173,7 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
       }
       const editor = window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString())
       if (editor) {
+        rpc.saveFile(uri.toString())
         // TODO: Written by other extension?
       }
       else {

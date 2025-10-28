@@ -57,11 +57,11 @@ export function useTextDocumentWatcher(
         textFile.delete(change.rangeOffset, change.rangeLength)
         textFile.insert(change.rangeOffset, change.text)
       }
-    }, `local-edit`)
+    })
   }))
 }
 
-export const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, delta: Y.YEvent<any>['delta']): Promise<boolean> => {
+export const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, delta: Y.YEvent<any>['delta']) => {
   const editor = window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString())
   if (editor && editor.document.uri.toString() === uri.toString()) {
     const doc = editor.document
@@ -96,10 +96,10 @@ export const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, 
         editingUris.set(uri.toString(), count)
       }
     }
-    return true
+    return doc
   }
   else {
-    return false
+    return null
   }
 })
 

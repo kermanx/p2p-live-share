@@ -1,3 +1,4 @@
+import type { TextDocument } from 'vscode'
 import type { Connection } from '../sync/connection'
 import type { FileContent, FilesMap } from './types'
 import { useFsWatcher } from 'reactive-vscode'
@@ -11,6 +12,9 @@ export function useHostFs(connection: Connection, doc: Y.Doc) {
   const { toHostUri, toTrackUri } = connection
   const files = doc.getMap('fs') as FilesMap
   const trackedDirs = new Set<string>()
+
+  const filesConfig = workspace.getConfiguration('files')
+  const unsavedDocs = new Map<string, TextDocument>()
 
   files.observeDeep((events) => {
     for (const event of events) {
@@ -59,8 +63,14 @@ export function useHostFs(connection: Connection, doc: Y.Doc) {
       else if (event.target instanceof Y.Text) {
         const { path, delta } = event
         const uri_ = toHostUri(Uri.parse(path[0] as string))
-        applyTextDocumentDelta(uri_, delta).then((res) => {
-          if (!res) {
+        applyTextDocumentDelta(uri_, delta).then((writtenToDoc) => {
+          if (writtenToDoc) {
+            const autoSave = filesConfig.get('autoSave') === 'afterDelay' && filesConfig.get('autoSaveDelay', 1000) <= 1100
+            if (!autoSave) {
+              unsavedDocs.set(uri_.toString(), writtenToDoc)
+            }
+          }
+          else {
             workspace.fs.writeFile(uri_, new TextEncoder().encode(event.target.toString()))
           }
         })
@@ -195,9 +205,19 @@ export function useHostFs(connection: Connection, doc: Y.Doc) {
     }
   }
 
+  async function saveFile(uri: string) {
+    const uri_ = toHostUri(Uri.parse(uri))
+    const doc = unsavedDocs.get(uri_.toString())
+    if (doc) {
+      await doc.save()
+      unsavedDocs.delete(uri_.toString())
+    }
+  }
+
   return {
     trackDirectory,
     trackFile,
     renameFile,
+    saveFile,
   }
 }
