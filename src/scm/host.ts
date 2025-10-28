@@ -4,11 +4,12 @@ import type { API, Change, GitExtension, Repository, RepositoryState } from './g
 import type { ScmChange, ScmGroup, ScmGroupMeta, ScmRepo, ScmRepoMeta } from './types'
 import { basename } from 'pathe'
 import { effectScope, getCurrentScope, useDisposable } from 'reactive-vscode'
-import { extensions } from 'vscode'
+import { extensions, Uri } from 'vscode'
 import * as Y from 'yjs'
 import { YTuple } from '../sync/y-tuple'
 
 export function useHostScm(connection: Connection, doc: Y.Doc) {
+  const { toHostUri } = connection
   const scope = getCurrentScope()!
   const _git = (async () => {
     const gitExtension = extensions.getExtension<GitExtension>('vscode.git')
@@ -18,6 +19,21 @@ export function useHostScm(connection: Connection, doc: Y.Doc) {
     const gitApi = gitExtension.exports.getAPI(1)
     return scope.run(() => useHostGitScm(gitApi, connection, doc))
   })()
+
+  return {
+    async scmClean(repoUri: string, groupId: string, resourceUris: string[]) {
+      const git = await _git
+      if (!git)
+        return
+      const repo = git.repositories.get(repoUri)
+      if (!repo)
+        return
+      await repo.repo.clean(resourceUris.map((uri_) => {
+        const uri = toHostUri(Uri.parse(uri_))
+        return uri.fsPath
+      }))
+    },
+  }
 }
 
 function useHostGitScm(api: API, connection: Connection, doc: Y.Doc) {
@@ -29,13 +45,19 @@ function useHostGitScm(api: API, connection: Connection, doc: Y.Doc) {
   // const changedInstances = new Set()
   // const resourceCache = new Map()
 
-  const repoScopes = new Map<string, EffectScope>()
+  const repositories = new Map<string, {
+    scope: EffectScope
+    repo: Repository
+  }>()
   const openRepository = (repo: Repository) => {
     const uri = toTrackUri(repo.rootUri)?.toString()
     if (!uri)
       return
     const scope = effectScope(true)
-    repoScopes.set(uri, scope)
+    repositories.set(uri, {
+      scope,
+      repo,
+    })
     map.set(uri, scope.run(() => useScmRepo(repo, {
       rootUri: uri,
       label: 'Git',
@@ -50,10 +72,10 @@ function useHostGitScm(api: API, connection: Connection, doc: Y.Doc) {
     if (!uri)
       return
     map.delete(uri)
-    const scope = repoScopes.get(uri)
-    if (scope) {
-      scope.stop()
-      repoScopes.delete(uri)
+    const repository = repositories.get(uri)
+    if (repository) {
+      repository.scope.stop()
+      repositories.delete(uri)
     }
   }))
 
@@ -61,15 +83,8 @@ function useHostGitScm(api: API, connection: Connection, doc: Y.Doc) {
   // onScopeDispose(() => clearInterval(documentUriCacheCleanupTimer))
 
   return {
-    // getRecentVersions,
-    // getRecentVersionsTillMergeVersion,
-    // getCurrentVersionName,
-    // getRemoteVersionsNames,
-    // getMergeVersion,
-    // getDiffsForVersion,
-    // getDiffForResource,
-    // getResource,
-    // cleanResources,
+    api,
+    repositories,
   }
 
   // function getInstanceId(repo: Repository) {

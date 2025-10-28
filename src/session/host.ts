@@ -34,10 +34,14 @@ export async function createHostSession(config: ConnectionConfig) {
 
     const fs = useHostFs(connection, doc)
     const terminals = useHostTerminals(doc)
-    useHostRpc(connection, fs, terminals)
+    const scm = useHostScm(connection, doc)
+    useHostRpc(connection, {
+      ...fs,
+      ...terminals,
+      ...scm,
+    })
     useHostLs(connection)
     useHostDiagnostics(connection, doc)
-    useHostScm(connection, doc)
     const tunnels = useTunnels(connection, doc)
     useWebview().useChat(connection)
     useCurrentUser()

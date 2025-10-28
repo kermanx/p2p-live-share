@@ -1,5 +1,7 @@
+import type { BirpcReturn } from 'birpc'
 import type { SourceControlResourceGroup, SourceControlResourceState } from 'vscode'
 import type * as Y from 'yjs'
+import type { ClientFunctions, HostFunctions } from '../rpc/types'
 import type { GitExtension } from './git'
 import type { ScmChange, ScmGroupMeta, ScmRepo } from './types'
 import { basename } from 'pathe'
@@ -9,15 +11,10 @@ import { useShallowYArray, useShallowYMapScopes } from '../sync/doc'
 import { lazy } from '../utils'
 import { Status } from './git'
 
-export function useClientScm(doc: Y.Doc) {
+export function useClientScm(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFunctions>) {
   const map = doc.getMap<ScmRepo>('scm')
 
-  useShallowYMapScopes(
-    () => map,
-    (id, data) => {
-      useScmRepo(data)
-    },
-  )
+  useShallowYMapScopes(() => map, useScmRepo)
 
   useCommands({
     'p2p-live-share.scm.cleanAll': async (group: SourceControlResourceGroup) => {
@@ -57,15 +54,17 @@ export function useClientScm(doc: Y.Doc) {
         }
       }
       if ((await window.showWarningMessage(message, { modal: true }, action)) === action) {
-        // await this.service.cleanResourcesAsync(
-        //   states.map(e => e.ResourceIdentity),
-        // )
+        await rpc.scmClean(
+          states[0].repoUri,
+          states[0].groupMeta.groupId,
+          states.map(({ resourceUri }) => resourceUri.toString()),
+        )
       }
     },
   })
 }
 
-function useScmRepo(repo: ScmRepo) {
+function useScmRepo(uri: string, repo: ScmRepo) {
   const [groups, meta] = repo.toArray()
   const sc = useDisposable(scm.createSourceControl('p2p-live-share-scm', meta.label, Uri.parse(meta.rootUri)))
   sc.inputBox.visible = false
@@ -79,7 +78,7 @@ function useScmRepo(repo: ScmRepo) {
 
       const states = useShallowYArray(() => changes)
       watchEffect(() => {
-        group.resourceStates = states.value.map(state => createResourceState(state, meta))
+        group.resourceStates = states.value.map(state => createResourceState(state, meta, uri))
       })
     },
   )
@@ -90,7 +89,7 @@ function useScmRepo(repo: ScmRepo) {
   // }
 }
 
-function createResourceState({ uri, status }: ScmChange, meta: ScmGroupMeta) {
+function createResourceState({ uri, status }: ScmChange, meta: ScmGroupMeta, repoUri: string) {
   const useIcons = areGitDecorationsEnabled()
   return {
     resourceUri: Uri.parse(uri),
@@ -115,6 +114,7 @@ function createResourceState({ uri, status }: ScmChange, meta: ScmGroupMeta) {
     priority: getPriority(status),
     // resourceDecoration
 
+    repoUri,
     status,
     groupMeta: meta,
   } satisfies SourceControlResourceState & Record<string, unknown>
