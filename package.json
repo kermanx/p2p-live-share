@@ -554,7 +554,7 @@
     "typecheck": "tsc --noEmit",
     "vscode:prepublish": "pnpm run build",
     "browser": "vscode-test-web --quality stable --browser none --extensionDevelopmentPath=. ./test-workspace",
-    "wsserver": "bun --watch ./src/sync/ws/server.ts",
+    "wsserver": "bun --watch ./src/sync/ws/server.ts --manualDelay 50",
     "lint": "eslint . --cache",
     "release": "bumpp package.json src/sync/ws/package.json"
   },

@@ -26,6 +26,7 @@ const { values } = parseArgs({
     port: { type: 'string', short: 'p' },
     hostname: { type: 'string' },
     help: { type: 'boolean', short: 'h' },
+    manualDelay: { type: 'string' },
   },
   strict: true,
   allowPositionals: false,
@@ -42,6 +43,7 @@ if (values.port) {
 }
 
 const hostname = values.hostname || 'localhost'
+const manualDelay = values.manualDelay ? Number.parseInt(values.manualDelay, 10) : 0
 
 if (values.help) {
   // Minimal aligned usage info
@@ -131,7 +133,14 @@ Bun.serve({
 
         targets.forEach((client) => {
           if (client && client !== ws) {
-            client.send(downlinkMessage)
+            if (manualDelay) {
+              setTimeout(() => {
+                client.send(downlinkMessage)
+              }, manualDelay)
+            }
+            else {
+              client.send(downlinkMessage)
+            }
           }
         })
       }
