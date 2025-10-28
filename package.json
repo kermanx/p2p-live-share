@@ -554,13 +554,12 @@
     "typecheck": "tsc --noEmit",
     "vscode:prepublish": "pnpm run build",
     "browser": "vscode-test-web --quality stable --browser none --extensionDevelopmentPath=. ./test-workspace",
-    "wsserver": "bun --watch ./src/sync/ws/server.ts --manualDelay 50",
+    "wsserver": "tsx --watch ./src/sync/ws/cli.ts --manualDelay 50",
     "lint": "eslint . --cache",
     "release": "bumpp package.json src/sync/ws/package.json"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.3.0",
-    "@types/bun": "^1.2.23",
     "@types/node": "^24.4.0",
     "@types/vscode": "^1.99.0",
     "@vscode-elements/elements": "^2.3.1",
@@ -579,6 +578,7 @@
     "reactive-vscode": "^0.3.3",
     "trystero": "^0.21.8",
     "tsdown": "^0.15.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.2",
     "vscode-languageclient": "^10.0.0-next.17",
     "vscode-languageserver": "^10.0.0-next.14",

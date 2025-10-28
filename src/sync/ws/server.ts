@@ -1,6 +1,7 @@
-/* eslint-disable node/prefer-global/buffer */
-
-import type { Server, ServerWebSocket } from 'bun'
+import type { Server as HttpServer } from 'node:http'
+import { Buffer } from 'node:buffer'
+import { createServer as createHttpServer } from 'node:http'
+import { WebSocket, WebSocketServer } from 'ws'
 import { deserializeUplink, serializeDownlink, UpdatePeersAction } from './protocol'
 
 export interface WebSocketData {
@@ -19,9 +20,14 @@ export interface ServerOptions {
   onRoomEmpty?: (roomId: string) => void
 }
 
+interface WebSocketWithData extends WebSocket {
+  data?: WebSocketData
+}
+
 export class WebSocketSignalingServer {
-  private rooms = new Map<string, Map<string, ServerWebSocket<WebSocketData>>>()
-  private server: Server | null = null
+  private rooms = new Map<string, Map<string, WebSocketWithData>>()
+  private httpServer: HttpServer | null = null
+  private wss: WebSocketServer | null = null
   private options: Required<ServerOptions>
 
   constructor(options: ServerOptions) {
@@ -36,124 +42,149 @@ export class WebSocketSignalingServer {
     }
   }
 
-  start(): Server {
+  start(): HttpServer {
     const { port, hostname, manualDelay, onServerStart, onError, onPeerJoin, onPeerLeave, onRoomEmpty } = this.options
 
-    this.server = Bun.serve({
-      port,
-      hostname,
-      fetch: (req: Request, server: Server) => {
-        const url = new URL(req.url)
-        if (req.method === 'GET' && url.pathname === '/') {
-          return new Response(
-            `P2P Live Share WebSocket Signaling Server. ${this.rooms.size} active room(s).`,
-            {
-              headers: { 'Content-Type': 'text/plain' },
-            },
-          )
-        }
+    // Create HTTP server
+    this.httpServer = createHttpServer((req, res) => {
+      const url = new URL(req.url || '', `http://${req.headers.host}`)
+      if (req.method === 'GET' && url.pathname === '/') {
+        res.writeHead(200, { 'Content-Type': 'text/plain' })
+        res.end(`P2P Live Share WebSocket Signaling Server. ${this.rooms.size} active room(s).`)
+        return
+      }
 
-        const match = url.pathname.match(/^\/([\w-]+)\/([\w-]+)$/)
-
-        if (match) {
-          const [_, roomId, peerId] = match
-          const upgraded = server.upgrade(req, {
-            data: { roomId, peerId },
-          })
-          if (!upgraded) {
-            return new Response('Upgrade failed', { status: 500 })
-          }
-          return
-        }
-        return new Response('Not found', { status: 404 })
-      },
-      error: (error: Error) => {
-        onError(error)
-      },
-      websocket: {
-        open: (ws: ServerWebSocket<WebSocketData>) => {
-          ws.binaryType = 'arraybuffer'
-          const { roomId, peerId } = ws.data
-          let roomClients = this.rooms.get(roomId)
-          if (!roomClients) {
-            this.rooms.set(roomId, roomClients = new Map())
-          }
-          roomClients.set(peerId, ws)
-          this.sendUpdatePeers(roomId)
-          onPeerJoin(peerId, roomId)
-        },
-        message: (ws: ServerWebSocket<WebSocketData>, message: string | Buffer) => {
-          try {
-            const uplink = deserializeUplink(message as string | ArrayBuffer)
-            const { roomId, peerId: senderId } = ws.data
-
-            const roomClients = this.rooms.get(roomId)
-            if (!roomClients) {
-              console.error(`Room ${roomId} not found. Closing connection.`)
-              ws.close()
-              return
-            }
-
-            const downlinkPayload = {
-              action: uplink.action,
-              data: uplink.data,
-              peerId: senderId,
-              metadata: uplink.metadata,
-            }
-            const downlinkMessage = serializeDownlink(downlinkPayload)
-
-            const targets = uplink.targetPeers
-              ? (Array.isArray(uplink.targetPeers) ? uplink.targetPeers : [uplink.targetPeers])
-                  .map(id => roomClients.get(id))
-              : Array.from(roomClients.values())
-
-            targets.forEach((client) => {
-              if (client && client !== ws) {
-                if (manualDelay) {
-                  setTimeout(() => {
-                    client.send(downlinkMessage)
-                  }, manualDelay)
-                }
-                else {
-                  client.send(downlinkMessage)
-                }
-              }
-            })
-          }
-          catch (error) {
-            console.error('Failed to process message:', error)
-          }
-        },
-        close: (ws: ServerWebSocket<WebSocketData>) => {
-          const { peerId, roomId } = ws.data
-          const roomClients = this.rooms.get(roomId)
-          if (peerId && roomClients) {
-            roomClients.delete(peerId)
-            if (roomClients.size === 0) {
-              this.rooms.delete(roomId)
-              onRoomEmpty(roomId)
-            }
-            else {
-              this.sendUpdatePeers(roomId)
-            }
-            onPeerLeave(peerId, roomId)
-          }
-        },
-      },
+      res.writeHead(404)
+      res.end('Not found')
     })
 
-    onServerStart({ port, hostname })
-    return this.server
+    // Create WebSocket server
+    this.wss = new WebSocketServer({ noServer: true })
+
+    // Handle upgrade requests
+    this.httpServer.on('upgrade', (request, socket, head) => {
+      const url = new URL(request.url || '', `http://${request.headers.host}`)
+      const match = url.pathname.match(/^\/([\w-]+)\/([\w-]+)$/)
+
+      if (!match) {
+        socket.write('HTTP/1.1 404 Not Found\r\n\r\n')
+        socket.destroy()
+        return
+      }
+
+      const [_, roomId, peerId] = match
+
+      this.wss!.handleUpgrade(request, socket, head, (ws: WebSocketWithData) => {
+        ws.data = { roomId, peerId }
+        this.wss!.emit('connection', ws, request)
+      })
+    })
+
+    // Handle WebSocket connections
+    this.wss.on('connection', (ws: WebSocketWithData) => {
+      const { roomId, peerId } = ws.data!
+
+      let roomClients = this.rooms.get(roomId)
+      if (!roomClients) {
+        this.rooms.set(roomId, roomClients = new Map())
+      }
+      roomClients.set(peerId, ws)
+      this.sendUpdatePeers(roomId)
+      onPeerJoin(peerId, roomId)
+
+      ws.binaryType = 'arraybuffer'
+      ws.onmessage = ({ data }) => {
+        try {
+          const uplink = deserializeUplink(data as ArrayBuffer | string)
+          const { roomId, peerId: senderId } = ws.data!
+
+          const roomClients = this.rooms.get(roomId)
+          if (!roomClients) {
+            console.error(`Room ${roomId} not found. Closing connection.`)
+            ws.close()
+            return
+          }
+
+          const downlinkPayload = {
+            action: uplink.action,
+            data: uplink.data,
+            peerId: senderId,
+            metadata: uplink.metadata,
+          }
+          const downlinkMessage = serializeDownlink(downlinkPayload)
+
+          const targets = uplink.targetPeers
+            ? (Array.isArray(uplink.targetPeers) ? uplink.targetPeers : [uplink.targetPeers])
+                .map(id => roomClients.get(id))
+            : Array.from(roomClients.values())
+
+          targets.forEach((client) => {
+            if (client && client !== ws && client.readyState === WebSocket.OPEN) {
+              if (manualDelay) {
+                setTimeout(() => {
+                  client.send(downlinkMessage)
+                }, manualDelay)
+              }
+              else {
+                client.send(downlinkMessage)
+              }
+            }
+          })
+        }
+        catch (error) {
+          console.error('Failed to process message:', error)
+        }
+      }
+
+      ws.onclose = () => {
+        const { peerId, roomId } = ws.data!
+        const roomClients = this.rooms.get(roomId)
+        if (peerId && roomClients) {
+          roomClients.delete(peerId)
+          if (roomClients.size === 0) {
+            this.rooms.delete(roomId)
+            onRoomEmpty(roomId)
+          }
+          else {
+            this.sendUpdatePeers(roomId)
+          }
+          onPeerLeave(peerId, roomId)
+        }
+      }
+
+      ws.onerror = (error) => {
+        onError(error.error)
+      }
+    })
+
+    this.wss.on('error', (error: Error) => {
+      onError(error)
+    })
+
+    this.httpServer.on('error', (error: Error) => {
+      onError(error)
+    })
+
+    // Start listening
+    this.httpServer.listen(port, hostname, () => {
+      onServerStart({ port, hostname })
+    })
+
+    return this.httpServer
   }
 
   stop(): void {
-    if (this.server) {
-      this.server.stop()
-      this.server = null
+    if (this.wss) {
+      this.wss.close()
+      this.wss = null
+    }
+    if (this.httpServer) {
+      this.httpServer.close()
+      this.httpServer = null
     }
   }
 
-  getRooms(): Map<string, Map<string, ServerWebSocket<WebSocketData>>> {
+  getRooms(): Map<string, Map<string, WebSocketWithData>> {
     return this.rooms
   }
 
@@ -176,7 +207,9 @@ export class WebSocketSignalingServer {
         peerId: 'server',
       })
       roomClients.forEach((client) => {
-        client.send(updateMessage)
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(updateMessage)
+        }
       })
     }
   }

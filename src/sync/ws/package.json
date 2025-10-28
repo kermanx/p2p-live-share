@@ -21,7 +21,8 @@
     "protocol.ts",
     "server.ts"
   ],
-  "engines": {
-    "bun": ">=1.2.0"
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "ws": "^8.18.3"
   }
 }

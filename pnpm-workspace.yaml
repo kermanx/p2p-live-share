@@ -2,5 +2,6 @@ onlyBuiltDependencies:
   - '@firebase/util'
   - '@playwright/browser-chromium'
   - '@vscode/windows-process-tree'
+  - esbuild
   - node-pty
   - protobufjs

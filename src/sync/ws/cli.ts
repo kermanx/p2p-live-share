@@ -1,16 +1,11 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import process from 'node:process'
 import { parseArgs } from 'node:util'
 import { createServer } from './server'
 
-if (typeof Bun === 'undefined') {
-  // eslint-disable-next-line unicorn/prefer-type-error
-  throw new Error('This server script must be run with Bun.')
-}
-
 const { values } = parseArgs({
-  args: Bun.argv.slice(2),
+  args: process.argv.slice(2),
   options: {
     port: { type: 'string', short: 'p' },
     hostname: { type: 'string' },
@@ -25,7 +20,7 @@ const { values } = parseArgs({
 if (values.help) {
   // Minimal aligned usage info
   console.log(`p2p-live-share WebSocket signaling server\n\n`
-    + `Usage:\n  bunx p2p-live-share-ws-server@latest [options]\n\n`
+    + `Usage:\n  npx p2p-live-share-ws-server@latest [options]\n\n`
     + `Options:\n`
     + `  -p, --port <number>       Port to listen on (default: 8080)\n`
     + `      --hostname <host>     Hostname / interface to bind (default: :: for dual-stack)\n`
@@ -33,10 +28,10 @@ if (values.help) {
     + `      --manualDelay <ms>   Add artificial delay to message forwarding (for testing)\n`
     + `  -h, --help               Show this help message and exit\n\n`
     + `Examples:\n`
-    + `  bunx p2p-live-share-ws-server@latest\n`
-    + `  bunx p2p-live-share-ws-server@latest -p 9000\n`
-    + `  bunx p2p-live-share-ws-server@latest --port 9000 --hostname 0.0.0.0  # IPv4 only\n`
-    + `  bunx p2p-live-share-ws-server@latest --port 9000 --hostname ::       # Dual-stack\n`)
+    + `  npx p2p-live-share-ws-server@latest\n`
+    + `  npx p2p-live-share-ws-server@latest -p 9000\n`
+    + `  npx p2p-live-share-ws-server@latest --port 9000 --hostname 0.0.0.0  # IPv4 only\n`
+    + `  npx p2p-live-share-ws-server@latest --port 9000 --hostname ::       # Dual-stack\n`)
   process.exit(0)
 }
 
@@ -61,7 +56,7 @@ const server = createServer({
   hostname,
   manualDelay,
   onServerStart: ({ port, hostname }) => {
-    console.info('Starting WebSocket server with Bun...')
+    console.info('Starting WebSocket server with Node.js...')
     console.info(`Listening on ws://${displayHost}:${port}/`)
     if (values.dualStack !== false && hostname === '::') {
       console.info('Dual-stack mode enabled: accepting both IPv4 and IPv6 connections')
