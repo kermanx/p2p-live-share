@@ -12,7 +12,7 @@ import { useConnection } from '../sync/connection'
 import { useDocSync } from '../sync/doc'
 import { useClientTerminals } from '../terminal/client'
 import { useTunnels } from '../tunnel'
-import { useCurrentUser } from '../ui/users'
+import { useUsers } from '../ui/users'
 import { useWebview } from '../ui/webview/webview'
 import { ClientCompatibleVersions, onSessionClosed } from './index'
 
@@ -78,7 +78,7 @@ export async function createClientSession(config: ConnectionConfig) {
     useClientScm(doc, rpc)
     const tunnels = useTunnels(connection, doc)
     useWebview().useChat(connection)
-    useCurrentUser()
+    useUsers().useCurrentUser(connection, doc)
 
     watchEffect(() => {
       if (!connection.peers.value.includes(hostId)) {

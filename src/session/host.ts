@@ -13,7 +13,7 @@ import { useConnection } from '../sync/connection'
 import { useDocSync } from '../sync/doc'
 import { useHostTerminals } from '../terminal/host'
 import { useTunnels } from '../tunnel'
-import { useCurrentUser } from '../ui/users'
+import { useUsers } from '../ui/users'
 import { useWebview } from '../ui/webview/webview'
 
 export async function createHostSession(config: ConnectionConfig) {
@@ -51,7 +51,7 @@ export async function createHostSession(config: ConnectionConfig) {
     useHostDiagnostics(connection, doc)
     const tunnels = useTunnels(connection, doc)
     useWebview().useChat(connection)
-    useCurrentUser()
+    useUsers().useCurrentUser(connection, doc)
 
     return {
       role: 'host' as const,

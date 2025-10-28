@@ -1,9 +1,11 @@
+import type * as Y from 'yjs'
+import type { Connection } from '../sync/connection'
 import { computed, createSingletonComposable, onScopeDispose, ref, watch } from 'reactive-vscode'
 import { authentication, ConfigurationTarget, window } from 'vscode'
 import { configs } from '../configs'
 import { useActiveSession } from '../session'
 import { useObserverDeep } from '../sync/doc'
-import { createColorAllocator, TransparentColor } from './colors'
+import { createColorAllocator, LoadingColor } from './colors'
 
 export interface UserColor {
   id: string
@@ -28,21 +30,16 @@ export const useUsers = createSingletonComposable(() => {
 
   const mapVersion = useObserverDeep(
     map,
-    (events) => {
+    (events, map) => {
       for (const event of events) {
         for (const [peerId, { action, oldValue }] of event.keys) {
           if (action === 'add') {
-            const user = event.target.get(peerId) as UserInfo
+            const user = map.get(peerId) as UserInfo
 
             if (role.value === 'host') {
-              const color = colorAllocator.alloc(peerId)
-              event.target.set(peerId, {
+              map.set(peerId, {
                 ...user,
-                color: {
-                  id: `p2pliveshare.participant.${color[0]}`,
-                  fg: color[1],
-                  bg: color[2],
-                },
+                color: colorAllocator.alloc(peerId),
               })
             }
 
@@ -62,7 +59,16 @@ export const useUsers = createSingletonComposable(() => {
         }
       }
     },
-    () => {},
+    (map) => {
+      if (role.value === 'host') {
+        for (const [peerId, user] of map.entries()) {
+          map.set(peerId, {
+            ...user,
+            color: colorAllocator.alloc(peerId),
+          })
+        }
+      }
+    },
   )
 
   async function inquireUserName(isHost: boolean) {
@@ -131,30 +137,8 @@ export const useUsers = createSingletonComposable(() => {
     return {
       name: user?.name || 'Unknown',
       avatarUrl: user?.avatarUrl || null,
-      color: user?.color || {
-        id: 'p2pliveshare.participant.loading',
-        fg: TransparentColor[0],
-        bg: TransparentColor[1],
-      },
+      color: user?.color || LoadingColor,
     }
-  }
-
-  function join() {
-    if (!map.value || !selfId.value || !userName.value) {
-      return
-    }
-    map.value.set(selfId.value, {
-      name: userName.value,
-      avatarUrl: avatarUrl.value,
-      color: null,
-    })
-  }
-
-  function leave() {
-    if (!map.value || !selfId.value || !userName.value) {
-      return
-    }
-    map.value.delete(selfId.value)
   }
 
   // Cleanup clients when disconnected
@@ -189,19 +173,27 @@ export const useUsers = createSingletonComposable(() => {
     return result?.peerId
   }
 
+  function useCurrentUser({ selfId }: Connection, doc: Y.Doc) {
+    if (!userName.value) {
+      throw new Error('User name is not set.')
+    }
+    const map = doc.getMap<UserInfo>('users')
+    map.set(selfId, {
+      name: userName.value,
+      avatarUrl: avatarUrl.value,
+      color: null,
+    })
+    onScopeDispose(() => {
+      map.delete(selfId)
+    })
+  }
+
   return {
     peers,
     userName,
     inquireUserName,
     getUserInfo,
-    join,
-    leave,
     pickPeerId,
+    useCurrentUser,
   }
 })
-
-export function useCurrentUser() {
-  const { join, leave } = useUsers()
-  setTimeout(join, 10)
-  onScopeDispose(leave)
-}

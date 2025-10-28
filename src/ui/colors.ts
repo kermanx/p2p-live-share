@@ -13,19 +13,21 @@ export function createColorAllocator() {
   const peers = new Map<string, number>()
   return {
     alloc(id: string) {
-      const existing = peers.get(id)
-      if (existing !== undefined) {
-        return ColorTable[existing % ColorTable.length]
+      let idx = peers.get(id)
+      if (idx === undefined) {
+        const used = new Set(peers.values())
+        idx = ColorTable.findIndex((_, i) => !used.has(i))
+        if (idx === -1) {
+          idx = peers.size % ColorTable.length
+        }
+        peers.set(id, idx)
       }
-
-      const used = new Set(peers.values())
-      let idx = ColorTable.findIndex((_, i) => !used.has(i))
-      if (idx === -1) {
-        idx = peers.size % ColorTable.length
+      const [colorId, fg, bg] = ColorTable[idx]
+      return {
+        id: `p2pliveshare.participant.${colorId}`,
+        fg,
+        bg,
       }
-
-      peers.set(id, idx)
-      return ColorTable[idx]
     },
     free(id: string) {
       peers.delete(id)
@@ -33,10 +35,11 @@ export function createColorAllocator() {
   }
 }
 
-export const TransparentColor = [
-  'rgba(0, 0, 0, 0)',
-  'rgba(255, 255, 255, 0)',
-] as const
+export const LoadingColor = {
+  id: 'p2pliveshare.participant.loading',
+  fg: 'rgba(0, 0, 0, 0)',
+  bg: 'rgba(255, 255, 255, 0)',
+}
 
 export function withOpacity(color: string, opacity: number) {
   const match = color.match(/rgba?\((\d+), (\d+), (\d+)(, ([\d.]+))?\)/)
