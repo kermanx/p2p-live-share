@@ -220,6 +220,7 @@ export const useActiveSession = createSingletonComposable(() => {
     doc: computed(() => session.value?.doc),
     selfId: computed(() => session.value?.connection.selfId),
     hostId: computed(() => session.value?.hostId),
+    hostMeta: computed(() => session.value?.hostMeta),
     peers: computed(() => session.value?.connection.peers.value),
     connection: computed(() => session.value?.connection),
     shadowTerminals: computed(() => session.value?.shadowTerminals),

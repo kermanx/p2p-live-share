@@ -1,4 +1,5 @@
 import type { ConnectionConfig } from '../sync/share'
+import type { HostMeta } from './types'
 import { effectScope, watchEffect } from 'reactive-vscode'
 import { ProgressLocation, window } from 'vscode'
 import * as Y from 'yjs'
@@ -20,14 +21,14 @@ export async function createClientSession(config: ConnectionConfig) {
   const connection = scope.run(() => useConnection(config))!
   await connection.ready
 
-  const [_, recvInit] = connection.makeAction<Uint8Array>('init')
+  const [_, recvInit] = connection.makeAction<Uint8Array, HostMeta>('init')
   const initResult = await window.withProgress(
     {
       location: ProgressLocation.Notification,
       title: 'P2P Live Share: Joining session...',
       cancellable: true,
     },
-    (_progress, token) => new Promise<null | [Uint8Array, string, string]>((resolve) => {
+    (_progress, token) => new Promise<null | [Uint8Array, string, HostMeta]>((resolve) => {
       token.onCancellationRequested(() => resolve(null))
       const timeoutId = setTimeout(async () => {
         const res = await window.showErrorMessage(
@@ -42,8 +43,8 @@ export async function createClientSession(config: ConnectionConfig) {
           resolve(null)
         }
       }, 15000)
-      recvInit((data, hostId, { version }) => {
-        resolve([data, hostId, version])
+      recvInit((data, hostId, hostMeta) => {
+        resolve([data, hostId, hostMeta!])
         clearTimeout(timeoutId)
       })
     }),
@@ -51,14 +52,14 @@ export async function createClientSession(config: ConnectionConfig) {
   if (!initResult) {
     return null
   }
-  const [initUpdate, hostId, hostVersion] = initResult
+  const [initUpdate, hostId, hostMeta] = initResult
 
-  if (!ClientCompatibleVersions.includes(hostVersion)) {
+  if (!ClientCompatibleVersions.includes(hostMeta.version)) {
     await window.showErrorMessage(
       'P2P Live Share: Incompatible host version.',
       {
         modal: true,
-        detail: `Host version: ${hostVersion}.\nCompatible versions: ${ClientCompatibleVersions.join(', ')}.`,
+        detail: `Host version: ${hostMeta.version}.\nCompatible versions: ${ClientCompatibleVersions.join(', ')}.`,
       },
     )
     return null
@@ -93,6 +94,7 @@ export async function createClientSession(config: ConnectionConfig) {
     return {
       role: 'client' as const,
       hostId,
+      hostMeta,
       connection,
       doc,
       scope,

@@ -1,4 +1,6 @@
 import type { ConnectionConfig } from '../sync/share'
+import type { HostMeta } from './types'
+import process from 'node:process'
 import { effectScope, watch } from 'reactive-vscode'
 import * as Y from 'yjs'
 import { HostVersion } from '.'
@@ -23,11 +25,16 @@ export async function createHostSession(config: ConnectionConfig) {
 
   return scope.run(() => {
     useDocSync(connection, doc)
-    const [sendInit] = connection.makeAction<Uint8Array>('init')
+
+    const hostMeta: HostMeta = {
+      version: HostVersion,
+      os: process.platform,
+    }
+    const [sendInit] = connection.makeAction<Uint8Array, HostMeta>('init')
     watch(connection.peers, (newPeers, oldPeers) => {
       for (const peerId of newPeers) {
         if (!oldPeers?.includes(peerId)) {
-          sendInit(Y.encodeStateAsUpdate(doc), peerId, { version: HostVersion })
+          sendInit(Y.encodeStateAsUpdate(doc), peerId, hostMeta)
         }
       }
     }, { immediate: true })
@@ -49,6 +56,7 @@ export async function createHostSession(config: ConnectionConfig) {
     return {
       role: 'host' as const,
       hostId: connection.selfId,
+      hostMeta,
       connection,
       doc,
       scope,
