@@ -1,3 +1,4 @@
+import getPort from 'get-port'
 import { customAlphabet } from 'nanoid'
 import { ConfigurationTarget, env, ThemeIcon, Uri, window, workspace } from 'vscode'
 import { configs } from '../configs'
@@ -5,7 +6,7 @@ import { ClientUriScheme } from '../fs/provider'
 import { useUsers } from '../ui/users'
 
 export interface ConnectionConfig {
-  type: 'ws' | 'wss' | 'trystero'
+  type: 'ws' | 'wss' | 'trystero' | 'local'
   domain: string
   roomId: string
   workspace: number
@@ -18,7 +19,8 @@ export function makeTrackUri(config: ConnectionConfig, uri_: Uri) {
   }
   const path = uri_.toString().slice(folder.uri.toString().length)
 
-  let authority = `${config.type}.${config.roomId}.${config.domain}`
+  const type = config.type === 'local' ? 'ws' : config.type
+  let authority = `${type}.${config.roomId}.${config.domain}`
   if (folder.index !== 0)
     authority += `|${folder.index}`
   return Uri.from({
@@ -111,6 +113,7 @@ async function inquireServer() {
     })),
     { label: 'trystero:mqtt', description: 'Trystero with MQTT strategy' },
     { label: 'trystero:nostr', description: 'Trystero with Nostr strategy' },
+    { label: 'Local Network', description: 'Share over local network' },
   ]
   quickPick.onDidChangeValue((value) => {
     if (value.startsWith('ws://') || value.startsWith('wss://') || 'ws://'.startsWith(value) || 'wss://'.startsWith(value)) {
@@ -148,6 +151,13 @@ async function inquireServer() {
     return {
       type: 'trystero' as const,
       domain: strategy,
+    }
+  }
+  if (import.meta.env.TARGET === 'node' && result === 'Local Network') {
+    const port = await (await import('get-port')).default()
+    return {
+      type: 'local' as const,
+      domain: `localhost:${port}`,
     }
   }
   if (!result.startsWith('ws://') && !result.startsWith('wss://')) {
@@ -188,7 +198,7 @@ function generateRoomId(folderIndex: number) {
   return roomId
 }
 
-export async function copyShareUri(config: ConnectionConfig, isHosting = false) {
+export async function copyShareLink(config: ConnectionConfig, isHosting = false) {
   const shareUri = makeTrackUri(config, workspace.workspaceFolders![config.workspace].uri)!.toString()
   while (true) {
     env.clipboard.writeText(shareUri.replace('%7C', '|'))

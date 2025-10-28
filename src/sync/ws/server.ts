@@ -1,5 +1,5 @@
 import type { Server as HttpServer } from 'node:http'
-import { Buffer } from 'node:buffer'
+import type { DownlinkMessageContent, UplinkMessageContent } from './protocol'
 import { createServer as createHttpServer } from 'node:http'
 import { WebSocket, WebSocketServer } from 'ws'
 import { deserializeUplink, serializeDownlink, UpdatePeersAction } from './protocol'
@@ -13,6 +13,13 @@ export interface ServerOptions {
   port: number
   hostname: string
   manualDelay?: number
+
+  hostMode?: {
+    roomId: string
+    hostId: string
+    onHostMessage: (message: DownlinkMessageContent) => void
+  }
+
   onServerStart?: (info: { port: number, hostname: string }) => void
   onError?: (error: Error) => void
   onPeerJoin?: (peerId: string, roomId: string) => void
@@ -28,22 +35,17 @@ export class WebSocketSignalingServer {
   private rooms = new Map<string, Map<string, WebSocketWithData>>()
   private httpServer: HttpServer | null = null
   private wss: WebSocketServer | null = null
-  private options: Required<ServerOptions>
+  private options: ServerOptions
 
   constructor(options: ServerOptions) {
-    this.options = {
-      manualDelay: 0,
-      onServerStart: () => {},
-      onError: () => {},
-      onPeerJoin: () => {},
-      onPeerLeave: () => {},
-      onRoomEmpty: () => {},
-      ...options,
+    this.options = options
+    if (this.options.hostMode) {
+      this.rooms.set(this.options.hostMode.roomId, new Map())
     }
   }
 
   start(): HttpServer {
-    const { port, hostname, manualDelay, onServerStart, onError, onPeerJoin, onPeerLeave, onRoomEmpty } = this.options
+    const { port, hostname, onServerStart, onError, onPeerJoin, onPeerLeave, onRoomEmpty } = this.options
 
     // Create HTTP server
     this.httpServer = createHttpServer((req, res) => {
@@ -74,6 +76,12 @@ export class WebSocketSignalingServer {
 
       const [_, roomId, peerId] = match
 
+      if (this.options.hostMode && this.options.hostMode.roomId !== roomId) {
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n')
+        socket.destroy()
+        return
+      }
+
       this.wss!.handleUpgrade(request, socket, head, (ws: WebSocketWithData) => {
         ws.data = { roomId, peerId }
         this.wss!.emit('connection', ws, request)
@@ -90,46 +98,13 @@ export class WebSocketSignalingServer {
       }
       roomClients.set(peerId, ws)
       this.sendUpdatePeers(roomId)
-      onPeerJoin(peerId, roomId)
+      onPeerJoin?.(peerId, roomId)
 
       ws.binaryType = 'arraybuffer'
       ws.onmessage = ({ data }) => {
         try {
           const uplink = deserializeUplink(data as ArrayBuffer | string)
-          const { roomId, peerId: senderId } = ws.data!
-
-          const roomClients = this.rooms.get(roomId)
-          if (!roomClients) {
-            console.error(`Room ${roomId} not found. Closing connection.`)
-            ws.close()
-            return
-          }
-
-          const downlinkPayload = {
-            action: uplink.action,
-            data: uplink.data,
-            peerId: senderId,
-            metadata: uplink.metadata,
-          }
-          const downlinkMessage = serializeDownlink(downlinkPayload)
-
-          const targets = uplink.targetPeers
-            ? (Array.isArray(uplink.targetPeers) ? uplink.targetPeers : [uplink.targetPeers])
-                .map(id => roomClients.get(id))
-            : Array.from(roomClients.values())
-
-          targets.forEach((client) => {
-            if (client && client !== ws && client.readyState === WebSocket.OPEN) {
-              if (manualDelay) {
-                setTimeout(() => {
-                  client.send(downlinkMessage)
-                }, manualDelay)
-              }
-              else {
-                client.send(downlinkMessage)
-              }
-            }
-          })
+          this.handleMessage(uplink, roomId, peerId)
         }
         catch (error) {
           console.error('Failed to process message:', error)
@@ -143,34 +118,79 @@ export class WebSocketSignalingServer {
           roomClients.delete(peerId)
           if (roomClients.size === 0) {
             this.rooms.delete(roomId)
-            onRoomEmpty(roomId)
+            onRoomEmpty?.(roomId)
           }
           else {
             this.sendUpdatePeers(roomId)
           }
-          onPeerLeave(peerId, roomId)
+          onPeerLeave?.(peerId, roomId)
         }
       }
 
       ws.onerror = (error) => {
-        onError(error.error)
+        onError?.(error.error)
       }
     })
 
     this.wss.on('error', (error: Error) => {
-      onError(error)
+      onError?.(error)
     })
 
     this.httpServer.on('error', (error: Error) => {
-      onError(error)
+      onError?.(error)
     })
 
     // Start listening
     this.httpServer.listen(port, hostname, () => {
-      onServerStart({ port, hostname })
+      onServerStart?.({ port, hostname })
     })
 
     return this.httpServer
+  }
+
+  handleMessage(uplink: UplinkMessageContent, roomId: string, senderId: string) {
+    const roomClients = this.rooms.get(roomId)
+    if (!roomClients) {
+      console.error(`Room ${roomId} not found. Closing connection.`)
+      // ws.close()
+      return
+    }
+
+    const downlinkPayload = {
+      action: uplink.action,
+      data: uplink.data,
+      peerId: senderId,
+      metadata: uplink.metadata,
+    }
+
+    const targets = uplink.targetPeers
+      ? Array.isArray(uplink.targetPeers) ? uplink.targetPeers : [uplink.targetPeers]
+      : undefined
+
+    if (this.options.hostMode) {
+      if (!targets || targets.includes(this.options.hostMode.hostId)) {
+        this.options.hostMode.onHostMessage(downlinkPayload)
+      }
+    }
+
+    const wsTargets = targets
+      ? targets.map(id => roomClients.get(id))
+      : Array.from(roomClients.values())
+    if (wsTargets.length) {
+      const downlinkMessage = serializeDownlink(downlinkPayload)
+      wsTargets.forEach((client) => {
+        if (client && client.data?.peerId !== senderId && client.readyState === WebSocket.OPEN) {
+          if (this.options.manualDelay) {
+            setTimeout(() => {
+              client.send(downlinkMessage)
+            }, this.options.manualDelay)
+          }
+          else {
+            client.send(downlinkMessage)
+          }
+        }
+      })
+    }
   }
 
   stop(): void {
@@ -201,11 +221,18 @@ export class WebSocketSignalingServer {
     const roomClients = this.rooms.get(roomId)
     if (roomClients) {
       const peerIds = Array.from(roomClients.keys())
-      const updateMessage = serializeDownlink({
+      if (this.options.hostMode) {
+        peerIds.push(this.options.hostMode.hostId)
+      }
+      const updateMessageContent = {
         action: UpdatePeersAction,
         data: peerIds,
         peerId: 'server',
-      })
+      }
+      if (this.options.hostMode) {
+        this.options.hostMode.onHostMessage(updateMessageContent)
+      }
+      const updateMessage = serializeDownlink(updateMessageContent)
       roomClients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
           client.send(updateMessage)

@@ -1,7 +1,7 @@
 import { computed, createSingletonComposable, onScopeDispose, shallowRef, useCommand, useVscodeContext, watch } from 'reactive-vscode'
 import { commands, env, Uri, window, workspace } from 'vscode'
 import { ClientUriScheme } from '../fs/provider'
-import { copyShareUri, inquireHostConfig, makeTrackUri, parseTrackUri, validateShareLink } from '../sync/share'
+import { copyShareLink, inquireHostConfig, makeTrackUri, parseTrackUri, validateShareLink } from '../sync/share'
 import { useUsers } from '../ui/users'
 import { useWebview } from '../ui/webview/webview'
 import { createClientSession } from './client'
@@ -78,7 +78,7 @@ export const useActiveSession = createSingletonComposable(() => {
         return
       }
 
-      copyShareUri(config, true)
+      copyShareLink(config, true)
     }
     finally {
       isJoining.value = false
@@ -207,7 +207,7 @@ export const useActiveSession = createSingletonComposable(() => {
   useCommand('p2p-live-share.stop', leave)
   useCommand('p2p-live-share.copyInviteLink', () => {
     if (session.value?.connection) {
-      copyShareUri(session.value?.connection.config)
+      copyShareLink(session.value?.connection.config)
     }
     else {
       window.showErrorMessage('Not in a session.')
