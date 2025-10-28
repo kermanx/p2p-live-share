@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run Extension",
+      "name": "Run Host",
       "type": "extensionHost",
       "request": "launch",
       "args": [
@@ -14,7 +14,7 @@
       ]
     },
     {
-      "name": "Run Extension (2)",
+      "name": "Run Client",
       "type": "extensionHost",
       "request": "launch",
       "args": [
@@ -28,10 +28,10 @@
   ],
   "compounds": [
     {
-      "name": "Two Instances",
+      "name": "Run Both",
       "configurations": [
-        "Run Extension",
-        "Run Extension (2)"
+        "Run Host",
+        "Run Client"
       ],
       "stopAll": true
     }

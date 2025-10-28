@@ -13,10 +13,11 @@
     "url": "git+https://github.com/kermanx/p2p-live-share.git"
   },
   "bin": {
-    "p2p-live-share-ws": "./server.ts"
+    "p2p-live-share-ws": "./cli.ts"
   },
   "files": [
     "README.md",
+    "cli.ts",
     "protocol.ts",
     "server.ts"
   ],
