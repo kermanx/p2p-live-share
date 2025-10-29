@@ -1,13 +1,13 @@
 import type { ExtensionTerminalOptions, Terminal, TerminalDimensions } from 'vscode'
 import type * as Y from 'yjs'
-import { effectScope, onScopeDispose, readonly, ref, shallowReactive, useEventEmitter } from 'reactive-vscode'
+import { computed, effectScope, onScopeDispose, readonly, ref, shallowReactive, useEventEmitter } from 'reactive-vscode'
 import { ThemeIcon, window } from 'vscode'
 
 export type TerminalData = Y.Text
 
 export function useShadowTerminals(
   handleInput: (terminalId: string, content: string) => void,
-  updateDimension: (terminalId: string, dims: TerminalDimensions) => void,
+  updateDimension: (terminal: ReturnType<typeof createShadowTerminal>, dims: TerminalDimensions) => void,
   onCloseTerminal: (terminalId: string) => void,
 ) {
   const idToTerminal = shallowReactive(new Map<string, ReturnType<typeof createShadowTerminal>>())
@@ -18,6 +18,7 @@ export function useShadowTerminals(
       let opened = false
       let outputInitialized = false
       let pendingOutput = ''
+      let currentDimensions: TerminalDimensions | undefined
 
       const writable = ref(true)
       const outputEmitter = useEventEmitter<string>()
@@ -35,7 +36,8 @@ export function useShadowTerminals(
               outputEmitter.fire(pendingOutput)
               pendingOutput = ''
             }
-            updateDimension(id, dims)
+            currentDimensions = dims
+            updateDimension(terminal, dims)
           },
           close() {
             onCloseTerminal(id)
@@ -47,7 +49,8 @@ export function useShadowTerminals(
             }
           },
           setDimensions(dims: TerminalDimensions) {
-            updateDimension(id, dims)
+            currentDimensions = dims
+            updateDimension(terminal, dims)
           },
         },
       }
@@ -62,11 +65,12 @@ export function useShadowTerminals(
         }
       }
 
+      const terminalInstance = computed(() => {
+        return window.terminals.find(t => extractTerminalId(t) === id)
+      })
+
       onScopeDispose(() => {
-        const terminalInstance = window.terminals.find(t => extractTerminalId(t) === id)
-        if (terminalInstance) {
-          terminalInstance.dispose()
-        }
+        terminalInstance.value?.dispose()
       })
 
       return {
@@ -74,6 +78,8 @@ export function useShadowTerminals(
         createOptions,
         writable,
         createdAt: Date.now(),
+        terminalInstance,
+        currentDimensions,
         create: () => window.createTerminal(createOptions),
         dispose: () => {
           scope.stop()

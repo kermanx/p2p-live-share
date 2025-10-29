@@ -6,3 +6,7 @@ export const configs = defineConfigObject('p2p-live-share', {
   userName: String,
   trysteroConfig: Object,
 })
+
+export const terminalConfigs = defineConfigObject('p2p-live-share.terminal', {
+  dimensionsSource: Object as ConfigType<'host' | 'creator' | 'minimum' | 'maximum'>,
+})

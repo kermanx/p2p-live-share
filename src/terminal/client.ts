@@ -6,7 +6,7 @@ import { TerminalProfile, window } from 'vscode'
 import * as Y from 'yjs'
 import { useActiveSession } from '../session'
 import { useObserverDeep } from '../sync/doc'
-import { useShadowTerminals } from './common'
+import { extractTerminalId, useShadowTerminals } from './common'
 
 export function useClientTerminals(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFunctions>) {
   const { selfId } = useActiveSession()
@@ -18,21 +18,9 @@ export function useClientTerminals(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, C
     (id, content) => {
       rpc.handleTerminalInput(id, content)
     },
-    (id, dims) => {
-      const data = terminalData.get(id)
-      if (!data) {
-        console.warn('Unknown terminal setDimensions')
-        return
-      }
-      if (createdTerminals.has(id)) {
-        data.setAttribute('dimension', dims)
-        rpc.setDimensions(id, dims)
-        const terminal = getShadowTerminal(id)
-        if (!terminal) {
-          console.warn('Unknown terminal setDimensions')
-          return
-        }
-        terminal.overrideDimensions(dims)
+    (terminal, dims) => {
+      if (createdTerminals.has(terminal.id) || terminal.terminalInstance.value?.state.isInteractedWith) {
+        rpc.updateShadowTerminalDimensions(selfId.value!, terminal.id, dims)
       }
     },
     (id) => {
@@ -41,6 +29,16 @@ export function useClientTerminals(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, C
       }
     },
   )
+
+  useDisposable(window.onDidChangeTerminalState((terminal) => {
+    const id = extractTerminalId(terminal)
+    if (id && terminal.state.isInteractedWith) {
+      const shadow = getShadowTerminal(id)
+      if (shadow && shadow.currentDimensions) {
+        rpc.updateShadowTerminalDimensions(selfId.value!, id, shadow.currentDimensions)
+      }
+    }
+  }))
 
   useDisposable(window.registerTerminalProfileProvider('p2p-live-share.sharedTerminal', {
     async provideTerminalProfile() {
@@ -71,7 +69,7 @@ export function useClientTerminals(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, C
       terminal.create()
     }
     terminal.writable.value = data.getAttribute('writable')
-    terminal.overrideDimensions(data.getAttribute('dimension'))
+    terminal.overrideDimensions(data.getAttribute('dimensions'))
     terminal.initOutput(data.toString())
   }
 
@@ -119,8 +117,8 @@ export function useClientTerminals(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, C
             console.warn('Unsupported terminal change delta', delta)
           }
 
-          if (event.keys.has('dimension')) {
-            const dimension = event.target.getAttribute('dimension')
+          if (event.keys.has('dimensions')) {
+            const dimension = event.target.getAttribute('dimensions')
             terminal.overrideDimensions(dimension)
           }
           if (event.keys.has('writable')) {

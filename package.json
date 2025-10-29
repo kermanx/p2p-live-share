@@ -461,6 +461,17 @@
           "type": "object",
           "default": {},
           "description": "The first parameter of trystero.joinRoom, see https://github.com/dmotz/trystero."
+        },
+        "p2p-live-share.terminal.dimensionsSource": {
+          "type": "string",
+          "enum": [
+            "host",
+            "creator",
+            "minimum",
+            "maximum"
+          ],
+          "default": "minimum",
+          "description": "Determines how terminal dimensions are calculated for shared terminals."
         }
       }
     },

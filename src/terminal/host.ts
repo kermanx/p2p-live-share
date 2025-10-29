@@ -2,9 +2,10 @@ import type { TerminalDimensions } from 'vscode'
 import type { TerminalData } from './common'
 import type { ProcessHandle } from './pty/index.js'
 import { env } from 'node:process'
-import { useCommand, useDisposable } from 'reactive-vscode'
+import { reactive, useCommand, useDisposable, watchEffect } from 'reactive-vscode'
 import { TerminalProfile, window, workspace } from 'vscode'
 import * as Y from 'yjs'
+import { terminalConfigs } from '../configs'
 import { useActiveSession } from '../session'
 import { useIdAllocator } from '../utils'
 import { useShadowTerminals } from './common'
@@ -21,16 +22,13 @@ export function useHostTerminals(doc: Y.Doc) {
 
   const { shadowTerminals, getShadowTerminal, createShadowTerminal } = useShadowTerminals(
     handleTerminalInput,
-    (id, dims) => {
-      const data = terminalData.get(id)
+    (terminal, dims) => {
+      const data = terminalData.get(terminal.id)
       if (!data) {
         console.warn('Unknown terminal setDimensions')
         return
       }
-      if (createdTerminals.has(id)) {
-        setDimensions(id, dims)
-        data.setAttribute('dimension', dims)
-      }
+      updateShadowTerminalDimensions(selfId.value!, terminal.id, dims)
     },
     (id) => {
       killSharedTerminal(id)
@@ -72,10 +70,12 @@ export function useHostTerminals(doc: Y.Doc) {
     const terminal = createShadowTerminal(id, name)
 
     const text = new Y.Text()
-    text.setAttribute('name', name)
-    text.setAttribute('writable', true)
-    text.setAttribute('creator', creator)
-    terminalData.set(id, text)
+    doc.transact(() => {
+      terminalData.set(id, text)
+      text.setAttribute('name', name)
+      text.setAttribute('writable', true)
+      text.setAttribute('creator', creator)
+    })
 
     process.onOutput((data) => {
       terminal.appendOutput(data)
@@ -87,18 +87,83 @@ export function useHostTerminals(doc: Y.Doc) {
     return { id, name, terminal }
   }
 
-  function setDimensions(id: string, dims: TerminalDimensions) {
-    const process = processes.get(id)
-    if (!process) {
-      console.warn('Unknown terminal setDimensions')
-      return
+  const peerDimensions = reactive(new Map<string, Map<string, TerminalDimensions>>())
+  function updateShadowTerminalDimensions(peerId: string, terminalId: string, dims: TerminalDimensions) {
+    let peerMap = peerDimensions.get(terminalId)
+    if (!peerMap) {
+      peerDimensions.set(terminalId, peerMap = new Map())
     }
-    process.resize(dims.columns, dims.rows)
-    const terminal = getShadowTerminal(id)
-    if (terminal) {
-      terminal.overrideDimensions(dims)
-    }
+    peerMap.set(peerId, dims)
   }
+  watchEffect(() => {
+    for (const [id, peerMap] of peerDimensions) {
+      // Compute dimensions
+      const dims = { columns: Number.NaN, rows: Number.NaN }
+      if (terminalConfigs.dimensionsSource === 'minimum') {
+        for (const peerDims of peerMap.values()) {
+          dims.columns = dims.columns ? Math.min(dims.columns, peerDims.columns) : peerDims.columns
+          dims.rows = dims.rows ? Math.min(dims.rows, peerDims.rows) : peerDims.rows
+        }
+      }
+      else if (terminalConfigs.dimensionsSource === 'maximum') {
+        for (const peerDims of peerMap.values()) {
+          dims.columns = dims.columns ? Math.max(dims.columns, peerDims.columns) : peerDims.columns
+          dims.rows = dims.rows ? Math.max(dims.rows, peerDims.rows) : peerDims.rows
+        }
+      }
+      else if (terminalConfigs.dimensionsSource === 'host') {
+        const hostDims = peerMap.get(selfId.value!)
+        if (hostDims) {
+          dims.columns = hostDims.columns
+          dims.rows = hostDims.rows
+        }
+      }
+      else if (terminalConfigs.dimensionsSource === 'creator') {
+        const data = terminalData.get(id)
+        if (data) {
+          const creator = data.getAttribute('creator')
+          const creatorDims = peerMap.get(creator)
+          if (creatorDims) {
+            dims.columns = creatorDims.columns
+            dims.rows = creatorDims.rows
+          }
+        }
+      }
+      else {
+        console.warn('Unknown terminal dimensionsSource:', terminalConfigs.dimensionsSource)
+      }
+
+      if (Number.isNaN(dims.columns) || Number.isNaN(dims.rows)) {
+        continue
+      }
+
+      // Update terminal data
+      const data = terminalData.get(id)
+      if (!data) {
+        console.warn('Unknown terminal setDimensions')
+        continue
+      }
+      const oldDims = data.getAttribute('dimensions')
+      if (oldDims && oldDims.columns === dims.columns && oldDims.rows === dims.rows) {
+        continue
+      }
+      data.setAttribute('dimensions', dims)
+
+      // Update the process dimensions
+      const process = processes.get(id)
+      if (!process) {
+        console.warn('Unknown terminal setDimensions')
+        continue
+      }
+      process.resize(dims.columns, dims.rows)
+
+      // Update local shadow terminal dimensions
+      const terminal = getShadowTerminal(id)
+      if (terminal) {
+        terminal.overrideDimensions(dims)
+      }
+    }
+  })
 
   function killSharedTerminal(id: string) {
     const process = processes.get(id)
@@ -119,9 +184,12 @@ export function useHostTerminals(doc: Y.Doc) {
     async createSharedTerminal(creator: string) {
       const result = await createSharedTerminalImpl(creator)
       result.terminal.create()
-      return result
+      return {
+        id: result.id,
+        name: result.name,
+      }
     },
-    setDimensions,
+    updateShadowTerminalDimensions,
     killSharedTerminal,
     handleTerminalInput,
   }
