@@ -65,11 +65,11 @@ export async function createClientSession(config: ConnectionConfig) {
     return null
   }
 
-  const doc = new Y.Doc()
-  Y.applyUpdate(doc, initUpdate)
-
   return scope.run(() => {
+    const doc = new Y.Doc()
     useDocSync(connection, doc)
+    Y.applyUpdate(doc, initUpdate)
+
     const rpc = useClientRpc(connection, hostId)
     useClientFs(doc, rpc)
     const { shadowTerminals } = useClientTerminals(doc, rpc)
