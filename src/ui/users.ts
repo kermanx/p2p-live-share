@@ -52,7 +52,7 @@ export const useUsers = createSingletonComposable(() => {
               colorAllocator.free(peerId)
             }
 
-            if (peerId !== selfId.value) {
+            if (peerId !== selfId.value && state.value) {
               window.showInformationMessage(`${oldValue.name} left the session.`)
             }
           }

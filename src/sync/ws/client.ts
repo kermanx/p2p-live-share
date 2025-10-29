@@ -3,9 +3,14 @@ import type { ConnectionConfig } from '../share'
 import { nanoid } from 'nanoid'
 import { onScopeDispose, ref, useEventEmitter } from 'reactive-vscode'
 import { logger } from '../../utils'
+import { useWebSocketHostConnection } from './host'
 import { deserializeDownlink, serializeUplink, UpdatePeersAction } from './protocol'
 
 export function useWebSocketConnection(config: ConnectionConfig): InternalConnection {
+  if (config.host) {
+    return useWebSocketHostConnection(config)
+  }
+
   const selfId = nanoid(10)
   const serverUrl = `${config.type}://${config.domain}/${config.roomId}/${selfId}`
   logger.info('Connecting to WebSocket server:', serverUrl)

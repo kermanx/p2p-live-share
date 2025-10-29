@@ -1,4 +1,4 @@
-import getPort from 'get-port'
+import type { QuickPickItem } from 'vscode'
 import { customAlphabet } from 'nanoid'
 import { ConfigurationTarget, env, ThemeIcon, Uri, window, workspace } from 'vscode'
 import { configs } from '../configs'
@@ -6,10 +6,14 @@ import { ClientUriScheme } from '../fs/provider'
 import { useUsers } from '../ui/users'
 
 export interface ConnectionConfig {
-  type: 'ws' | 'wss' | 'trystero' | 'local'
+  type: 'ws' | 'wss' | 'trystero'
   domain: string
   roomId: string
   workspace: number
+  host?: {
+    hostname: string
+    port: number
+  } | undefined
 }
 
 export function makeTrackUri(config: ConnectionConfig, uri_: Uri) {
@@ -19,8 +23,7 @@ export function makeTrackUri(config: ConnectionConfig, uri_: Uri) {
   }
   const path = uri_.toString().slice(folder.uri.toString().length)
 
-  const type = config.type === 'local' ? 'ws' : config.type
-  let authority = `${type}.${config.roomId}.${config.domain}`
+  let authority = `${config.type}.${config.roomId}.${config.domain}`
   if (folder.index !== 0)
     authority += `|${folder.index}`
   return Uri.from({
@@ -113,7 +116,7 @@ async function inquireServer() {
     })),
     { label: 'trystero:mqtt', description: 'Trystero with MQTT strategy' },
     { label: 'trystero:nostr', description: 'Trystero with Nostr strategy' },
-    { label: 'Local Network', description: 'Share over local network' },
+    { label: 'Host Locally', description: 'Share over local network' },
   ]
   quickPick.onDidChangeValue((value) => {
     if (value.startsWith('ws://') || value.startsWith('wss://') || 'ws://'.startsWith(value) || 'wss://'.startsWith(value)) {
@@ -153,11 +156,19 @@ async function inquireServer() {
       domain: strategy,
     }
   }
-  if (import.meta.env.TARGET === 'node' && result === 'Local Network') {
-    const port = await (await import('get-port')).default()
+  if (import.meta.env.TARGET === 'node' && result === 'Host Locally') {
+    const host = await inquireHostname()
+    if (!host) {
+      return null
+    }
+    const port = await (await import('get-port')).default({ host })
     return {
-      type: 'local' as const,
-      domain: `localhost:${port}`,
+      type: 'ws' as const,
+      domain: `${host.includes(':') ? `[${host}]` : host}:${port}`,
+      host: {
+        hostname: host,
+        port,
+      },
     }
   }
   if (!result.startsWith('ws://') && !result.startsWith('wss://')) {
@@ -177,6 +188,36 @@ async function inquireServer() {
     type: url.protocol === 'wss:' ? 'wss' as const : 'ws' as const,
     domain: url.host,
   }
+}
+
+async function inquireHostname() {
+  const os = await import('node:os')
+  const interfaces = os.networkInterfaces()
+
+  const items: QuickPickItem[] = []
+  for (const ifaceName in interfaces) {
+    const ifaceAddresses = interfaces[ifaceName]
+    if (!ifaceAddresses)
+      continue
+    for (const addrInfo of ifaceAddresses) {
+      if (addrInfo.address.startsWith('fe80::')) {
+        continue
+      }
+      items.push({
+        label: addrInfo.address,
+        description: `Interface: ${ifaceName} (${addrInfo.family}${addrInfo.internal ? ', internal' : ''})`,
+      })
+    }
+  }
+
+  const countColons = (addr: string) => (addr.match(/:/g) || []).length
+  items.sort((a, b) => countColons(a.label) - countColons(b.label))
+
+  const result = await window.showQuickPick(items, {
+    placeHolder: 'Select hostname for hosting',
+  })
+
+  return result?.label || null
 }
 
 const roomIdNanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 6)
@@ -199,9 +240,9 @@ function generateRoomId(folderIndex: number) {
 }
 
 export async function copyShareLink(config: ConnectionConfig, isHosting = false) {
-  const shareUri = makeTrackUri(config, workspace.workspaceFolders![config.workspace].uri)!.toString()
+  const shareLink = makeTrackUri(config, workspace.workspaceFolders![config.workspace].uri)!.toString()
   while (true) {
-    env.clipboard.writeText(shareUri.replace('%7C', '|'))
+    env.clipboard.writeText(decodeURIComponent(shareLink))
     const res = await window.showInformationMessage(`${isHosting ? 'Hosting session. ' : ''}The invite link has been copied to clipboard.
 
 Others may join this session by clicking on the "Join" button and pasting this link.`, 'Copy Again')

@@ -19,12 +19,10 @@ export function useWebSocketHostConnection(config: ConnectionConfig): InternalCo
   const onClose = useEventEmitter<void>()
   let closed = false
 
-  const { hostname, port } = new URL(`ws://${config.domain}`)
   const server = (async () => {
     const { createServer } = await import('./server')
     const server = createServer({
-      hostname,
-      port: +port,
+      ...config.host!,
       hostMode: {
         roomId: config.roomId,
         hostId: selfId,

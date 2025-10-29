@@ -9,7 +9,6 @@ import { normalizeUint8Array } from '../utils'
 import { makeTrackUri, parseTrackUri } from './share'
 import { useSteroConnection } from './trystero'
 import { useWebSocketConnection } from './ws/client'
-import { useWebSocketHostConnection } from './ws/host'
 
 export type { TargetPeers } from 'trystero'
 
@@ -36,9 +35,6 @@ export function useConnection(config: ConnectionConfig) {
   let internal: InternalConnection
   if (config.type === 'ws' || config.type === 'wss') {
     internal = useWebSocketConnection(config)
-  }
-  else if (config.type === 'local') {
-    internal = useWebSocketHostConnection(config)
   }
   else if (config.type === 'trystero') {
     internal = useSteroConnection(config)
