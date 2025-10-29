@@ -12,7 +12,13 @@ export default defineAsyncComponent(async () => {
       <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
         {platform === 'desktop'
           ? (
-              <vscode-button onClick={() => rpc.share()} disabled={state.value === 'joining'}>
+              <vscode-button
+                onClick={() => {
+                  rpc.share()
+                  state.value = 'joining'
+                }}
+                disabled={state.value === 'joining'}
+              >
                 Share
               </vscode-button>
             )
@@ -21,7 +27,13 @@ export default defineAsyncComponent(async () => {
                 To share a session, run the extension in VS Code desktop and click "Share".
               </div>
             )}
-        <vscode-button onClick={() => rpc.join('auto')} disabled={state.value === 'joining'}>
+        <vscode-button
+          onClick={() => {
+            rpc.join('auto')
+            state.value = 'joining'
+          }}
+          disabled={state.value === 'joining'}
+        >
           Join
         </vscode-button>
       </div>
