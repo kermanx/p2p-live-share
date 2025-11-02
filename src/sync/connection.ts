@@ -54,9 +54,6 @@ export function useConnection(config: ConnectionConfig) {
       (data: T, targetPeers?: TargetPeers, metadata?: M) => {
         // Development-only checks
         if (import.meta.env.NODE_ENV === 'development') {
-          if (metadata && !(data instanceof Uint8Array)) {
-            throw new Error('Trystero only supports metadata when data is binary')
-          }
           const nameBytes = new TextEncoder().encode(action)
           if (nameBytes.length > 12) {
             throw new Error('Trystero only supports action names up to 12 bytes')

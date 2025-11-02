@@ -1,8 +1,8 @@
-import type { InternalConnection, InternalReceiver } from './connection'
-import type { ConnectionConfig } from './share'
+import type { InternalConnection, InternalReceiver } from '../connection'
+import type { ConnectionConfig } from '../share'
 import { onScopeDispose, shallowRef, useEventEmitter } from 'reactive-vscode'
-import { configs } from '../configs'
-import { useWebview } from '../ui/webview/webview'
+import { configs } from '../../configs'
+import { useWebview } from '../../ui/webview/webview'
 
 const TrysteroConfig = {
   appId: `p2p-live-share-${(114514).toString(36)}`,

@@ -1,15 +1,14 @@
 import type { EffectScope } from 'reactive-vscode'
 import type { Connection } from '../sync/connection'
-import type { ServerInfo, SocketEventMeta, SocketMeta } from './types'
+import type { ServerInfo, SocketMeta } from './types'
 import net from 'node:net'
 import { nanoid } from 'nanoid'
 import { effectScope, onScopeDispose, readonly, shallowReactive } from 'reactive-vscode'
-import { useSyncController } from '../sync/controller'
 import { SocketEventType } from './types'
 
 export function useTunnelClients(connection: Connection) {
-  const [send_, recv] = connection.makeAction<Uint8Array, SocketMeta>('tunnel')
-  const receivers = new Map<string, (data: Uint8Array, metadata: SocketMeta) => void>()
+  const [send, recv] = connection.makeAction<Uint8Array | null, SocketMeta>('tunnel')
+  const receivers = new Map<string, (data: Uint8Array | null, metadata: SocketMeta) => void>()
   recv((data, _peerId, metadata) => {
     const receiver = receivers.get(metadata!.linkId)
     receiver?.(data, metadata!)
@@ -21,44 +20,35 @@ export function useTunnelClients(connection: Connection) {
     port: number,
     host: string,
   ) {
-    const { send, recv, cleanup } = useSyncController<SocketEventMeta>(
-      (data, metadata) => {
-        send_(data, peerId, {
-          ...metadata,
-          linkId,
-        })
-      },
-      (data, { socketId, event }) => {
-        const socket = sockets.get(socketId)
-        if (!socket) {
-          console.warn('Socket not found:', socketId)
-          return
-        }
-        if (event === SocketEventType.Connect) {
-          console.warn('Client should not receive Connect event')
-        }
-        else if (event === SocketEventType.Data) {
-          socket.write(data!)
-        }
-        else if (event === SocketEventType.End) {
-          socket.end()
-        }
-        else if (event === SocketEventType.Close) {
-          socket.destroy()
-          sockets.delete(socketId)
-        }
-      },
-    )
-    receivers.set(linkId, recv)
+    receivers.set(linkId, (data, { socketId, event }) => {
+      const socket = sockets.get(socketId)
+      if (!socket) {
+        console.warn('Socket not found:', socketId)
+        return
+      }
+      if (event === SocketEventType.Connect) {
+        console.warn('Client should not receive Connect event')
+      }
+      else if (event === SocketEventType.Data) {
+        socket.write(data!)
+      }
+      else if (event === SocketEventType.End) {
+        socket.end()
+      }
+      else if (event === SocketEventType.Close) {
+        socket.destroy()
+        sockets.delete(socketId)
+      }
+    })
 
     const sockets = new Map<string, net.Socket>()
     const server = net.createServer({ allowHalfOpen: true }, (socket) => {
       const socketId = nanoid(7)
       sockets.set(socketId, socket)
-      send(null, { socketId, event: SocketEventType.Connect })
-      socket.on('data', data => send(data, { socketId, event: SocketEventType.Data }))
-      socket.on('end', () => send(null, { socketId, event: SocketEventType.End }))
-      socket.on('close', () => send(null, { socketId, event: SocketEventType.Close }))
+      send(null, peerId, { linkId, socketId, event: SocketEventType.Connect })
+      socket.on('data', data => send(data, peerId, { linkId, socketId, event: SocketEventType.Data }))
+      socket.on('end', () => send(null, peerId, { linkId, socketId, event: SocketEventType.End }))
+      socket.on('close', () => send(null, peerId, { linkId, socketId, event: SocketEventType.Close }))
       socket.on('error', err => console.error('Tunnel client error:', err))
     })
     const ready = new Promise<void>((resolve) => {
@@ -75,7 +65,6 @@ export function useTunnelClients(connection: Connection) {
       }
       server.close()
       receivers.delete(linkId)
-      cleanup()
     })
 
     return {

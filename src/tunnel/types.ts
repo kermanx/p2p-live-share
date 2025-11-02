@@ -1,5 +1,3 @@
-import type { ControllerMeta } from '../sync/controller'
-
 export enum SocketEventType {
   Connect = 0,
   Data = 1,
@@ -12,7 +10,7 @@ export interface SocketEventMeta {
   event: SocketEventType
 }
 
-export type SocketMeta = SocketEventMeta & ControllerMeta & {
+export type SocketMeta = SocketEventMeta & {
   linkId: string
 }
 
