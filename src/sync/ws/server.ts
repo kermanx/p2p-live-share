@@ -1,8 +1,8 @@
 import type { Server as HttpServer } from 'node:http'
-import type { DownlinkMessageContent, UplinkMessageContent } from './protocol'
+import type { DownlinkMessageContent, UplinkMessageContent } from './protocol.ts'
 import { createServer as createHttpServer } from 'node:http'
 import { WebSocket, WebSocketServer } from 'ws'
-import { deserializeUplink, serializeDownlink, UpdatePeersAction } from './protocol'
+import { deserializeUplink, serializeDownlink, UpdatePeersAction } from './protocol.ts'
 
 export interface WebSocketData {
   peerId: string
