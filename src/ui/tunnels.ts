@@ -264,7 +264,7 @@ function parsePortOrUrl(input: string) {
   if (parts.length === 1) {
     const host = parts[0]
     if (defaultPort === null) {
-      return 'Invalid input. Port is required.'
+      return 'Invalid input.'
     }
     return { port: defaultPort, host }
   }

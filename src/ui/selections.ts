@@ -1,6 +1,6 @@
 import type { DecorationOptions, TextEditorDecorationType } from 'vscode'
 import type { UserColor } from './users'
-import { computed, createSingletonComposable, ref, useActiveTextEditor, useCommands, useDisposable, useTextEditorSelections, watchEffect } from 'reactive-vscode'
+import { computed, createSingletonComposable, ref, useActiveTextEditor, useCommands, useDisposable, useTextEditorSelections, watch, watchEffect } from 'reactive-vscode'
 import { DecorationRangeBehavior, OverviewRulerLane, Selection, TextEditorRevealType, Uri, window } from 'vscode'
 import { useActiveSession } from '../session'
 import { useObserverDeep } from '../sync/doc'
@@ -20,8 +20,8 @@ export const useSelections = createSingletonComposable(() => {
 
   const activeTextEditor = useActiveTextEditor()
   const selections = useTextEditorSelections(activeTextEditor)
-  watchEffect(() => {
-    if (map.value && selfId.value && state.value) {
+  watch([map, selfId, activeTextEditor, selections], () => {
+    if (map.value && selfId.value) {
       const clientUri = activeTextEditor.value && toTrackUri(activeTextEditor.value.document.uri)
       if (clientUri) {
         map.value.set(selfId.value, {
@@ -38,7 +38,7 @@ export const useSelections = createSingletonComposable(() => {
         map.value.delete(selfId.value)
       }
     }
-  })
+  }, { immediate: true })
 
   const injectedStyles = stringifyCssProperties({
     'position': 'absolute',

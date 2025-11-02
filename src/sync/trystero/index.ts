@@ -3,6 +3,7 @@ import type { ConnectionConfig } from '../share'
 import { onScopeDispose, shallowRef, useEventEmitter } from 'reactive-vscode'
 import { configs } from '../../configs'
 import { useWebview } from '../../ui/webview/webview'
+import { AckActionName, useSyncController } from './controller'
 
 const TrysteroConfig = {
   appId: `p2p-live-share-${(114514).toString(36)}`,
@@ -18,16 +19,25 @@ export function useSteroConnection(config: ConnectionConfig): InternalConnection
   const peers = shallowRef<string[]>([])
   let closed = false
 
+  const { send, recv } = useSyncController(
+    peers,
+    (...args) => rpc.trysteroSend(...args),
+    (...args) => onMessage.fire(args),
+  )
+
   trysteroHandlers.value = {
     onTrysteroError: onError.fire,
     onTrysteroUpdatePeers: (p) => { peers.value = p },
-    onTrysteroMessage: (...args) => onMessage.fire(args),
+    onTrysteroMessage: recv,
   }
 
   const ready = rpc.trysteroJoinRoom(strategy, {
     ...TrysteroConfig,
     ...configs.trysteroConfig,
-  }, roomId)
+  }, roomId).then(() => {
+    rpc.trysteroListenAction(AckActionName)
+  })
+
   onScopeDispose(() => {
     closed = true
     rpc.trysteroLeaveRoom()
@@ -38,11 +48,11 @@ export function useSteroConnection(config: ConnectionConfig): InternalConnection
     peers,
     ready,
     listenMessage: rpc.trysteroListenAction,
-    sendMessage: (...args) => {
+    sendMessage: async (...args) => {
       if (closed) {
         throw new Error('Trystero connection is closed')
       }
-      return rpc.trysteroSend(...args)
+      return await send(...args)
     },
     onMessage: onMessage.event,
     onError: onError.event,

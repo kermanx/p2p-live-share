@@ -4,6 +4,7 @@ import type { FileContent, FilesMap } from './types'
 import { useFsWatcher } from 'reactive-vscode'
 import { FileSystemError, FileType, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
+import { useObserverDeep } from '../sync/doc'
 import { logger } from '../utils'
 import { applyTextDocumentDelta, useTextDocumentWatcher } from './common'
 import { getParent, isContentTracked, isDirectory } from './types'
@@ -16,7 +17,7 @@ export function useHostFs(connection: Connection, doc: Y.Doc) {
   const filesConfig = workspace.getConfiguration('files')
   const unsavedDocs = new Map<string, TextDocument>()
 
-  files.observeDeep((events) => {
+  useObserverDeep(() => files, (events) => {
     for (const event of events) {
       if (event.transaction.local) {
         continue

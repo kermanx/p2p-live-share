@@ -82,7 +82,7 @@ export function useTunnelServers(connection: Connection, serversMap: Y.Map<Serve
     createTunnel(port: number, host: string) {
       for (const info of serversMap.values()) {
         if (info.peerId === connection.selfId && info.port === port && info.host === host) {
-          window.showErrorMessage(`You are already sharing ${host}:${port} as server ${info.serverId}`)
+          window.showErrorMessage(`You are already sharing ${host}:${port}`)
           return
         }
       }

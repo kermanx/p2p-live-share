@@ -36,10 +36,10 @@ export const rpc = birpc.createBirpc<ExtensionFunctions, WebviewFunctions>(
       updatePeers()
     },
     async trysteroSend(action, ...args) {
-      await makeAction(action)(...args)
+      await getAction(action)(...args)
     },
     trysteroListenAction(action) {
-      makeAction(action)
+      getAction(action)
     },
     trysteroLeaveRoom() {
       if (trysteroRoom) {
@@ -68,7 +68,7 @@ createApp(defineComponent(() => {
   return () => typeof state.value === 'object' ? <Chat /> : <Welcome />
 })).mount('#app')
 
-function makeAction(action: string) {
+function getAction(action: string) {
   if (!trysteroRoom) {
     throw new Error('Not in a room')
   }

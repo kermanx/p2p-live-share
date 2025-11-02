@@ -6,7 +6,7 @@ import * as Y from 'yjs'
 export function useDocSync(connection: Connection, doc: Y.Doc) {
   const [send, recv] = connection.makeAction<Uint8Array>('doc')
 
-  doc.on('update', async (update: Uint8Array, origin: any) => {
+  doc.on('updateV2', async (update: Uint8Array, origin: any) => {
     if (origin?.peerId) {
       return
     }
@@ -14,7 +14,7 @@ export function useDocSync(connection: Connection, doc: Y.Doc) {
   })
 
   recv((message, peerId) => {
-    Y.applyUpdate(doc, message, { peerId })
+    Y.applyUpdateV2(doc, message, { peerId })
   })
 }
 
@@ -22,7 +22,7 @@ function createUseObserver(deep: boolean) {
   return <T extends Y.AbstractType<any>>(
     target: WatchSource<T | undefined>,
     observer: (events: Y.YEvent<any>[], target: T) => void,
-    init: (target: T) => void,
+    init?: (target: T) => void,
   ) => {
     const versionCounter = ref(0)
     watch(target, (target, _, onCleanup) => {
@@ -30,9 +30,10 @@ function createUseObserver(deep: boolean) {
       if (!target) {
         return
       }
-      init(target)
+      init?.(target)
 
       const wrappedObserver = (events: Y.YEvent<any>[]) => {
+        events = Array.isArray(events) ? events : [events]
         observer(events, target)
         versionCounter.value++
       }
