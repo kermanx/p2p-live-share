@@ -74,16 +74,17 @@ export function useSyncController(
     }
     checking = true
     await Promise.allSettled([...peers.keys()].map(async (peerId) => {
-      try {
-        const { sending } = peers.use(peerId)
-        for (const state of sending.values()) {
-          if (state.sentAt && Date.now() - state.sentAt > ResendTimeout) {
+      const { sending } = peers.use(peerId)
+      for (const [gsn, state] of sending) {
+        if (state.sentAt && Date.now() - state.sentAt > ResendTimeout) {
+          try {
             await sendImpl(peerId, state)
           }
+          catch {
+            console.error('Failed to resend message', peerId, gsn)
+            sending.delete(gsn)
+          }
         }
-      }
-      catch (e) {
-        console.error('Error in resend', peerId, e)
       }
     }))
     checking = false
@@ -92,8 +93,12 @@ export function useSyncController(
   onScopeDispose(() => clearInterval(intervalId))
 
   async function sendImpl(peerId: string, state: SendingState) {
-    await send(state.action, state.data, peerId, state.metadata)
-    state.sentAt = Date.now()
+    try {
+      await send(state.action, state.data, peerId, state.metadata)
+    }
+    finally {
+      state.sentAt = Date.now()
+    }
   }
 
   return {

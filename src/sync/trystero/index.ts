@@ -21,7 +21,7 @@ export function useSteroConnection(config: ConnectionConfig): InternalConnection
 
   const { send, recv } = useSyncController(
     peers,
-    (...args) => rpc.trysteroSend(...args),
+    async (...args) => rpc.trysteroSend.asEvent(...args),
     (...args) => onMessage.fire(args),
   )
 
