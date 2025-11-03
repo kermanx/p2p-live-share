@@ -1,13 +1,14 @@
 import type { Converter as CodeConverter } from 'vscode-languageclient/$test/common/codeConverter'
 import type { Connection } from '../sync/connection'
-import { executeCommand, onScopeDispose, watch } from 'reactive-vscode'
+import { nanoid } from 'nanoid'
+import { onScopeDispose, watch } from 'reactive-vscode'
 import * as vscode from 'vscode'
 import { commands, Uri } from 'vscode'
 import { createConverter as codeConverter } from 'vscode-languageclient/$test/common/codeConverter'
 import { createConverter as protocolConverter } from 'vscode-languageclient/$test/common/protocolConverter'
 import * as lsp from 'vscode-languageserver'
 import { createConnection } from 'vscode-languageserver/browser'
-import { useLsConnection } from './common'
+import { ExecuteHostCommand, useLsConnection } from './common'
 
 export function useHostLs(connection: Connection) {
   const connections = new Map<string, lsp.Connection>()
@@ -244,13 +245,7 @@ function setupConnection(lc: lsp.Connection, c: Connection) {
   })
 
   lc.onExecuteCommand(async (params) => {
-    if (params.command.startsWith(ExecuteHostCommand)) {
-      const [command, ...args] = params.arguments!
-      executeCommand(command, ...args)
-    }
-    else {
-      throw new Error(`Unsupported command: ${params.command}`)
-    }
+    await c2pExt.executeCommand(params)
   })
 
   lc.onDocumentFormatting(async (params) => {
@@ -377,18 +372,31 @@ function setupConnection(lc: lsp.Connection, c: Connection) {
   })
 }
 
-const ExecuteHostCommand = 'p2p-live-share.executeHostCommand'
-
 function c2pExtension(c2p: CodeConverter) {
+  const commandArguments = new Map<string, any[]>()
+
   function asCommand(command: vscode.Command): lsp.Command {
+    const id = nanoid()
+    commandArguments.set(id, command.arguments || [])
     return c2p.asCommand({
       ...command,
       command: ExecuteHostCommand,
-      arguments: [
-        command.command,
-        ...command.arguments || [],
-      ],
+      arguments: [command.command, id],
     })
+  }
+
+  async function executeCommand(params: lsp.ExecuteCommandParams) {
+    if (params.command.startsWith(ExecuteHostCommand)) {
+      const [command, id] = params.arguments!
+      const args = commandArguments.get(id)
+      if (!args) {
+        throw new Error(`No arguments found for command: ${command}`)
+      }
+      await commands.executeCommand(command, ...args)
+    }
+    else {
+      throw new Error(`Unsupported command: ${params.command}`)
+    }
   }
 
   function asLocation(location: vscode.Location): lsp.Location {
@@ -492,6 +500,7 @@ function c2pExtension(c2p: CodeConverter) {
 
   return {
     asCommand,
+    executeCommand,
     asHover(hover: vscode.Hover | null): lsp.Hover | null {
       if (hover == null) {
         return null
@@ -597,7 +606,7 @@ function c2pExtension(c2p: CodeConverter) {
         const workspaceEdit = asWorkspaceEdit(codeAction.edit)!
         result = lsp.CodeAction.create(codeAction.title, workspaceEdit, kind)
         if (command) {
-          result.command = command
+          result.command = asCommand(command)
         }
       }
       else {

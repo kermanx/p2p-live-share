@@ -43,3 +43,5 @@ export function useLsConnection(connection: Connection, peerId: string) {
     writer,
   }
 }
+
+export const ExecuteHostCommand = 'p2p-live-share.executeHostCommand'

@@ -127,6 +127,11 @@
         "category": "P2P Live Share"
       },
       {
+        "command": "p2p-live-share.executeHostCommand",
+        "title": "Dummy command",
+        "category": "P2P Live Share"
+      },
+      {
         "command": "p2p-live-share.scm.openChange",
         "title": "%extension.liveshare.openChanges.title%",
         "category": "Live Share Source Control",
@@ -400,6 +405,10 @@
         },
         {
           "command": "p2p-live-share.copySharedServerLocalURL",
+          "when": "false"
+        },
+        {
+          "command": "p2p-live-share.executeHostCommand",
           "when": "false"
         },
         {

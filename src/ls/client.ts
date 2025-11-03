@@ -1,9 +1,9 @@
 import type { InitializeParams } from 'vscode-languageclient/browser'
 import type { Connection } from '../sync/connection'
-import { useDisposable } from 'reactive-vscode'
+import { useCommand, useDisposable } from 'reactive-vscode'
 import { CloseAction, ErrorAction, LanguageClient, RevealOutputChannelOn } from 'vscode-languageclient/browser'
 import { ClientUriScheme } from '../fs/provider'
-import { useLsConnection } from './common'
+import { ExecuteHostCommand, useLsConnection } from './common'
 
 class PatchedLanguageClient extends LanguageClient {
   protected fillInitializeParams(params: InitializeParams): void {
@@ -39,5 +39,9 @@ export function useClientLs(connection: Connection, hostId: string) {
 
   client.start().catch((err) => {
     console.error('Language client start error:', err)
+  })
+
+  useCommand(ExecuteHostCommand, () => {
+    // Do nothing
   })
 }
