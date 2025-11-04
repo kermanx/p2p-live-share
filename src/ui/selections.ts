@@ -1,6 +1,6 @@
-import type { DecorationOptions, TextEditorDecorationType } from 'vscode'
+import type { DecorationOptions, TextEditor, TextEditorDecorationType } from 'vscode'
 import type { UserColor } from './users'
-import { computed, createSingletonComposable, ref, useActiveTextEditor, useCommands, useDisposable, useTextEditorSelections, watch, watchEffect } from 'reactive-vscode'
+import { computed, createSingletonComposable, ref, shallowRef, useCommands, useDisposable, watch, watchEffect } from 'reactive-vscode'
 import { DecorationRangeBehavior, OverviewRulerLane, Selection, TextEditorRevealType, Uri, window } from 'vscode'
 import { useActiveSession } from '../session'
 import { useObserverDeep } from '../sync/doc'
@@ -18,11 +18,10 @@ export const useSelections = createSingletonComposable(() => {
 
   const map = computed(() => doc.value?.getMap<SelectionInfo>('selections'))
 
-  const activeTextEditor = useActiveTextEditor()
-  const selections = useTextEditorSelections(activeTextEditor)
-  watch([map, selfId, activeTextEditor, selections], () => {
+  const { editor, selections } = useCoEditFriendlySelections()
+  watch([map, selfId, editor, selections], () => {
     if (map.value && selfId.value) {
-      const clientUri = activeTextEditor.value && toTrackUri(activeTextEditor.value.document.uri)
+      const clientUri = editor.value && toTrackUri(editor.value.document.uri)
       if (clientUri) {
         map.value.set(selfId.value, {
           uri: clientUri.toString(),
@@ -213,4 +212,28 @@ function stringifyCssProperties(e: Record<string, string | number>) {
   return Object.keys(e)
     .map(t => `${t}: ${e[t]};`)
     .join(' ')
+}
+
+function useCoEditFriendlySelections() {
+  const editor = shallowRef<TextEditor | undefined>(window.activeTextEditor)
+  const selections = shallowRef<readonly Selection[]>(editor.value?.selections ?? [])
+  let delayedTimeout: any | null = null
+
+  useDisposable(window.onDidChangeTextEditorSelection((ev) => {
+    if (delayedTimeout != null) {
+      clearTimeout(delayedTimeout)
+    }
+    if (ev.kind !== undefined || ev.textEditor !== editor.value) {
+      editor.value = ev.textEditor
+      selections.value = ev.selections
+    }
+    else {
+      delayedTimeout = setTimeout(() => {
+        selections.value = ev.selections
+        delayedTimeout = null
+      }, 1000)
+    }
+  }))
+
+  return { editor, selections }
 }
