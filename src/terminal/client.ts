@@ -73,67 +73,61 @@ export function useClientTerminals(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, C
     terminal.initOutput(data.toString())
   }
 
-  useObserverDeep(
-    () => terminalData,
-    (events) => {
-      for (const event of events) {
-        if (event.transaction.local) {
-          continue
-        }
+  useObserverDeep(() => terminalData, (event) => {
+    if (event.transaction.local) {
+      return
+    }
 
-        if (event.target instanceof Y.Map) {
-          for (const [id, { action }] of event.keys) {
-            if (action === 'delete') {
-              const terminal = getShadowTerminal(id)
-              terminal?.dispose()
-            }
-            else {
-              syncShadowTerminal(id)
-            }
-          }
-        }
-
-        else if (event.target instanceof Y.Text) {
-          const id = event.path[0] as string
+    if (event.target instanceof Y.Map) {
+      for (const [id, { action }] of event.keys) {
+        if (action === 'delete') {
           const terminal = getShadowTerminal(id)
-          if (!terminal) {
-            console.warn('Unknown terminal changed')
-            continue
-          }
-
-          const delta = event.delta
-          if (delta.length === 0) {
-            // noop
-          }
-          else if (delta.length === 1 && delta[0].insert) {
-            const content = delta[0].insert as string
-            terminal.appendOutput(content)
-          }
-          else if (delta.length === 2 && delta[0].retain && delta[1].insert) {
-            const content = delta[1].insert as string
-            terminal.appendOutput(content)
-          }
-          else {
-            console.warn('Unsupported terminal change delta', delta)
-          }
-
-          if (event.keys.has('dimensions')) {
-            const dimension = event.target.getAttribute('dimensions')
-            terminal.overrideDimensions(dimension)
-          }
-          if (event.keys.has('writable')) {
-            const writable = event.target.getAttribute('writable')
-            terminal.writable.value = writable
-          }
+          terminal?.dispose()
+        }
+        else {
+          syncShadowTerminal(id)
         }
       }
-    },
-    (terminalData) => {
-      for (const id of terminalData.keys()) {
-        syncShadowTerminal(id)
+    }
+
+    else if (event.target instanceof Y.Text) {
+      const id = event.path[0] as string
+      const terminal = getShadowTerminal(id)
+      if (!terminal) {
+        console.warn('Unknown terminal changed')
+        return
       }
-    },
-  )
+
+      const delta = event.delta
+      if (delta.length === 0) {
+        // noop
+      }
+      else if (delta.length === 1 && delta[0].insert) {
+        const content = delta[0].insert as string
+        terminal.appendOutput(content)
+      }
+      else if (delta.length === 2 && delta[0].retain && delta[1].insert) {
+        const content = delta[1].insert as string
+        terminal.appendOutput(content)
+      }
+      else {
+        console.warn('Unsupported terminal change delta', delta)
+      }
+
+      if (event.keys.has('dimensions')) {
+        const dimension = event.target.getAttribute('dimensions')
+        terminal.overrideDimensions(dimension)
+      }
+      if (event.keys.has('writable')) {
+        const writable = event.target.getAttribute('writable')
+        terminal.writable.value = writable
+      }
+    }
+  }, (terminalData) => {
+    for (const id of terminalData.keys()) {
+      syncShadowTerminal(id)
+    }
+  })
 
   return {
     shadowTerminals,

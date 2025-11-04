@@ -21,7 +21,7 @@ export function useDocSync(connection: Connection, doc: Y.Doc) {
 function createUseObserver(deep: boolean) {
   return <T extends Y.AbstractType<any>>(
     target: WatchSource<T | undefined>,
-    observer: (events: Y.YEvent<any>[], target: T) => void,
+    observer: (events: Y.YEvent<any>, target: T) => void,
     init?: (target: T) => void,
   ) => {
     const versionCounter = ref(0)
@@ -32,10 +32,16 @@ function createUseObserver(deep: boolean) {
       }
       init?.(target)
 
-      const wrappedObserver = (events: Y.YEvent<any>[]) => {
-        events = Array.isArray(events) ? events : [events]
-        observer(events, target)
+      const wrappedObserver = (events: Y.YEvent<any> | Y.YEvent<any>[]) => {
         versionCounter.value++
+        if (Array.isArray(events)) {
+          for (const event of events) {
+            observer(event, target)
+          }
+        }
+        else {
+          observer(events, target)
+        }
       }
       if (deep) {
         target.observeDeep(wrappedObserver)
@@ -55,30 +61,24 @@ export const useObserverShallow = createUseObserver(false)
 
 export function useShallowYMap<V>(map: WatchSource<Y.Map<V> | undefined>) {
   const result = shallowReactive(new Map<string, V>())
-  useObserverShallow(
-    map,
-    (events) => {
-      for (const event of events) {
-        if (event.path.length !== 0) {
-          console.warn('Ignoring non-top-level event in Y.Map', event)
-          continue
-        }
-        for (const [key, { action }] of event.keys) {
-          if (action === 'delete') {
-            result.delete(key)
-          }
-          else {
-            result.set(key, event.target.get(key))
-          }
-        }
+  useObserverShallow(map, (event) => {
+    if (event.path.length !== 0) {
+      console.warn('Ignoring non-top-level event in Y.Map', event)
+      return
+    }
+    for (const [key, { action }] of event.keys) {
+      if (action === 'delete') {
+        result.delete(key)
       }
-    },
-    (map) => {
-      for (const [key, value] of map) {
-        result.set(key, value)
+      else {
+        result.set(key, event.target.get(key))
       }
-    },
-  )
+    }
+  }, (map) => {
+    for (const [key, value] of map) {
+      result.set(key, value)
+    }
+  })
   return readonly(result)
 }
 
@@ -110,19 +110,17 @@ export function useShallowYMapScopes<V>(
 
   useObserverShallow(
     map,
-    (events) => {
-      for (const event of events) {
-        if (event.path.length !== 0) {
-          console.warn('Ignoring non-top-level event in Y.Map', event)
-          continue
+    (event) => {
+      if (event.path.length !== 0) {
+        console.warn('Ignoring non-top-level event in Y.Map', event)
+        return
+      }
+      for (const [key, { action }] of event.keys) {
+        if (action !== 'add') {
+          remove(key)
         }
-        for (const [key, { action }] of event.keys) {
-          if (action !== 'add') {
-            remove(key)
-          }
-          if (action !== 'delete') {
-            add(key, event.target.get(key)!)
-          }
+        if (action !== 'delete') {
+          add(key, event.target.get(key)!)
         }
       }
     },

@@ -3,7 +3,7 @@ import type { UserColor } from './users'
 import { computed, createSingletonComposable, ref, shallowRef, useCommands, useDisposable, watch, watchEffect } from 'reactive-vscode'
 import { DecorationRangeBehavior, OverviewRulerLane, Selection, TextEditorRevealType, Uri, window } from 'vscode'
 import { useActiveSession } from '../session'
-import { useObserverDeep } from '../sync/doc'
+import { useObserverShallow } from '../sync/doc'
 import { withOpacity } from './colors'
 import { useUsers } from './users'
 
@@ -67,31 +67,25 @@ export const useSelections = createSingletonComposable(() => {
   }
 
   const cleanupDecorations = new Map<string, (uri?: Uri) => void>()
-  const mapVersion = useObserverDeep(
-    map,
-    (events) => {
-      for (const event of events) {
-        if (event.transaction.local) {
-          continue
-        }
+  const mapVersion = useObserverShallow(map, (event) => {
+    if (event.transaction.local) {
+      return
+    }
 
-        for (const [peerId, { action }] of event.keys) {
-          if (action === 'delete') {
-            cleanupDecorations.get(peerId)?.()
-            // Should dispose decoration type?
-          }
-          else {
-            updateDecorations(peerId)
-          }
-        }
+    for (const [peerId, { action }] of event.keys) {
+      if (action === 'delete') {
+        cleanupDecorations.get(peerId)?.()
+      // Should dispose decoration type?
       }
-    },
-    (map) => {
-      for (const [peerId, info] of map) {
-        updateDecorations(peerId, info)
+      else {
+        updateDecorations(peerId)
       }
-    },
-  )
+    }
+  }, (map) => {
+    for (const [peerId, info] of map) {
+      updateDecorations(peerId, info)
+    }
+  })
   watchEffect(() => {
     if (!state.value) {
       for (const cleanup of cleanupDecorations.values()) {

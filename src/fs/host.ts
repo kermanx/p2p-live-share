@@ -17,65 +17,63 @@ export function useHostFs(connection: Connection, doc: Y.Doc) {
   const filesConfig = workspace.getConfiguration('files')
   const unsavedDocs = new Map<string, TextDocument>()
 
-  useObserverDeep(() => files, (events) => {
-    for (const event of events) {
-      if (event.transaction.local) {
-        continue
-      }
+  useObserverDeep(() => files, (event) => {
+    if (event.transaction.local) {
+      return
+    }
 
-      if (event.target instanceof Y.Map) {
-        // Files changed
-        for (const [uri, { action }] of event.keys) {
-          const uri_ = toHostUri(Uri.parse(uri))
-          if (action === 'delete') {
-            workspace.fs.delete(uri_, { recursive: true, useTrash: false })
-          }
-          else if (action === 'add') {
-            const newValue = event.target.get(uri) as FileContent
-            if (newValue === FileType.Directory) {
-              workspace.fs.createDirectory(uri_)
-            }
-            else if (newValue === FileType.File) {
-              workspace.fs.writeFile(uri_, new Uint8Array())
-            }
-            else if (newValue instanceof Uint8Array) {
-              workspace.fs.writeFile(uri_, newValue)
-            }
-            else if (newValue instanceof Y.Text) {
-              workspace.fs.writeFile(uri_, new TextEncoder().encode(newValue.toString()))
-            }
-            else {
-              // TODO
-              throw new TypeError(`Not implemented: ${newValue}`)
-            }
-          }
-          else if (action === 'update') {
-            const _newValue = event.target.get(uri) as FileContent
-            // TODO
-          }
-          else {
-            throw new Error(`Invalid action: ${action}`)
-          }
-
-          // TODO: handle changed Y.Text
+    if (event.target instanceof Y.Map) {
+      // Files changed
+      for (const [uri, { action }] of event.keys) {
+        const uri_ = toHostUri(Uri.parse(uri))
+        if (action === 'delete') {
+          workspace.fs.delete(uri_, { recursive: true, useTrash: false })
         }
-      }
-
-      else if (event.target instanceof Y.Text) {
-        const { path, delta } = event
-        const uri_ = toHostUri(Uri.parse(path[0] as string))
-        applyTextDocumentDelta(uri_, delta).then((writtenToDoc) => {
-          if (writtenToDoc) {
-            const autoSave = filesConfig.get('autoSave') === 'afterDelay' && filesConfig.get('autoSaveDelay', 1000) <= 1100
-            if (!autoSave) {
-              unsavedDocs.set(uri_.toString(), writtenToDoc)
-            }
+        else if (action === 'add') {
+          const newValue = event.target.get(uri) as FileContent
+          if (newValue === FileType.Directory) {
+            workspace.fs.createDirectory(uri_)
+          }
+          else if (newValue === FileType.File) {
+            workspace.fs.writeFile(uri_, new Uint8Array())
+          }
+          else if (newValue instanceof Uint8Array) {
+            workspace.fs.writeFile(uri_, newValue)
+          }
+          else if (newValue instanceof Y.Text) {
+            workspace.fs.writeFile(uri_, new TextEncoder().encode(newValue.toString()))
           }
           else {
-            workspace.fs.writeFile(uri_, new TextEncoder().encode(event.target.toString()))
+            // TODO
+            throw new TypeError(`Not implemented: ${newValue}`)
           }
-        })
+        }
+        else if (action === 'update') {
+          const _newValue = event.target.get(uri) as FileContent
+          // TODO
+        }
+        else {
+          throw new Error(`Invalid action: ${action}`)
+        }
+
+        // TODO: handle changed Y.Text
       }
+    }
+
+    else if (event.target instanceof Y.Text) {
+      const { path, delta } = event
+      const uri_ = toHostUri(Uri.parse(path[0] as string))
+      applyTextDocumentDelta(uri_, delta).then((writtenToDoc) => {
+        if (writtenToDoc) {
+          const autoSave = filesConfig.get('autoSave') === 'afterDelay' && filesConfig.get('autoSaveDelay', 1000) <= 1100
+          if (!autoSave) {
+            unsavedDocs.set(uri_.toString(), writtenToDoc)
+          }
+        }
+        else {
+          workspace.fs.writeFile(uri_, new TextEncoder().encode(event.target.toString()))
+        }
+      })
     }
   })
 

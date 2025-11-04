@@ -28,48 +28,42 @@ export const useUsers = createSingletonComposable(() => {
   const userName = ref<string | null>(null)
   const avatarUrl = ref<string | null>(null)
 
-  const mapVersion = useObserverDeep(
-    map,
-    (events, map) => {
-      for (const event of events) {
-        for (const [peerId, { action, oldValue }] of event.keys) {
-          if (action === 'add') {
-            const user = map.get(peerId) as UserInfo
+  const mapVersion = useObserverDeep(map, (event, map) => {
+    for (const [peerId, { action, oldValue }] of event.keys) {
+      if (action === 'add') {
+        const user = map.get(peerId) as UserInfo
 
-            if (role.value === 'host') {
-              map.set(peerId, {
-                ...user,
-                color: colorAllocator.alloc(peerId),
-              })
-            }
-
-            if (peerId !== selfId.value) {
-              window.showInformationMessage(`${user.name} joined the session.`)
-            }
-          }
-          else if (action === 'delete') {
-            if (role.value === 'host') {
-              colorAllocator.free(peerId)
-            }
-
-            if (peerId !== selfId.value && state.value) {
-              window.showInformationMessage(`${oldValue.name} left the session.`)
-            }
-          }
-        }
-      }
-    },
-    (map) => {
-      if (role.value === 'host') {
-        for (const [peerId, user] of map.entries()) {
+        if (role.value === 'host') {
           map.set(peerId, {
             ...user,
             color: colorAllocator.alloc(peerId),
           })
         }
+
+        if (peerId !== selfId.value) {
+          window.showInformationMessage(`${user.name} joined the session.`)
+        }
       }
-    },
-  )
+      else if (action === 'delete') {
+        if (role.value === 'host') {
+          colorAllocator.free(peerId)
+        }
+
+        if (peerId !== selfId.value && state.value) {
+          window.showInformationMessage(`${oldValue.name} left the session.`)
+        }
+      }
+    }
+  }, (map) => {
+    if (role.value === 'host') {
+      for (const [peerId, user] of map.entries()) {
+        map.set(peerId, {
+          ...user,
+          color: colorAllocator.alloc(peerId),
+        })
+      }
+    }
+  })
 
   async function inquireUserName(isHost: boolean) {
     return userName.value = await worker()

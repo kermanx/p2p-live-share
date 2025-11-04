@@ -2,6 +2,7 @@ import type { BirpcReturn } from 'birpc'
 import type { FileChangeEvent } from 'vscode'
 import type { ClientFunctions, HostFunctions } from '../rpc/types'
 import type { FileContent, FilesMap } from './types'
+import { onScopeDispose } from 'reactive-vscode'
 import { FileChangeType, FileSystemError, FileType, Uri, window, workspace } from 'vscode'
 import * as Y from 'yjs'
 import { logger, normalizeUint8Array } from '../utils'
@@ -15,7 +16,9 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
 
   const watchMatchers = new Set<(uri: string) => boolean>()
 
-  files.observeDeep((events) => {
+  let handler: any
+  onScopeDispose(() => files.unobserveDeep(handler))
+  files.observeDeep(handler = (events: Y.YEvent<any>[]) => {
     const affectedUris = new Map<string, FileChangeType>()
     for (const event of events) {
       if (event.transaction.local) {

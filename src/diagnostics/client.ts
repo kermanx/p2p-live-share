@@ -33,42 +33,40 @@ export function useClientDiagnostics(doc: Y.Doc) {
 
   useObserverDeep(
     () => diagnostics,
-    (events) => {
-      for (const event of events) {
-        if (event.transaction.local) {
-          continue
-        }
+    (event) => {
+      if (event.transaction.local) {
+        return
+      }
 
-        if (event.path.length === 0) {
-          for (const [source, { action }] of event.keys.entries()) {
-            if (action === 'delete') {
-              const collection = collections.get(source)
-              if (collection) {
-                collection.clear()
-                collection.dispose()
-                collections.delete(source)
-              }
-            }
-            else {
-              const newValue = diagnostics.get(source)!
-              const collection = getCollection(source)
-              newValue.forEach(async (diags, uri) => {
-                setDiagnostics(collection, uri, diags)
-              })
+      if (event.path.length === 0) {
+        for (const [source, { action }] of event.keys.entries()) {
+          if (action === 'delete') {
+            const collection = collections.get(source)
+            if (collection) {
+              collection.clear()
+              collection.dispose()
+              collections.delete(source)
             }
           }
+          else {
+            const newValue = diagnostics.get(source)!
+            const collection = getCollection(source)
+            newValue.forEach(async (diags, uri) => {
+              setDiagnostics(collection, uri, diags)
+            })
+          }
         }
-        else {
-          const source = event.path[0] as string
-          const collection = getCollection(source)
-          for (const [uri, { action }] of event.keys.entries()) {
-            if (action === 'delete') {
-              collection.set(Uri.parse(uri), [])
-            }
-            else {
-              const newValue = diagnostics.get(source)!.get(uri)!
-              setDiagnostics(collection, uri, newValue)
-            }
+      }
+      else {
+        const source = event.path[0] as string
+        const collection = getCollection(source)
+        for (const [uri, { action }] of event.keys.entries()) {
+          if (action === 'delete') {
+            collection.set(Uri.parse(uri), [])
+          }
+          else {
+            const newValue = diagnostics.get(source)!.get(uri)!
+            setDiagnostics(collection, uri, newValue)
           }
         }
       }
