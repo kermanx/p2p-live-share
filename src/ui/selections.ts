@@ -39,27 +39,29 @@ export const useSelections = createSingletonComposable(() => {
     }
   }, { immediate: true })
 
-  const injectedStyles = stringifyCssProperties({
-    'position': 'absolute',
-    'display': 'inline-block',
-    'top': '0',
-    'font-size': '200%',
-    'font-weight': 'bold',
-    'z-index': 1,
-  })
-  const decorationTypes = new Map<string, TextEditorDecorationType>()
-  function getDecorationType({ bg }: UserColor) {
+  const decorationTypes = new Map<string, {
+    selection: TextEditorDecorationType
+    nameTag: TextEditorDecorationType
+  }>()
+  function getDecorationTypes({ bg }: UserColor) {
     const old = decorationTypes.get(bg)
     if (old) {
       return old
     }
-    const type = window.createTextEditorDecorationType({
-      backgroundColor: withOpacity(bg, 0.35),
-      borderRadius: '0.1rem',
-      isWholeLine: false,
-      rangeBehavior: DecorationRangeBehavior.ClosedOpen,
-      overviewRulerLane: OverviewRulerLane.Full,
-    })
+    const type = {
+      selection: window.createTextEditorDecorationType({
+        backgroundColor: withOpacity(bg, 0.35),
+        borderRadius: '0.1rem',
+        isWholeLine: false,
+        rangeBehavior: DecorationRangeBehavior.ClosedOpen,
+        overviewRulerLane: OverviewRulerLane.Full,
+      }),
+      nameTag: window.createTextEditorDecorationType({
+        backgroundColor: bg,
+        rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+        textDecoration: 'none; position: relative; z-index: 1;',
+      }),
+    }
     decorationTypes.set(bg, type)
     return type
   }
@@ -95,8 +97,9 @@ export const useSelections = createSingletonComposable(() => {
       for (const cleanup of cleanupDecorations.values()) {
         cleanup()
       }
-      for (const type of decorationTypes.values()) {
-        type.dispose()
+      for (const { selection, nameTag } of decorationTypes.values()) {
+        selection.dispose()
+        nameTag.dispose()
       }
     }
   })
@@ -112,9 +115,10 @@ export const useSelections = createSingletonComposable(() => {
     const editor = window.visibleTextEditors.find(e => e.document.uri.toString() === uri_.toString())
     cleanupDecorations.get(peerId)?.(uri_)
     if (editor) {
-      const { color } = getUserInfo(peerId)
-      const selectionDecoration = getDecorationType(color)
-      const makeRange = (s: typeof selections[0]) => {
+      const { name, color } = getUserInfo(peerId)
+      const types = getDecorationTypes(color)
+
+      editor.setDecorations(types.selection, selections.map((s) => {
         const range = new Selection(...s)
         return {
           range,
@@ -123,18 +127,50 @@ export const useSelections = createSingletonComposable(() => {
               contentText: 'ᛙ',
               margin: `0px 0px 0px -${range.active.character === 0 ? '0.17' : '0.25'}ch`,
               color: color.bg,
-              textDecoration: `none; ${injectedStyles}`,
+              textDecoration: `none; ${stringifyCssProperties({
+                'position': 'absolute',
+                'display': 'inline-block',
+                'top': '0',
+                'font-size': '200%',
+                'font-weight': 'bold',
+                'z-index': 1,
+              })}`,
             },
           },
         } satisfies DecorationOptions
+      }))
+      if (selections.length > 0) {
+        const range0 = new Selection(...selections[0])
+        editor.setDecorations(types.nameTag, [{
+          range: new Selection(range0.active, range0.active),
+          renderOptions: {
+            after: {
+              contentText: name,
+              backgroundColor: color.bg,
+              textDecoration: `none; ${stringifyCssProperties({
+                'position': 'absolute',
+                'top': `${range0.active.line > 0 ? -1 : 1}rem`,
+                'border-radius': '0.15rem',
+                'padding': '0px 0.5ch',
+                'display': 'inline-block',
+                'pointer-events': 'none',
+                'color': color.fg,
+                'font-size': '0.7rem',
+                'z-index': 1,
+                'font-weight': 'bold',
+              })}`,
+            },
+          },
+        }])
       }
-      editor.setDecorations(selectionDecoration, selections.map(makeRange))
+
       cleanupDecorations.set(peerId, (uri) => {
         if (uri?.toString() === uri_.toString()) {
           // Avoid flicker by setting empty decorations
           return
         }
-        editor.setDecorations(selectionDecoration, [])
+        editor.setDecorations(types.selection, [])
+        editor.setDecorations(types.nameTag, [])
         cleanupDecorations.delete(peerId)
         invisiblePeers.delete(peerId)
       })
@@ -167,15 +203,12 @@ export const useSelections = createSingletonComposable(() => {
   }
 
   const following = ref<string | null>(null)
-  const followingSelection = computed(() => {
-    if (following.value) {
-      return getSelection(following.value)
-    }
-    return null
-  })
   watchEffect(() => {
-    if (followingSelection.value) {
-      gotoSelection(followingSelection.value)
+    if (following.value) {
+      const selection = getSelection(following.value)
+      if (selection) {
+        gotoSelection(selection)
+      }
     }
   })
 
