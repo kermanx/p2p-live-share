@@ -1,12 +1,13 @@
 import type { BirpcReturn } from 'birpc'
-import type { SourceControlResourceGroup, SourceControlResourceState } from 'vscode'
+import type { Command, SourceControlResourceDecorations, SourceControlResourceGroup, SourceControlResourceState, TextDocumentShowOptions } from 'vscode'
 import type * as Y from 'yjs'
 import type { ClientFunctions, HostFunctions } from '../rpc/types'
 import type { GitExtension } from './git'
 import type { ScmChange, ScmGroupMeta, ScmRepo } from './types'
 import { basename } from 'pathe'
 import { useCommands, useDisposable, watchEffect } from 'reactive-vscode'
-import { extensions, l10n, scm, ThemeColor, Uri, window, workspace } from 'vscode'
+import { extensions, l10n, scm, ThemeColor, Uri, ViewColumn, window, workspace } from 'vscode'
+import { ClientUriScheme } from '../fs/provider'
 import { useShallowYArray, useShallowYMapScopes } from '../sync/doc'
 import { lazy } from '../utils'
 import { Status } from './git'
@@ -17,8 +18,72 @@ export function useClientScm(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientF
   useShallowYMapScopes(() => map, useScmRepo)
 
   useCommands({
+    'p2p-live-share.scm.openFile': async (resource, ...additionalResources) => {
+      let urisToOpen = []
+      if (resource) {
+        if (resource instanceof Uri) {
+          switch (resource.scheme) {
+            case ClientUriScheme:
+              urisToOpen = [resource]
+              break
+            case 'vsls-scc':{
+              const queryData = JSON.parse(resource.query)
+              if (queryData.resourceUri) {
+                urisToOpen = [Uri.parse(queryData.resourceUri)]
+              }
+              break
+            }
+          }
+        }
+        else {
+          if (!(resource instanceof ScmResourceState)) {
+            return
+          }
+
+          if (resource) {
+            urisToOpen = [resource, ...additionalResources]
+              .filter(
+                state =>
+                  state.changeType !== Status.DELETED
+                  && state.changeType !== Status.INDEX_DELETED,
+              )
+              .map(state => state.resourceUri)
+          }
+        }
+      }
+      else {
+        // 打开 SCM 视图中的所有资源
+        // urisToOpen = this.getSccResources().map(state => state.resourceUri)
+      }
+
+      if (!urisToOpen || !urisToOpen.length) {
+        return
+      }
+
+      const activeEditor = window.activeTextEditor
+
+      for (const uri of urisToOpen) {
+        const openOptions: TextDocumentShowOptions = {
+          preserveFocus: resource instanceof ScmResourceState,
+          preview: false,
+          viewColumn: ViewColumn.Active,
+        }
+
+        const document = await workspace.openTextDocument(uri)
+
+        if (activeEditor && activeEditor.document.uri.toString() === uri.toString()) {
+          openOptions.selection = activeEditor.selection
+          const visibleRanges = activeEditor.visibleRanges;
+          (await window.showTextDocument(document, openOptions)).revealRange(visibleRanges[0])
+        }
+        else {
+          await window.showTextDocument(document, openOptions)
+        }
+      }
+    },
     'p2p-live-share.scm.cleanAll': async (group: SourceControlResourceGroup) => {
-      const states = (group.resourceStates as ReturnType<typeof createResourceState>[])
+      const states = group.resourceStates
+        .filter(state => state instanceof ScmResourceState)
         .filter(({ groupMeta }) => groupMeta && groupMeta.supportsClean)
       if (!states.length) {
         return
@@ -113,7 +178,7 @@ function useScmRepo(uri: string, repo: ScmRepo) {
 
       const states = useShallowYArray(() => changes)
       watchEffect(() => {
-        group.resourceStates = states.value.map(state => createResourceState(state, meta, uri))
+        group.resourceStates = states.value.map(state => new ScmResourceState(state, meta, uri))
       })
     },
   )
@@ -138,42 +203,55 @@ function useScmRepo(uri: string, repo: ScmRepo) {
   }
 }
 
-function createResourceState({ uri, status }: ScmChange, meta: ScmGroupMeta, repoUri: string) {
-  const useIcons = !areGitDecorationsEnabled()
-  return {
-    resourceUri: Uri.parse(uri),
-    command: {
+class ScmResourceState implements SourceControlResourceState {
+  public readonly resourceUri: Uri
+  public readonly command: Command
+  public readonly decorations: SourceControlResourceDecorations
+
+  public readonly letter: string | undefined
+  public readonly color: ThemeColor | undefined
+  public readonly priority: number
+  public readonly repoUri: string
+  public readonly status: Status
+  public readonly groupMeta: ScmGroupMeta
+
+  constructor(change: ScmChange, meta: ScmGroupMeta, repoUri: string) {
+    const { uri, status } = change
+    const useIcons = !areGitDecorationsEnabled()
+
+    this.status = status
+    this.groupMeta = meta
+    this.repoUri = repoUri
+
+    this.resourceUri = Uri.parse(uri)
+    this.command = {
       command: 'p2p-live-share.openScmChange',
       title: 'Open',
-      arguments: [meta.groupId, uri],
-    },
-    decorations: {
-      strikeThrough: getStrikeThrough(),
+      arguments: [this.groupMeta.groupId, uri],
+    }
+    this.decorations = {
+      strikeThrough: this.getStrikeThrough(),
       faded: false,
-      tooltip: getTooltip(),
+      tooltip: this.getTooltip(),
       light: useIcons
-        ? { iconPath: getIconPath('light') }
+        ? { iconPath: this.getIconPath('light') }
         : undefined,
       dark: useIcons
-        ? { iconPath: getIconPath('dark') }
+        ? { iconPath: this.getIconPath('dark') }
         : undefined,
-    },
-    letter: getLetter(),
-    color: getColor(),
-    priority: getPriority(),
-    // resourceDecoration
+    }
 
-    repoUri,
-    status,
-    groupMeta: meta,
-  } satisfies SourceControlResourceState & Record<string, unknown>
+    this.letter = this.getLetter()
+    this.color = this.getColor()
+    this.priority = this.getPriority()
+  }
 
-  function getIconPath(theme: 'light' | 'dark'): Uri | undefined {
+  private getIconPath(theme: 'light' | 'dark'): Uri | undefined {
     const Icons = getAllIcons()
     if (!Icons) {
       return undefined
     }
-    switch (status) {
+    switch (this.status) {
       case Status.INDEX_MODIFIED: return Icons[theme].Modified
       case Status.MODIFIED: return Icons[theme].Modified
       case Status.INDEX_ADDED: return Icons[theme].Added
@@ -196,8 +274,8 @@ function createResourceState({ uri, status }: ScmChange, meta: ScmGroupMeta, rep
     }
   }
 
-  function getPriority(): number {
-    switch (status) {
+  private getPriority(): number {
+    switch (this.status) {
       case Status.INDEX_MODIFIED:
       case Status.MODIFIED:
       case Status.INDEX_COPIED:
@@ -218,8 +296,8 @@ function createResourceState({ uri, status }: ScmChange, meta: ScmGroupMeta, rep
     }
   }
 
-  function getTooltip() {
-    switch (status) {
+  private getTooltip(): string {
+    switch (this.status) {
       case Status.INDEX_MODIFIED: return l10n.t('Index Modified')
       case Status.MODIFIED: return l10n.t('Modified')
       case Status.INDEX_ADDED: return l10n.t('Index Added')
@@ -243,8 +321,8 @@ function createResourceState({ uri, status }: ScmChange, meta: ScmGroupMeta, rep
     }
   }
 
-  function getLetter() {
-    switch (status) {
+  private getLetter(): string | undefined {
+    switch (this.status) {
       case Status.INDEX_MODIFIED:
       case Status.MODIFIED:
         return 'M'
@@ -272,12 +350,12 @@ function createResourceState({ uri, status }: ScmChange, meta: ScmGroupMeta, rep
       case Status.DELETED_BY_US:
       case Status.BOTH_ADDED:
       case Status.BOTH_MODIFIED:
-        return '!' // Using ! instead of ⚠, because the latter looks really bad on windows
+        return '!'
     }
   }
 
-  function getColor() {
-    switch (status) {
+  private getColor(): ThemeColor | undefined {
+    switch (this.status) {
       case Status.INDEX_MODIFIED:
         return new ThemeColor('gitDecoration.stageModifiedResourceForeground')
       case Status.MODIFIED:
@@ -309,8 +387,8 @@ function createResourceState({ uri, status }: ScmChange, meta: ScmGroupMeta, rep
     }
   }
 
-  function getStrikeThrough() {
-    switch (status) {
+  private getStrikeThrough(): boolean {
+    switch (this.status) {
       case Status.DELETED:
       case Status.BOTH_DELETED:
       case Status.DELETED_BY_THEM:

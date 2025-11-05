@@ -133,7 +133,7 @@
       },
       {
         "command": "p2p-live-share.scm.openChange",
-        "title": "%extension.liveshare.openChanges.title%",
+        "title": "Open Changes",
         "category": "Live Share Source Control",
         "icon": {
           "light": "images/light/open-change.svg",
@@ -142,25 +142,25 @@
       },
       {
         "command": "p2p-live-share.scm.openFile",
-        "title": "%extension.liveshare.openFile.title%",
+        "title": "Open File",
         "category": "Live Share Source Control",
         "icon": "$(go-to-file)"
       },
       {
         "command": "p2p-live-share.scm.clean",
-        "title": "%extension.liveshare.discardChanges.title%",
+        "title": "Discard Changes",
         "category": "Live Share Source Control",
         "icon": "$(discard)"
       },
       {
         "command": "p2p-live-share.scm.cleanAll",
-        "title": "%extension.liveshare.discardAllChanges.title%",
+        "title": "Discard All Changes",
         "category": "Live Share Source Control",
         "icon": "$(discard)"
       },
       {
         "command": "p2p-live-share.scm.revertChange",
-        "title": "%extension.liveshare.revertChange.title%",
+        "title": "Revert Changes",
         "category": "Live Share Source Control",
         "icon": "$(discard)"
       }
