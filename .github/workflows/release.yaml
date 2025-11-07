@@ -11,6 +11,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
+      packages: write
 
     runs-on: ubuntu-latest
     steps:
@@ -63,12 +64,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build the Docker image
-        run: docker build . --file Dockerfile --tag ghcr.io/kermanx/p2p-live-share-ws-server:latest
-        working-directory: ./src/sync/ws/go
-
-      - name: Push Docker image to GHCR
-        run: docker push ghcr.io/kermanx/p2p-live-share-ws-server:latest
+      - name: Build and push Docker image
+        run: |
+          VERSION=${{ github.ref_name }}
+          docker build . --file Dockerfile \
+            --tag ghcr.io/kermanx/p2p-live-share-ws-server:latest \
+            --tag ghcr.io/kermanx/p2p-live-share-ws-server:${VERSION}
+          docker push ghcr.io/kermanx/p2p-live-share-ws-server:latest
+          docker push ghcr.io/kermanx/p2p-live-share-ws-server:${VERSION}
         working-directory: ./src/sync/ws/go
 
       - name: Create GitHub Release
