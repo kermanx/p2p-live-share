@@ -108,7 +108,7 @@ export function useShallowYMapScopes<V>(
     }
   }
 
-  useObserverShallow(
+  return useObserverShallow(
     map,
     (event) => {
       if (event.path.length !== 0) {
