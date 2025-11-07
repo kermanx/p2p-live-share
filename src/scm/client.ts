@@ -12,8 +12,8 @@ import { useShallowYArray, useShallowYMapScopes } from '../sync/doc'
 import { lazy } from '../utils'
 import { Status } from './git'
 
-export function useClientScm(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFunctions>) {
-  return;
+export function useClientScm(doc: Y.Doc, _rpc: BirpcReturn<HostFunctions, ClientFunctions>) {
+  return
 
   const map = doc.getMap<ScmRepo>('scm')
 
@@ -120,11 +120,11 @@ export function useClientScm(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientF
         }
       }
       if ((await window.showWarningMessage(message, { modal: true }, action)) === action) {
-        await rpc.scmClean(
-          states[0].repoUri,
-          states[0].groupMeta.groupId,
-          states.map(({ resourceUri }) => resourceUri.toString()),
-        )
+        // await rpc.scmClean(
+        //   states[0].repoUri,
+        //   states[0].groupMeta.groupId,
+        //   states.map(({ resourceUri }) => resourceUri.toString()),
+        // )
       }
     },
     'p2p-live-share.scm.revertChange': async (..._args) => {

@@ -17,8 +17,6 @@ import { useUsers } from '../ui/users'
 import { useWebview } from '../ui/webview/webview'
 
 export async function createHostSession(config: ConnectionConfig) {
-  return
-
   const scope = effectScope(true)
   const connection = scope.run(() => useConnection(config))!
   await connection.ready

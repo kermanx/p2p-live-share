@@ -10,6 +10,8 @@ import * as Y from 'yjs'
 import { YTuple } from '../sync/y-tuple'
 
 export function useHostScm(connection: Connection, doc: Y.Doc) {
+  return {}
+
   const { toHostUri } = connection
   const scope = getCurrentScope()!
   const _git = (async () => {
