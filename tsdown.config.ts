@@ -69,11 +69,6 @@ export default defineConfig([
     entry: {
       browser: 'src/extension.ts',
     },
-    // outExtensions: ({ format }) => format === 'cjs'
-    //   ? {
-    //       js: '.js',
-    //     }
-    //   : undefined,
     platform: 'browser',
     format: ['cjs'],
     target: 'es2020',
@@ -102,17 +97,17 @@ export default defineConfig([
     platform: 'browser',
     format: ['esm'],
     target: 'es2020',
-    define: {
-      'import.meta.env.TARGET': '"webview"',
-      '__VUE_OPTIONS_API__': 'false',
-      '__VUE_PROD_DEVTOOLS__': 'false',
-      '__VUE_PROD_HYDRATION_MISMATCH_DETAILS__': 'false',
-    },
     inputOptions: {
       transform: {
         jsx: {
           runtime: 'automatic',
           importSource: 'vue',
+        },
+        define: {
+          'import.meta.env.TARGET': '"webview"',
+          '__VUE_OPTIONS_API__': 'false',
+          '__VUE_PROD_DEVTOOLS__': 'false',
+          '__VUE_PROD_HYDRATION_MISMATCH_DETAILS__': 'false',
         },
       },
     },

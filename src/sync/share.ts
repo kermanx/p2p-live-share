@@ -102,7 +102,7 @@ async function inquireServer() {
   }
 
   const quickPick = window.createQuickPick()
-  quickPick.title = 'Choose server'
+  quickPick.title = 'Choose a relay strategy or enter a custom websocket server URL'
   quickPick.placeholder = 'Enter websocket server URL (wss://) or choose a Trystero strategy'
   quickPick.value = ''
   let allItems = quickPick.items = [
