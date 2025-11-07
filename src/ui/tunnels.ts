@@ -139,15 +139,20 @@ export const useTunnelsTree = createSingletonComposable(() => {
         return
       }
       const clients = getClientsNames(shareInfo).map(s => `- ${s}`).join('\n')
-      const result = await window.showInformationMessage(
-        `Stopped sharing server ${info.name}`,
-        {
-          modal: true,
-          detail: `You have ${shareInfo.size} active client(s) connected:\n${clients}`,
-        },
-        'Stop Sharing',
-      )
-      if (result === 'Stop Sharing') {
+      if (shareInfo.size > 0) {
+        const result = await window.showInformationMessage(
+          `Stopped sharing server ${info.name}`,
+          {
+            modal: true,
+            detail: `You have ${shareInfo.size} active client${shareInfo.size === 1 ? '' : 's'} connected:\n${clients}`,
+          },
+          'Stop Sharing',
+        )
+        if (result === 'Stop Sharing') {
+          closeTunnel(serverId)
+        }
+      }
+      else {
         closeTunnel(serverId)
       }
     },

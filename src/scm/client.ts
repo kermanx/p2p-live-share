@@ -8,7 +8,7 @@ import { basename } from 'pathe'
 import { useCommands, useDisposable, watchEffect } from 'reactive-vscode'
 import { extensions, l10n, scm, ThemeColor, Uri, ViewColumn, window, workspace } from 'vscode'
 import { ClientUriScheme } from '../fs/provider'
-import { useShallowYArray, useShallowYMapScopes } from '../sync/doc'
+import { useShallowYArray, useShallowYMapValueScopes } from '../sync/doc'
 import { lazy } from '../utils'
 import { Status } from './git'
 
@@ -17,7 +17,7 @@ export function useClientScm(doc: Y.Doc, _rpc: BirpcReturn<HostFunctions, Client
 
   const map = doc.getMap<ScmRepo>('scm')
 
-  useShallowYMapScopes(() => map, useScmRepo)
+  useShallowYMapValueScopes(() => map, useScmRepo)
 
   useCommands({
     'p2p-live-share.scm.openFile': async (resource, ...additionalResources) => {
@@ -172,7 +172,7 @@ function useScmRepo(uri: string, repo: ScmRepo) {
   const [groups, meta] = repo.toArray()
   const sc = useDisposable(scm.createSourceControl('p2p-live-share-scm', meta.label, Uri.parse(meta.rootUri)))
   sc.inputBox.visible = false
-  useShallowYMapScopes(
+  useShallowYMapValueScopes(
     () => groups,
     (id, data) => {
       const [changes, meta] = data.toArray()
