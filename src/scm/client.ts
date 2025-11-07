@@ -13,6 +13,8 @@ import { lazy } from '../utils'
 import { Status } from './git'
 
 export function useClientScm(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFunctions>) {
+  return;
+
   const map = doc.getMap<ScmRepo>('scm')
 
   useShallowYMapScopes(() => map, useScmRepo)
@@ -52,7 +54,6 @@ export function useClientScm(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientF
         }
       }
       else {
-        // 打开 SCM 视图中的所有资源
         // urisToOpen = this.getSccResources().map(state => state.resourceUri)
       }
 
@@ -125,6 +126,9 @@ export function useClientScm(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientF
           states.map(({ resourceUri }) => resourceUri.toString()),
         )
       }
+    },
+    'p2p-live-share.scm.revertChange': async (..._args) => {
+      // console.log('Revert change called', args)
     },
   })
 
@@ -225,7 +229,7 @@ class ScmResourceState implements SourceControlResourceState {
 
     this.resourceUri = Uri.parse(uri)
     this.command = {
-      command: 'p2p-live-share.openScmChange',
+      command: 'p2p-live-share.scm.openChange',
       title: 'Open',
       arguments: [this.groupMeta.groupId, uri],
     }
@@ -408,7 +412,7 @@ const areGitDecorationsEnabled = lazy(() => {
 })
 
 const getAllIcons = lazy(() => {
-  const gitExtension = extensions.getExtension<GitExtension>('vscode.git')
+  const gitExtension = extensions.getExtension<GitExtension>('git')
   if (!gitExtension) {
     return null
   }
