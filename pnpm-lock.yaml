@@ -80,6 +80,9 @@ importers:
       vue:
         specifier: ^3.5.22
         version: 3.5.22(typescript@5.9.3)
+      ws:
+        specifier: ^8.18.3
+        version: 8.18.3
       y-array:
         specifier: ^10.1.4
         version: 10.1.4(yjs@13.6.27)

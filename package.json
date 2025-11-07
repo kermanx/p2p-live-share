@@ -603,6 +603,7 @@
     "vscode-languageclient": "^10.0.0-next.17",
     "vscode-languageserver": "^10.0.0-next.14",
     "vue": "^3.5.22",
+    "ws": "^8.18.3",
     "y-array": "^10.1.4",
     "y-protocols": "^1.0.6",
     "yjs": "^13.6.27"
