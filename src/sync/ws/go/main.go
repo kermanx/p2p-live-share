@@ -33,7 +33,7 @@ var (
 
 func main() {
 	var port, hostname string
-	pflag.StringVarP(&port, "port", "p", "8080", "Port to listen on")
+	pflag.StringVarP(&port, "port", "p", "80", "Port to listen on")
 	pflag.StringVar(&hostname, "hostname", "localhost", "Hostname / interface to bind")
 	pflag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\nOptions:\n", os.Args[0])
