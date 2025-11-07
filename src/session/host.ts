@@ -3,7 +3,6 @@ import type { HostMeta } from './types'
 import process from 'node:process'
 import { effectScope, watch } from 'reactive-vscode'
 import * as Y from 'yjs'
-import { HostVersion } from '.'
 import { useHostDiagnostics } from '../diagnostics/host'
 import { useHostFs } from '../fs/host'
 import { useHostLs } from '../ls/host'
@@ -15,6 +14,7 @@ import { useHostTerminals } from '../terminal/host'
 import { useTunnels } from '../tunnel'
 import { useUsers } from '../ui/users'
 import { useWebview } from '../ui/webview/webview'
+import { ProtocolVersion } from './index'
 
 export async function createHostSession(config: ConnectionConfig) {
   const scope = effectScope(true)
@@ -27,7 +27,7 @@ export async function createHostSession(config: ConnectionConfig) {
     useDocSync(connection, doc)
 
     const hostMeta: HostMeta = {
-      version: HostVersion,
+      version: ProtocolVersion,
       os: process.platform,
     }
     const [sendInit] = connection.makeAction<Uint8Array, HostMeta>('init')

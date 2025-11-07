@@ -14,7 +14,7 @@ import { useClientTerminals } from '../terminal/client'
 import { useTunnels } from '../tunnel'
 import { useUsers } from '../ui/users'
 import { useWebview } from '../ui/webview/webview'
-import { ClientCompatibleVersions, onSessionClosed } from './index'
+import { onSessionClosed, ProtocolVersion } from './index'
 
 export async function createClientSession(config: ConnectionConfig) {
   const scope = effectScope(true)
@@ -54,12 +54,12 @@ export async function createClientSession(config: ConnectionConfig) {
   }
   const [initUpdate, hostId, hostMeta] = initResult
 
-  if (!ClientCompatibleVersions.includes(hostMeta.version)) {
+  if (!ProtocolVersion.includes(hostMeta.version)) {
     await window.showErrorMessage(
       'P2P Live Share: Incompatible host version.',
       {
         modal: true,
-        detail: `Host version: ${hostMeta.version}.\nCompatible versions: ${ClientCompatibleVersions.join(', ')}.`,
+        detail: `Host version: ${hostMeta.version}.\nLocal version: ${ProtocolVersion}.`,
       },
     )
     return null

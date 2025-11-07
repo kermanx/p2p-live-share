@@ -1,5 +1,6 @@
 import { computed, createSingletonComposable, onScopeDispose, shallowRef, useCommand, useVscodeContext, watch } from 'reactive-vscode'
 import { commands, env, Uri, window, workspace } from 'vscode'
+import { version } from '../../package.json'
 import { ClientUriScheme } from '../fs/provider'
 import { copyShareLink, inquireHostConfig, makeTrackUri, parseTrackUri, validateShareLink } from '../sync/share'
 import { useUsers } from '../ui/users'
@@ -263,7 +264,4 @@ export function onSessionClosed(options: {
   })
 }
 
-export const HostVersion = '20251003'
-export const ClientCompatibleVersions = [
-  HostVersion,
-]
+export const ProtocolVersion = version
