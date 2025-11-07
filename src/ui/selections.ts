@@ -1,11 +1,10 @@
 import type { ComputedRef, Ref } from 'reactive-vscode'
 import type { DecorationOptions, TextEditor, TextEditorDecorationType } from 'vscode'
 import type * as Y from 'yjs'
-import type { UserColor } from './users'
-import { computed, createSingletonComposable, ref, shallowRef, useCommands, useDisposable, useVisibleTextEditors, watch, watchEffect } from 'reactive-vscode'
+import { computed, createSingletonComposable, onScopeDispose, ref, shallowRef, useCommands, useDisposable, useVisibleTextEditors, watch, watchEffect } from 'reactive-vscode'
 import { DecorationRangeBehavior, OverviewRulerLane, Selection, TextEditorRevealType, Uri, window } from 'vscode'
 import { useActiveSession } from '../session'
-import { useShallowYMapScopes } from '../sync/doc'
+import { useShallowYMapKeyScopes } from '../sync/doc'
 import { withOpacity } from './colors'
 import { useUsers } from './users'
 
@@ -20,14 +19,14 @@ export const useSelections = createSingletonComposable(() => {
 
   const map = computed(() => doc.value?.getMap<SelectionInfo>('selections'))
 
-  const { editor, selections } = useCoEditFriendlySelections()
-  watch([map, selfId, editor, selections], () => {
+  const { editor, selections: selfCoEditSelections } = useCoEditFriendlySelections()
+  watch([map, selfId, editor, selfCoEditSelections], () => {
     if (map.value && selfId.value) {
       const clientUri = editor.value && toTrackUri(editor.value.document.uri)
       if (clientUri) {
         map.value.set(selfId.value, {
           uri: clientUri.toString(),
-          selections: selections.value.map(selection => [
+          selections: selfCoEditSelections.value.map(selection => [
             selection.anchor.line,
             selection.anchor.character,
             selection.active.line,
@@ -40,20 +39,43 @@ export const useSelections = createSingletonComposable(() => {
       }
     }
   }, { immediate: true })
+  onScopeDispose(() => {
+    if (map.value && selfId.value) {
+      map.value.delete(selfId.value)
+    }
+  })
 
   const visibleTextEditors = useVisibleTextEditors()
-  const currentSelection = useRealtimeSelections()
-  const mapVersion = useShallowYMapScopes(map, (peerId, { uri, selections }) => {
+  const selfRealtimeSelections = useRealtimeSelections()
+  const mapVersion = useShallowYMapKeyScopes(map, (peerId, info) => {
     if (peerId === selfId.value) {
       return
     }
 
-    const uri_ = toLocalUri(Uri.parse(uri))
-    const editor = computed(() => visibleTextEditors.value.find(e => e.document.uri.toString() === uri_.toString()))
-    const types = useDecorationTypes(computed(() => getUserInfo(peerId).color))
-    watchEffect(() => {
+    const uri = computed(() => toLocalUri(Uri.parse(info.value.uri)))
+    const selections = computed(() => info.value.selections)
+    const editor = computed(() => visibleTextEditors.value.find(e => e.document.uri.toString() === uri.value.toString()))
+    const color = computed(() => getUserInfo(peerId).color)
+
+    // Selection decorations
+    const selectionType = shallowRef<TextEditorDecorationType>(null!)
+    watchEffect((onCleanup) => {
+      const type = selectionType.value = window.createTextEditorDecorationType({
+        backgroundColor: withOpacity(color.value.bg, 0.35),
+        borderRadius: '0.1rem',
+        isWholeLine: false,
+        rangeBehavior: DecorationRangeBehavior.ClosedOpen,
+        overviewRulerLane: OverviewRulerLane.Full,
+      })
+      onCleanup(() => type.dispose())
+    })
+    watchEffect((onCleanup) => {
+      const e = editor.value
+      if (!e) {
+        return
+      }
       const { color } = getUserInfo(peerId)
-      editor.value?.setDecorations(types.value.selection, selections.map((s) => {
+      e.setDecorations(selectionType.value, info.value.selections.map((s) => {
         const range = new Selection(...s)
         return {
           range,
@@ -74,30 +96,53 @@ export const useSelections = createSingletonComposable(() => {
           },
         } satisfies DecorationOptions
       }))
+      onCleanup(() => {
+        if (e !== editor.value) {
+          e.setDecorations(selectionType.value, [])
+        }
+      })
     })
 
-    watchEffect(() => {
-      if (!editor.value || selections.length === 0) {
+    // Name tag decorations
+    const nameTagType = shallowRef<TextEditorDecorationType>(null!)
+    watchEffect((onCleanup) => {
+      const type = nameTagType.value = window.createTextEditorDecorationType({
+        backgroundColor: color.value.bg,
+        rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+        textDecoration: 'none; position: relative; z-index: 1;',
+      })
+      onCleanup(() => type.dispose())
+    })
+    const activePosition = computed(() => (new Selection(...selections.value[selections.value.length - 1])).active)
+    const nameTagState = computed(() => {
+      const isFirstLine = activePosition.value.line === 0
+      const isSameEditor = editor.value && editor.value === selfRealtimeSelections.editor.value
+      const isEditingAbove = isSameEditor && selfRealtimeSelections.selections.value.some(s => s.active.line === activePosition.value.line - 1)
+      const isEditingBelow = isSameEditor && selfRealtimeSelections.selections.value.some(s => s.active.line === activePosition.value.line + 1)
+      return {
+        hide: isFirstLine && isEditingBelow,
+        belowText: isFirstLine || isEditingAbove,
+      }
+    })
+    watchEffect((onCleanup) => {
+      const e = editor.value
+      if (!e || selections.value.length === 0) {
         return
       }
-
+      if (nameTagState.value.hide) {
+        e.setDecorations(nameTagType.value, [])
+        return
+      }
       const { name, color } = getUserInfo(peerId)
-      const { active } = new Selection(...selections[0])
-
-      const isFirstLine = active.line === 0
-      const isActiveLineAbove = currentSelection.editor.value === editor.value
-        && currentSelection.selections.value.some(s => s.active.line === active.line - 1)
-      const belowText = isFirstLine || isActiveLineAbove
-
-      editor.value.setDecorations(types.value.nameTag, [{
-        range: new Selection(active, active),
+      e.setDecorations(nameTagType.value, [{
+        range: new Selection(activePosition.value, activePosition.value),
         renderOptions: {
           after: {
             contentText: name,
             backgroundColor: color.bg,
             textDecoration: `none; ${stringifyCssProperties({
               'position': 'absolute',
-              'top': `calc(${belowText ? 1 : -1} * var(--vscode-editorCodeLens-lineHeight))`,
+              'top': `calc(${nameTagState.value.belowText ? 1 : -1} * var(--vscode-editorCodeLens-lineHeight))`,
               'border-radius': '0.15rem',
               'padding': '0px 0.5ch',
               'display': 'inline-block',
@@ -110,6 +155,11 @@ export const useSelections = createSingletonComposable(() => {
           },
         },
       }])
+      onCleanup(() => {
+        if (e !== editor.value) {
+          e.setDecorations(nameTagType.value, [])
+        }
+      })
     })
   })
 
@@ -120,34 +170,6 @@ function stringifyCssProperties(e: Record<string, string | number>) {
   return Object.keys(e)
     .map(t => `${t}: ${e[t]};`)
     .join(' ')
-}
-
-function useDecorationTypes(color: ComputedRef<UserColor>) {
-  const types = shallowRef<{
-    selection: TextEditorDecorationType
-    nameTag: TextEditorDecorationType
-  }>(null!)
-  watchEffect((onCleanup) => {
-    const types_ = types.value = {
-      selection: window.createTextEditorDecorationType({
-        backgroundColor: withOpacity(color.value.bg, 0.35),
-        borderRadius: '0.1rem',
-        isWholeLine: false,
-        rangeBehavior: DecorationRangeBehavior.ClosedOpen,
-        overviewRulerLane: OverviewRulerLane.Full,
-      }),
-      nameTag: window.createTextEditorDecorationType({
-        backgroundColor: color.value.bg,
-        rangeBehavior: DecorationRangeBehavior.ClosedClosed,
-        textDecoration: 'none; position: relative; z-index: 1;',
-      }),
-    }
-    onCleanup(() => {
-      types_.selection.dispose()
-      types_.nameTag.dispose()
-    })
-  })
-  return types
 }
 
 const useRealtimeSelections = createSingletonComposable(() => {
@@ -195,7 +217,7 @@ function useFollowing(map: ComputedRef<Y.Map<SelectionInfo> | undefined>, mapVer
 
   function gotoSelection(info: SelectionInfo) {
     const localUri = toLocalUri(Uri.parse(info.uri))
-    const selection = info.selections[0]
+    const selection = info.selections[info.selections.length - 1]
     window.showTextDocument(localUri, { preserveFocus: true }).then((editor) => {
       if (selection) {
         editor.revealRange(new Selection(...selection), TextEditorRevealType.Default)

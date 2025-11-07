@@ -1,4 +1,4 @@
-import type { EffectScope, WatchSource } from 'reactive-vscode'
+import type { EffectScope, ShallowRef, WatchSource } from 'reactive-vscode'
 import type { Connection } from './connection'
 import { effectScope, onScopeDispose, readonly, ref, shallowReactive, shallowRef, watch } from 'reactive-vscode'
 import * as Y from 'yjs'
@@ -82,11 +82,71 @@ export function useShallowYMap<V>(map: WatchSource<Y.Map<V> | undefined>) {
   return readonly(result)
 }
 
-export function useShallowYMapScopes<V>(
+export function useShallowYMapKeyScopes<V>(
+  map: WatchSource<Y.Map<V> | undefined>,
+  fn: (key: string, value: ShallowRef<V>) => void,
+) {
+  const scopes = new Map<string, {
+    scope: EffectScope
+    value: ShallowRef<V>
+  }>()
+
+  onScopeDispose(() => {
+    for (const { scope } of scopes.values()) {
+      scope.stop()
+    }
+  })
+
+  function add(key: string, value_: V) {
+    const scope = effectScope(true)
+    try {
+      const value = shallowRef(value_)
+      scope.run(() => fn(key, value))
+      scopes.set(key, { scope, value })
+    }
+    catch (e) {
+      scope.stop()
+      throw e
+    }
+  }
+
+  return useObserverShallow(
+    map,
+    (event, map) => {
+      if (event.path.length !== 0) {
+        console.warn('Ignoring non-top-level event in Y.Map', event)
+        return
+      }
+      for (const [key, { action }] of event.keys) {
+        if (action === 'add') {
+          add(key, map.get(key)!)
+        }
+        else if (action === 'update') {
+          const { value } = scopes.get(key)!
+          value.value = map.get(key)!
+        }
+        else if (action === 'delete') {
+          const entry = scopes.get(key)
+          if (entry) {
+            entry.scope.stop()
+            scopes.delete(key)
+          }
+        }
+      }
+    },
+    (map) => {
+      for (const [key, value] of map) {
+        add(key, value)
+      }
+    },
+  )
+}
+
+export function useShallowYMapValueScopes<V>(
   map: WatchSource<Y.Map<V> | undefined>,
   fn: (key: string, value: V) => void,
 ) {
-  const scopes = shallowReactive(new Map<string, EffectScope>())
+  const scopes = new Map<string, EffectScope>()
 
   onScopeDispose(() => {
     for (const scope of scopes.values()) {
@@ -110,7 +170,7 @@ export function useShallowYMapScopes<V>(
 
   return useObserverShallow(
     map,
-    (event) => {
+    (event, map) => {
       if (event.path.length !== 0) {
         console.warn('Ignoring non-top-level event in Y.Map', event)
         return
@@ -120,7 +180,7 @@ export function useShallowYMapScopes<V>(
           remove(key)
         }
         if (action !== 'delete') {
-          add(key, event.target.get(key)!)
+          add(key, map.get(key)!)
         }
       }
     },
