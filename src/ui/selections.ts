@@ -114,22 +114,18 @@ export const useSelections = createSingletonComposable(() => {
       onCleanup(() => type.dispose())
     })
     const activePosition = computed(() => (new Selection(...selections.value[selections.value.length - 1])).active)
-    const nameTagState = computed(() => {
-      const isFirstLine = activePosition.value.line === 0
-      const isSameEditor = editor.value && editor.value === selfRealtimeSelections.editor.value
-      const isEditingAbove = isSameEditor && selfRealtimeSelections.selections.value.some(s => s.active.line === activePosition.value.line - 1)
-      const isEditingBelow = isSameEditor && selfRealtimeSelections.selections.value.some(s => s.active.line === activePosition.value.line + 1)
-      return {
-        hide: isFirstLine && isEditingBelow,
-        belowText: isFirstLine || isEditingAbove,
-      }
-    })
+    const isFirstLine = computed(() => activePosition.value.line === 0)
+    const isSameEditor = computed(() => editor.value && editor.value === selfRealtimeSelections.editor.value)
+    const isEditingAbove = computed(() => isSameEditor.value && selfRealtimeSelections.selections.value.some(s => s.active.line === activePosition.value.line - 1))
+    const isEditingBelow = computed(() => isSameEditor.value && selfRealtimeSelections.selections.value.some(s => s.active.line === activePosition.value.line + 1))
+    const hideNameTag = computed(() => isFirstLine.value && isEditingBelow.value)
+    const belowText = computed(() => isFirstLine.value || isEditingAbove.value)
     watchEffect((onCleanup) => {
       const e = editor.value
       if (!e || selections.value.length === 0) {
         return
       }
-      if (nameTagState.value.hide) {
+      if (hideNameTag.value) {
         e.setDecorations(nameTagType.value, [])
         return
       }
@@ -137,12 +133,12 @@ export const useSelections = createSingletonComposable(() => {
       e.setDecorations(nameTagType.value, [{
         range: new Selection(activePosition.value, activePosition.value),
         renderOptions: {
-          after: {
+          before: {
             contentText: name,
             backgroundColor: color.bg,
             textDecoration: `none; ${stringifyCssProperties({
               'position': 'absolute',
-              'top': `calc(${nameTagState.value.belowText ? 1 : -1} * var(--vscode-editorCodeLens-lineHeight))`,
+              'top': `calc(${belowText.value ? 1 : -1} * var(--vscode-editorCodeLens-lineHeight))`,
               'border-radius': '0.15rem',
               'padding': '0px 0.5ch',
               'display': 'inline-block',
