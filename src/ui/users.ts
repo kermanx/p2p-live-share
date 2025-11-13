@@ -86,7 +86,7 @@ export const useUsers = createSingletonComposable(() => {
 
       const providers = ['github', 'microsoft']
       for (const providerId of providers) {
-        const accounts = await authentication.getAccounts(providerId)
+        const accounts = await authentication.getAccounts?.(providerId)
         if (accounts.length > 0) {
           if (!avatarUrl.value && providerId === 'github') {
             avatarUrl.value = `https://github.com/${accounts[0].id}.png?size=128`
