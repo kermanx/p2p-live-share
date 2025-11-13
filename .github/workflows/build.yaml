@@ -32,9 +32,16 @@ jobs:
         run: |
           pnpm install
           pnpm build
+          pnpx @vscode/vsce package --no-dependencies
 
       - name: Build Go WS Server
         working-directory: ./src/sync/ws/go
         run: |
           chmod +x build.sh
           ./build.sh
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: VSIX-Package
+          path: '*.vsix'

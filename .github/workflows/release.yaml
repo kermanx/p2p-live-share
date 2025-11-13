@@ -74,10 +74,13 @@ jobs:
           docker push ghcr.io/kermanx/p2p-live-share-ws-server:${VERSION}
         working-directory: ./src/sync/ws/go
 
+      - name: Pack VSIX
+        run: pnpx @vscode/vsce package --no-dependencies
+
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ./src/sync/ws/go/ws-server, ./src/sync/ws/go/serverless.zip
+          artifacts: ./src/sync/ws/go/ws-server, ./src/sync/ws/go/serverless.zip, ./*.vsix
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}

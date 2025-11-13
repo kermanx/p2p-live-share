@@ -4,3 +4,4 @@ node_modules
 test-workspace
 .eslintcache
 temp
+*.vsix
