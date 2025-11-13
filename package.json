@@ -5,7 +5,7 @@
   "version": "0.0.21",
   "private": true,
   "packageManager": "pnpm@10.20.0",
-  "description": "VSCode collaboration extension - a Peer-to-Peer and Open-Source alternative to Live Share.",
+  "description": "Live collaboration - a peer-to-peer and open source alternative to Live Share.",
   "author": {
     "name": "_Kerman",
     "email": "kermanx@qq.com",
