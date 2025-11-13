@@ -6,6 +6,12 @@ import { logger } from '../../utils'
 import { useWebSocketHostConnection } from './host'
 import { deserializeDownlink, serializeUplink, UpdatePeersAction } from './protocol'
 
+let WebSocket_ = globalThis.WebSocket
+if (import.meta.env.TARGET === 'node' && !WebSocket_) {
+  // eslint-disable-next-line ts/no-require-imports
+  WebSocket_ = require('ws').WebSocket
+}
+
 export function useWebSocketConnection(config: ConnectionConfig): InternalConnection {
   if (config.host) {
     return useWebSocketHostConnection(config)
@@ -14,7 +20,7 @@ export function useWebSocketConnection(config: ConnectionConfig): InternalConnec
   const selfId = nanoid(10)
   const serverUrl = `${config.type}://${config.domain}/${config.roomId}/${selfId}`
   logger.info('Connecting to WebSocket server:', serverUrl)
-  const socket = new WebSocket(serverUrl)
+  const socket = new WebSocket_(serverUrl)
   socket.binaryType = 'arraybuffer'
 
   const peers = ref<string[]>([])

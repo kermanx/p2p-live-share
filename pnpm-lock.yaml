@@ -12,8 +12,8 @@ importers:
         specifier: ^6.2.0
         version: 6.2.0(@vue/compiler-sfc@3.5.22)(eslint-plugin-format@1.0.2(eslint@9.39.1(jiti@2.5.1)))(eslint@9.39.1(jiti@2.5.1))(typescript@5.9.3)
       '@types/node':
-        specifier: ^24.10.0
-        version: 24.10.0
+        specifier: ^20
+        version: 20.19.25
       '@types/vscode':
         specifier: ^1.99.0
         version: 1.105.0
@@ -1043,8 +1043,8 @@ packages:
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
-  '@types/node@24.10.0':
-    resolution: {integrity: sha512-qzQZRBqkFsYyaSWXuEHc2WR9c0a0CXwiE5FWUvn7ZM+vdy1uZLfCunD38UzhuB7YN/J11ndbDBcTmOdxJo9Q7A==}
+  '@types/node@20.19.25':
+    resolution: {integrity: sha512-ZsJzA5thDQMSQO788d7IocwwQbI8B5OPzmqNvpf3NY/+MHDAS759Wo0gd2WQeXYt5AAAQjzcrTVC6SKCuYgoCQ==}
 
   '@types/phoenix@1.6.6':
     resolution: {integrity: sha512-PIzZZlEppgrpoT2QgbnDU+MMzuR6BbCjllj0bM70lWoejMeNJAxCchxnv7J3XFkI8MpygtRpzXrIlmWUBclP5A==}
@@ -3263,8 +3263,8 @@ packages:
   unconfig@7.3.3:
     resolution: {integrity: sha512-QCkQoOnJF8L107gxfHL0uavn7WD9b3dpBcFX6HtfQYmjw2YzWxGuFQ0N0J6tE9oguCBJn9KOvfqYDCMPHIZrBA==}
 
-  undici-types@7.16.0:
-    resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
   unist-util-is@6.0.0:
     resolution: {integrity: sha512-2qCTHimwdxLfz+YzdGfkqNlH0tLi9xjTnHddPmJwtIG9MGsdbutfTc4P+haPD7l7Cjxf/WZj+we5qfVPvvxfYw==}
@@ -4102,7 +4102,7 @@ snapshots:
   '@grpc/grpc-js@1.9.15':
     dependencies:
       '@grpc/proto-loader': 0.7.15
-      '@types/node': 24.10.0
+      '@types/node': 20.19.25
 
   '@grpc/proto-loader@0.7.15':
     dependencies:
@@ -4614,15 +4614,15 @@ snapshots:
 
   '@types/ms@2.1.0': {}
 
-  '@types/node@24.10.0':
+  '@types/node@20.19.25':
     dependencies:
-      undici-types: 7.16.0
+      undici-types: 6.21.0
 
   '@types/phoenix@1.6.6': {}
 
   '@types/readable-stream@4.0.21':
     dependencies:
-      '@types/node': 24.10.0
+      '@types/node': 20.19.25
 
   '@types/retry@0.12.2': {}
 
@@ -4634,7 +4634,7 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 24.10.0
+      '@types/node': 20.19.25
 
   '@typescript-eslint/eslint-plugin@8.46.3(@typescript-eslint/parser@8.46.3(eslint@9.39.1(jiti@2.5.1))(typescript@5.9.3))(eslint@9.39.1(jiti@2.5.1))(typescript@5.9.3)':
     dependencies:
@@ -6931,7 +6931,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
-      '@types/node': 24.10.0
+      '@types/node': 20.19.25
       long: 5.3.2
 
   protons-runtime@5.6.0:
@@ -7342,7 +7342,7 @@ snapshots:
       jiti: 2.5.1
       quansync: 0.2.11
 
-  undici-types@7.16.0: {}
+  undici-types@6.21.0: {}
 
   unist-util-is@6.0.0:
     dependencies:
