@@ -106,7 +106,10 @@ export const useActiveSession = createSingletonComposable(() => {
       if (!uriStr) {
         return
       }
-      const uri = Uri.parse(uriStr.trim())
+      let uri = Uri.parse(uriStr.trim())
+      if (uri.path === '') {
+        uri = uri.with({ path: '/' })
+      }
 
       if (newWindow) {
         commands.executeCommand('vscode.openFolder', uri, newWindow === 'auto'
