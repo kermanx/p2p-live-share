@@ -2,7 +2,7 @@
   "publisher": "kermanx",
   "name": "p2p-live-share",
   "displayName": "P2P Live Share",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "private": true,
   "packageManager": "pnpm@10.20.0",
   "description": "Live collaboration - a peer-to-peer and open source alternative to Live Share.",
