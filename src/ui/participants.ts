@@ -1,11 +1,11 @@
 import type { TreeViewNode } from 'reactive-vscode'
-import { computed, createSingletonComposable, ref, useTreeView } from 'reactive-vscode'
+import { computed, defineService, ref, useTreeView } from 'reactive-vscode'
 import { ThemeColor, ThemeIcon, Uri } from 'vscode'
 import { useActiveSession } from '../session'
 import { useSelections } from './selections'
 import { useUsers } from './users'
 
-export const useParticipantsTree = createSingletonComposable(() => {
+export const useParticipantsTree = defineService(() => {
   const { peers, getUserInfo } = useUsers()
   const { getSelection, following } = useSelections()
   const { toLocalUri, hostId, connection } = useActiveSession()

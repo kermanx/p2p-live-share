@@ -98,7 +98,7 @@ async function inquireServer() {
   let servers = [...configs.servers]
   const updateServers = (newServers: string[]) => {
     servers = newServers
-    configs.$update('servers', newServers, ConfigurationTarget.Global)
+    configs.update('servers', newServers, ConfigurationTarget.Global)
   }
 
   const quickPick = window.createQuickPick()

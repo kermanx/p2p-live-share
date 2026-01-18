@@ -1,7 +1,7 @@
 import type { TextDocument } from 'vscode'
 import type { Connection } from '../sync/connection'
 import type { FileContent, FilesMap } from './types'
-import { useFsWatcher } from 'reactive-vscode'
+import { useFileSystemWatcher } from 'reactive-vscode'
 import { FileSystemError, FileType, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
 import { useObserverDeep } from '../sync/doc'
@@ -77,46 +77,47 @@ export function useHostFs(connection: Connection, doc: Y.Doc) {
     }
   })
 
-  const fsWatcher = useFsWatcher('**')
-  fsWatcher.onDidDelete(async (uri) => {
-    const trackedUri = toTrackUri(uri)
-    if (trackedUri) {
-      files.delete(trackedUri.toString())
-    }
-  })
-  fsWatcher.onDidCreate(async (uri) => {
-    const trackedUri = toTrackUri(uri)
-    const stat = await workspace.fs.stat(uri)
-    doc.transact(() => {
-      if (trackedUri && !files.has(trackedUri.toString())) {
-        files.set(trackedUri.toString(), stat.type)
+  useFileSystemWatcher('**', {
+    onDidDelete(uri) {
+      const trackedUri = toTrackUri(uri)
+      if (trackedUri) {
+        files.delete(trackedUri.toString())
       }
-    })
-  })
-  fsWatcher.onDidChange(async (uri) => {
-    const trackedUri = toTrackUri(uri)
-    if (!trackedUri) {
-      return
-    }
-    const stat = await workspace.fs.stat(uri)
-    const content = stat.type & FileType.File ? await workspace.fs.readFile(uri) : null
-    doc.transact(() => {
-      const existing = files.get(trackedUri.toString())
-      if (!existing || !isContentTracked(existing)) {
-        files.set(trackedUri.toString(), stat.type)
-      }
-      else if (existing instanceof Uint8Array) {
-        files.set(trackedUri.toString(), new Uint8Array(content!))
-      }
-      else if (existing instanceof Y.Text) {
-        const text = new TextDecoder().decode(content!)
-        if (existing.toString() !== text) {
-          console.warn('External edit', uri.toString())
-          existing.delete(0, existing.length)
-          existing.insert(0, text)
+    },
+    async onDidCreate(uri) {
+      const trackedUri = toTrackUri(uri)
+      const stat = await workspace.fs.stat(uri)
+      doc.transact(() => {
+        if (trackedUri && !files.has(trackedUri.toString())) {
+          files.set(trackedUri.toString(), stat.type)
         }
+      })
+    },
+    async onDidChange(uri) {
+      const trackedUri = toTrackUri(uri)
+      if (!trackedUri) {
+        return
       }
-    })
+      const stat = await workspace.fs.stat(uri)
+      const content = stat.type & FileType.File ? await workspace.fs.readFile(uri) : null
+      doc.transact(() => {
+        const existing = files.get(trackedUri.toString())
+        if (!existing || !isContentTracked(existing)) {
+          files.set(trackedUri.toString(), stat.type)
+        }
+        else if (existing instanceof Uint8Array) {
+          files.set(trackedUri.toString(), new Uint8Array(content!))
+        }
+        else if (existing instanceof Y.Text) {
+          const text = new TextDecoder().decode(content!)
+          if (existing.toString() !== text) {
+            console.warn('External edit', uri.toString())
+            existing.delete(0, existing.length)
+            existing.insert(0, text)
+          }
+        }
+      })
+    },
   })
 
   async function init() {

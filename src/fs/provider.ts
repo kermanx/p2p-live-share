@@ -1,5 +1,5 @@
 import type { FileChangeEvent, FileSystemProvider } from 'vscode'
-import { createSingletonComposable, onScopeDispose, useDisposable, useEventEmitter } from 'reactive-vscode'
+import { defineService, onScopeDispose, useDisposable, useEventEmitter } from 'reactive-vscode'
 import { workspace } from 'vscode'
 
 export const ClientUriScheme = 'p2p-live-share'
@@ -11,7 +11,7 @@ interface DeferredWatch {
   disposed: boolean
 }
 
-export const useFsProvider = createSingletonComposable(() => {
+export const useFsProvider = defineService(() => {
   let resolveInit: () => void
   const initPromise = new Promise<void>(r => resolveInit = r)
   let deferredWatches: DeferredWatch[] = []

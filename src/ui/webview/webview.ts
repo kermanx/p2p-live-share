@@ -2,7 +2,7 @@ import type * as trystero from 'trystero'
 import type { Connection, InternalReceiver, InternalSender } from '../../sync/connection'
 import type { ChatMessage } from './components/Chat'
 import { createBirpc } from 'birpc'
-import { computed, createSingletonComposable, extensionContext, onScopeDispose, ref, shallowRef, useEventEmitter, useWebviewView, watchEffect } from 'reactive-vscode'
+import { computed, defineService, extensionContext, onScopeDispose, ref, shallowRef, useEventEmitter, useWebviewView, watchEffect } from 'reactive-vscode'
 import { commands, Uri } from 'vscode'
 import { useActiveSession } from '../../session'
 import { logger } from '../../utils'
@@ -47,7 +47,7 @@ export type UIState = 'none' | 'joining' | {
   peers: string[]
 }
 
-export const useWebview = createSingletonComposable(() => {
+export const useWebview = defineService(() => {
   const trysteroHandlers = shallowRef<TrysteroHandlers | null>(null)
 
   const isReady = ref<{ trysteroSelfId: string } | null>(null)

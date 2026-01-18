@@ -1,12 +1,10 @@
-import type { ConfigType } from 'reactive-vscode'
-import { defineConfigObject } from 'reactive-vscode'
+import { defineConfig } from 'reactive-vscode'
 
-export const configs = defineConfigObject('p2p-live-share', {
-  servers: Object as ConfigType<string[]>,
-  userName: String,
-  trysteroConfig: Object,
-})
-
-export const terminalConfigs = defineConfigObject('p2p-live-share.terminal', {
-  dimensionsSource: Object as ConfigType<'host' | 'creator' | 'minimum' | 'maximum'>,
-})
+export const configs = defineConfig<{
+  servers: string[]
+  userName: string
+  trysteroConfig: object
+  terminal: {
+    dimensionsSource: 'host' | 'creator' | 'minimum' | 'maximum'
+  }
+}>('p2p-live-share')

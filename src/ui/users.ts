@@ -1,6 +1,6 @@
 import type * as Y from 'yjs'
 import type { Connection } from '../sync/connection'
-import { computed, createSingletonComposable, onScopeDispose, ref, watch } from 'reactive-vscode'
+import { computed, defineService, onScopeDispose, ref, watch } from 'reactive-vscode'
 import { authentication, ConfigurationTarget, window } from 'vscode'
 import { configs } from '../configs'
 import { useActiveSession } from '../session'
@@ -19,7 +19,7 @@ export interface UserInfo {
   color: UserColor | null
 }
 
-export const useUsers = createSingletonComposable(() => {
+export const useUsers = defineService(() => {
   const { role, doc, selfId, peers, state } = useActiveSession()
 
   const map = computed(() => doc.value?.getMap<UserInfo>('users'))
@@ -120,7 +120,7 @@ export const useUsers = createSingletonComposable(() => {
       if (newName === undefined) {
         return null
       }
-      configs.$update('userName', newName, ConfigurationTarget.Global)
+      configs.update('userName', newName, ConfigurationTarget.Global)
       return newName
     }
   }

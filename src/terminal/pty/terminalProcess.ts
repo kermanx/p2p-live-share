@@ -171,7 +171,6 @@ export class TerminalProcess extends Disposable implements ITerminalChildProcess
       cols,
       rows,
       useConpty,
-      // @ts-expect-error qwq idk
       useConptyDll,
       // This option will force conpty to not redraw the whole viewport on launch
       conptyInheritCursor: useConpty && !!shellLaunchConfig.initialText,
@@ -407,7 +406,6 @@ export class TerminalProcess extends Disposable implements ITerminalChildProcess
       return
     }
     // Don't throttle when using conpty.dll as it seems to have been fixed in later versions
-    // @ts-expect-error qwq idk
     if (this._ptyOptions.useConptyDll) {
       return
     }

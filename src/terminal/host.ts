@@ -5,7 +5,7 @@ import { env } from 'node:process'
 import { reactive, useCommand, useDisposable, watchEffect } from 'reactive-vscode'
 import { TerminalProfile, window, workspace } from 'vscode'
 import * as Y from 'yjs'
-import { terminalConfigs } from '../configs'
+import { configs } from '../configs'
 import { useActiveSession } from '../session'
 import { useIdAllocator } from '../utils'
 import { useShadowTerminals } from './common'
@@ -99,26 +99,26 @@ export function useHostTerminals(doc: Y.Doc) {
     for (const [id, peerMap] of peerDimensions) {
       // Compute dimensions
       const dims = { columns: Number.NaN, rows: Number.NaN }
-      if (terminalConfigs.dimensionsSource === 'minimum') {
+      if (configs.terminal.dimensionsSource === 'minimum') {
         for (const peerDims of peerMap.values()) {
           dims.columns = dims.columns ? Math.min(dims.columns, peerDims.columns) : peerDims.columns
           dims.rows = dims.rows ? Math.min(dims.rows, peerDims.rows) : peerDims.rows
         }
       }
-      else if (terminalConfigs.dimensionsSource === 'maximum') {
+      else if (configs.terminal.dimensionsSource === 'maximum') {
         for (const peerDims of peerMap.values()) {
           dims.columns = dims.columns ? Math.max(dims.columns, peerDims.columns) : peerDims.columns
           dims.rows = dims.rows ? Math.max(dims.rows, peerDims.rows) : peerDims.rows
         }
       }
-      else if (terminalConfigs.dimensionsSource === 'host') {
+      else if (configs.terminal.dimensionsSource === 'host') {
         const hostDims = peerMap.get(selfId.value!)
         if (hostDims) {
           dims.columns = hostDims.columns
           dims.rows = hostDims.rows
         }
       }
-      else if (terminalConfigs.dimensionsSource === 'creator') {
+      else if (configs.terminal.dimensionsSource === 'creator') {
         const data = terminalData.get(id)
         if (data) {
           const creator = data.getAttribute('creator')
@@ -130,7 +130,7 @@ export function useHostTerminals(doc: Y.Doc) {
         }
       }
       else {
-        console.warn('Unknown terminal dimensionsSource:', terminalConfigs.dimensionsSource)
+        console.warn('Unknown terminal dimensionsSource:', configs.terminal.dimensionsSource)
       }
 
       if (Number.isNaN(dims.columns) || Number.isNaN(dims.rows)) {

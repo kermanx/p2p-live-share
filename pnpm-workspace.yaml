@@ -1,3 +1,7 @@
+shellEmulator: true
+
+trustPolicy: no-downgrade
+
 onlyBuiltDependencies:
   - '@firebase/util'
   - '@playwright/browser-chromium'

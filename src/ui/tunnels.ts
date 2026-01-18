@@ -1,11 +1,11 @@
 import type { Command } from 'vscode'
 import getPort, { portNumbers } from 'get-port'
-import { computed, createSingletonComposable, useCommands, useTreeView, useVscodeContext } from 'reactive-vscode'
+import { computed, defineService, useCommands, useTreeView, useVscodeContext } from 'reactive-vscode'
 import { env, ThemeIcon, window } from 'vscode'
 import { useActiveSession } from '../session'
 import { useUsers } from './users'
 
-export const useTunnelsTree = createSingletonComposable(() => {
+export const useTunnelsTree = defineService(() => {
   useVscodeContext('p2p-live-share:supportsTunnels', true)
 
   const { tunnels, selfId } = useActiveSession()

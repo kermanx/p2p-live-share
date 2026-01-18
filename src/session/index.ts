@@ -1,4 +1,4 @@
-import { computed, createSingletonComposable, onScopeDispose, shallowRef, useCommand, useVscodeContext, watch } from 'reactive-vscode'
+import { computed, defineService, onScopeDispose, shallowRef, useCommand, useVscodeContext, watch } from 'reactive-vscode'
 import { commands, env, Uri, window, workspace } from 'vscode'
 import { version } from '../../package.json'
 import { ClientUriScheme } from '../fs/provider'
@@ -8,7 +8,7 @@ import { useWebview } from '../ui/webview/webview'
 import { createClientSession } from './client'
 import { createHostSession } from './host'
 
-export const useActiveSession = createSingletonComposable(() => {
+export const useActiveSession = defineService(() => {
   const session = shallowRef<null
     | Awaited<ReturnType<typeof createHostSession>>
     | Awaited<ReturnType<typeof createClientSession>>

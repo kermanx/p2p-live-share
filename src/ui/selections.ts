@@ -1,7 +1,7 @@
 import type { ComputedRef, Ref } from 'reactive-vscode'
 import type { DecorationOptions, TextEditor, TextEditorDecorationType } from 'vscode'
 import type * as Y from 'yjs'
-import { computed, createSingletonComposable, onScopeDispose, ref, shallowRef, useCommands, useDisposable, useVisibleTextEditors, watch, watchEffect } from 'reactive-vscode'
+import { computed, defineService, onScopeDispose, ref, shallowRef, useCommands, useDisposable, useVisibleTextEditors, watch, watchEffect } from 'reactive-vscode'
 import { DecorationRangeBehavior, OverviewRulerLane, Selection, TextEditorRevealType, Uri, window } from 'vscode'
 import { useActiveSession } from '../session'
 import { useShallowYMapKeyScopes } from '../sync/doc'
@@ -13,7 +13,7 @@ interface SelectionInfo {
   selections: ConstructorParameters<typeof Selection>[]
 }
 
-export const useSelections = createSingletonComposable(() => {
+export const useSelections = defineService(() => {
   const { doc, selfId, toTrackUri, toLocalUri } = useActiveSession()
   const { getUserInfo } = useUsers()
 
@@ -168,7 +168,7 @@ function stringifyCssProperties(e: Record<string, string | number>) {
     .join(' ')
 }
 
-const useRealtimeSelections = createSingletonComposable(() => {
+const useRealtimeSelections = defineService(() => {
   const editor = shallowRef<TextEditor | undefined>(window.activeTextEditor)
   const selections = shallowRef<readonly Selection[]>(editor.value?.selections ?? [])
   useDisposable(window.onDidChangeTextEditorSelection((ev) => {
@@ -178,7 +178,7 @@ const useRealtimeSelections = createSingletonComposable(() => {
   return { editor, selections }
 })
 
-const useCoEditFriendlySelections = createSingletonComposable(() => {
+const useCoEditFriendlySelections = defineService(() => {
   const editor = shallowRef<TextEditor | undefined>(window.activeTextEditor)
   const selections = shallowRef<readonly Selection[]>(editor.value?.selections ?? [])
   let delayedTimeout: any | null = null

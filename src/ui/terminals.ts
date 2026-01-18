@@ -1,9 +1,9 @@
-import { computed, createSingletonComposable, useCommand, useTreeView } from 'reactive-vscode'
+import { computed, defineService, useCommand, useTreeView } from 'reactive-vscode'
 import { ThemeIcon, window } from 'vscode'
 import { useActiveSession } from '../session'
 import { extractTerminalId } from '../terminal/common'
 
-export const useTerminalsTree = createSingletonComposable(() => {
+export const useTerminalsTree = defineService(() => {
   const { shadowTerminals } = useActiveSession()
 
   const sortedTerminals = computed(() => {
