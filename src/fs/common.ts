@@ -4,7 +4,7 @@ import { useDisposable } from 'reactive-vscode'
 import { FileSystemError, Range, window, workspace, WorkspaceEdit } from 'vscode'
 
 export type FilesMap = Y.Map<Y.Doc>
-export interface TrackContentRequest { clientId: string, uri: string, content?: string }
+export interface TrackContentRequest { guestId: string, uri: string, content?: string }
 export interface FileChangeEvent { uri: string, type: FileChangeType }
 
 const editingUris = new Map<string, number>()

@@ -8,7 +8,7 @@ import { onSessionClosed } from '../session'
 import { normalizeUint8Array } from '../utils'
 import { makeTrackUri, parseTrackUri } from './share'
 import { useTrysteroConnection } from './trystero'
-import { useWebSocketConnection } from './ws/client'
+import { useWebSocketGuestConnection } from './ws/guest'
 
 export type { TargetPeers } from 'trystero'
 
@@ -34,7 +34,7 @@ export interface InternalConnection {
 export function useConnection(config: ConnectionConfig) {
   let internal: InternalConnection
   if (config.type === 'ws' || config.type === 'wss') {
-    internal = useWebSocketConnection(config)
+    internal = useWebSocketGuestConnection(config)
   }
   else if (config.type === 'trystero') {
     internal = useTrysteroConnection(config)

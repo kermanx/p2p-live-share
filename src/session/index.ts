@@ -1,22 +1,22 @@
 import { computed, defineService, onScopeDispose, shallowRef, useCommand, useVscodeContext, watch } from 'reactive-vscode'
 import { commands, env, Uri, window, workspace } from 'vscode'
 import { version } from '../../package.json'
-import { ClientUriScheme } from '../fs/provider'
+import { CustomUriScheme } from '../fs/provider'
 import { copyShareLink, inquireHostConfig, makeTrackUri, parseTrackUri, validateShareLink } from '../sync/share'
 import { useUsers } from '../ui/users'
 import { useWebview } from '../ui/webview/webview'
-import { createClientSession } from './client'
+import { createGuestSession } from './guest'
 import { createHostSession } from './host'
 
 export const useActiveSession = defineService(() => {
   const session = shallowRef<null
     | Awaited<ReturnType<typeof createHostSession>>
-    | Awaited<ReturnType<typeof createClientSession>>
+    | Awaited<ReturnType<typeof createGuestSession>>
   >(null)
   const isJoining = shallowRef(true)
 
   setTimeout(async () => {
-    const folder = workspace.workspaceFolders?.find(folder => folder.uri.scheme === ClientUriScheme)
+    const folder = workspace.workspaceFolders?.find(folder => folder.uri.scheme === CustomUriScheme)
     try {
       if (folder) {
         await joinImpl(folder.uri)
@@ -31,7 +31,7 @@ export const useActiveSession = defineService(() => {
     if (!session.value) {
       throw new Error('Not in a session')
     }
-    if (session.value.role === 'client') {
+    if (session.value.role === 'guest') {
       return uri
     }
     return session.value.connection.toTrackUri(uri)
@@ -41,7 +41,7 @@ export const useActiveSession = defineService(() => {
     if (!session.value) {
       throw new Error('Not in a session')
     }
-    if (session.value.role === 'client') {
+    if (session.value.role === 'guest') {
       return uri
     }
     return session.value.connection.toHostUri(uri)
@@ -158,7 +158,7 @@ export const useActiveSession = defineService(() => {
     }
 
     try {
-      session.value = await createClientSession(parsed)
+      session.value = await createGuestSession(parsed)
     }
     catch (error: any) {
       console.error(error)
@@ -178,20 +178,20 @@ export const useActiveSession = defineService(() => {
       return
     }
 
-    const wasClient = session.value.role === 'client'
+    const wasGuest = session.value.role === 'guest'
 
     const res = await window.showInformationMessage(
-      wasClient ? 'Confirm to leave the session?' : 'Confirm to stop sharing the session?',
+      wasGuest ? 'Confirm to leave the session?' : 'Confirm to stop sharing the session?',
       {
         modal: true,
-        detail: wasClient ? 'Unsaved changes may be lost.' : 'You will stop sharing the workspace and all clients will be disconnected.',
+        detail: wasGuest ? 'Unsaved changes may be lost.' : 'You will stop sharing the workspace and all guests will be disconnected.',
       },
       'Leave',
     )
 
     if (res === 'Leave') {
       session.value = null
-      if (wasClient) {
+      if (wasGuest) {
         workspace.updateWorkspaceFolders(0, workspace.workspaceFolders?.length)
       }
       window.showInformationMessage('You have left the session.')
@@ -203,7 +203,7 @@ export const useActiveSession = defineService(() => {
 
   useVscodeContext('p2p-live-share:inSession', computed(() => !!session.value))
   useVscodeContext('p2p-live-share:isHost', computed(() => session.value?.role === 'host'))
-  useVscodeContext('p2p-live-share:isClient', computed(() => session.value?.role === 'client'))
+  useVscodeContext('p2p-live-share:isGuest', computed(() => session.value?.role === 'guest'))
 
   useCommand('p2p-live-share.host', host)
   useCommand('p2p-live-share.join', () => join(false))
@@ -249,7 +249,7 @@ export function onSessionClosed(options: {
     return
   }
   const config = state.value.connection.config
-  const creator = state.value.role === 'host' ? createHostSession : createClientSession
+  const creator = state.value.role === 'host' ? createHostSession : createGuestSession
 
   state.value = null
   const delay = new Promise(resolve => setTimeout(resolve, 500))

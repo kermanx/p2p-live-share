@@ -12,7 +12,7 @@ if (import.meta.env.TARGET === 'node' && !WebSocket_) {
   WebSocket_ = require('ws').WebSocket
 }
 
-export function useWebSocketConnection(config: ConnectionConfig): InternalConnection {
+export function useWebSocketGuestConnection(config: ConnectionConfig): InternalConnection {
   if (config.host) {
     return useWebSocketHostConnection(config)
   }

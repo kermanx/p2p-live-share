@@ -7,7 +7,7 @@ import { languages, Uri } from 'vscode'
 import { createConverter } from 'vscode-languageclient/$test/common/protocolConverter'
 import { useObserverDeep } from '../sync/doc'
 
-export function useClientDiagnostics(doc: Y.Doc) {
+export function useGuestDiagnostics(doc: Y.Doc) {
   const diagnostics = doc.getMap<TrackedDiagnostics>('diagnostics')
 
   const collections = new Map<string, DiagnosticCollection>()

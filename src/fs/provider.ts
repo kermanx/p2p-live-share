@@ -2,7 +2,7 @@ import type { FileChangeEvent, FileSystemProvider } from 'vscode'
 import { defineService, onScopeDispose, useDisposable, useEventEmitter } from 'reactive-vscode'
 import { workspace } from 'vscode'
 
-export const ClientUriScheme = 'p2p-live-share'
+export const CustomUriScheme = 'p2p-live-share'
 
 type FileSystemProviderImpl = Omit<FileSystemProvider, 'onDidChangeFile'>
 interface DeferredWatch {
@@ -55,7 +55,7 @@ export const useFsProvider = defineService(() => {
   const fileChange = useEventEmitter<FileChangeEvent[]>()
 
   useDisposable(workspace.registerFileSystemProvider(
-    ClientUriScheme,
+    CustomUriScheme,
     {
       onDidChangeFile: fileChange.event,
       watch: (...args) => {

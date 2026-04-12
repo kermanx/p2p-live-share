@@ -1,16 +1,16 @@
 import type { BirpcReturn } from 'birpc'
-import type { ClientFunctions, HostFunctions } from '../rpc/types'
+import type { GuestFunctions, HostFunctions } from '../rpc/types'
 import type { Connection } from '../sync/connection'
 import type { FileChangeEvent } from './common'
 import { computed, defineConfig, useDisposable } from 'reactive-vscode'
 import { Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
 import { forceUpdateContent, handleFsError, setupTextDocumentUpdater, useTextDocumentWatcher } from './common'
-import { ClientUriScheme, useFsProvider } from './provider'
+import { CustomUriScheme, useFsProvider } from './provider'
 
 const filesConfig = defineConfig<any>('files')
 
-export function useClientFs(connection: Connection, rpc: BirpcReturn<HostFunctions, ClientFunctions>, hostId: string) {
+export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunctions, GuestFunctions>, hostId: string) {
   const { fileChanged, useSetActiveProvider } = useFsProvider()
 
   const files = new Map<string, Y.Doc>()
@@ -24,7 +24,7 @@ export function useClientFs(connection: Connection, rpc: BirpcReturn<HostFunctio
 
   async function trackContent(uri: string) {
     const doc = new Y.Doc()
-    const init = await rpc.trackContent({ clientId: connection.selfId, uri })
+    const init = await rpc.trackContent({ guestId: connection.selfId, uri })
     Y.applyUpdateV2(doc, init)
     files.set(uri, doc)
 
@@ -37,7 +37,7 @@ export function useClientFs(connection: Connection, rpc: BirpcReturn<HostFunctio
   }
 
   useTextDocumentWatcher((document) => {
-    if (document.uri.scheme === ClientUriScheme) {
+    if (document.uri.scheme === CustomUriScheme) {
       const uri = document.uri.toString()
       const file = files.get(uri)
       if (file)
@@ -49,13 +49,13 @@ export function useClientFs(connection: Connection, rpc: BirpcReturn<HostFunctio
   })
 
   useDisposable(workspace.onDidOpenTextDocument(({ uri }) => {
-    if (uri.scheme === ClientUriScheme)
+    if (uri.scheme === CustomUriScheme)
       trackContent(uri.toString())
   }))
   useDisposable(workspace.onDidCloseTextDocument(({ uri }) => {
-    if (uri.scheme === ClientUriScheme) {
+    if (uri.scheme === CustomUriScheme) {
       files.delete(uri.toString())
-      rpc.untrackContent({ clientId: connection.selfId, uri: uri.toString() })
+      rpc.untrackContent({ guestId: connection.selfId, uri: uri.toString() })
     }
   }))
 
@@ -73,7 +73,7 @@ export function useClientFs(connection: Connection, rpc: BirpcReturn<HostFunctio
 
   const willSaveDocuments = new Set<string>()
   useDisposable(workspace.onWillSaveTextDocument(({ document }) => {
-    if (document.uri.scheme === ClientUriScheme) {
+    if (document.uri.scheme === CustomUriScheme) {
       willSaveDocuments.add(document.uri.toString())
     }
   }))

@@ -3,20 +3,20 @@ import type { HostMeta } from './types'
 import { effectScope, watchEffect } from 'reactive-vscode'
 import { ProgressLocation, window } from 'vscode'
 import * as Y from 'yjs'
-import { useClientDiagnostics } from '../diagnostics/client'
-import { useClientFs } from '../fs/client'
-import { useClientLs } from '../ls/client'
-import { useClientRpc } from '../rpc/client'
-import { useClientScm } from '../scm/client'
+import { useGuestDiagnostics } from '../diagnostics/guest'
+import { useGuestFs } from '../fs/guest'
+import { useGuestLs } from '../ls/guest'
+import { useGuestRpc } from '../rpc/guest'
+import { useGuestScm } from '../scm/guest'
 import { useConnection } from '../sync/connection'
 import { useDocSync } from '../sync/doc'
-import { useClientTerminals } from '../terminal/client'
+import { useGuestTerminals } from '../terminal/guest'
 import { useTunnels } from '../tunnel'
 import { useUsers } from '../ui/users'
 import { useWebview } from '../ui/webview/webview'
 import { onSessionClosed, ProtocolVersion } from './index'
 
-export async function createClientSession(config: ConnectionConfig) {
+export async function createGuestSession(config: ConnectionConfig) {
   const scope = effectScope(true)
   const connection = scope.run(() => useConnection(config))!
   await connection.ready
@@ -70,12 +70,12 @@ export async function createClientSession(config: ConnectionConfig) {
     useDocSync(connection, doc)
     Y.applyUpdateV2(doc, initUpdate)
 
-    const rpc = useClientRpc(connection, hostId)
-    useClientFs(connection, rpc, hostId)
-    const { shadowTerminals } = useClientTerminals(connection, doc, rpc, hostId)
-    useClientLs(connection, hostId)
-    useClientDiagnostics(doc)
-    useClientScm(doc, rpc)
+    const rpc = useGuestRpc(connection, hostId)
+    useGuestFs(connection, rpc, hostId)
+    const { shadowTerminals } = useGuestTerminals(connection, doc, rpc, hostId)
+    useGuestLs(connection, hostId)
+    useGuestDiagnostics(doc)
+    useGuestScm(doc, rpc)
     const tunnels = useTunnels(connection, doc)
     useWebview().useChat(connection)
     useUsers().useCurrentUser(connection, doc)
@@ -92,7 +92,7 @@ export async function createClientSession(config: ConnectionConfig) {
     })
 
     return {
-      role: 'client' as const,
+      role: 'guest' as const,
       hostId,
       hostMeta,
       connection,

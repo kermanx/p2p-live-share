@@ -1,6 +1,6 @@
 import type { BirpcReturn } from 'birpc'
 import type * as Y from 'yjs'
-import type { ClientFunctions, HostFunctions } from '../rpc/types'
+import type { GuestFunctions, HostFunctions } from '../rpc/types'
 import type { Connection } from '../sync/connection'
 import type { TerminalData } from './common'
 import { useCommand, useDisposable } from 'reactive-vscode'
@@ -8,7 +8,7 @@ import { TerminalProfile, window } from 'vscode'
 import { useObserverShallow } from '../sync/doc'
 import { extractTerminalId, useShadowTerminals } from './common'
 
-export function useClientTerminals(connection: Connection, doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFunctions>, hostId: string) {
+export function useGuestTerminals(connection: Connection, doc: Y.Doc, rpc: BirpcReturn<HostFunctions, GuestFunctions>, hostId: string) {
   const [send, recv] = connection.makeAction<string, string>('terminal')
   recv((content, _peerId, id) => {
     const terminal = getShadowTerminal(id!)

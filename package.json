@@ -215,7 +215,7 @@
         },
         {
           "command": "p2p-live-share.leave",
-          "when": "view == p2p-live-share.participants && p2p-live-share:isClient",
+          "when": "view == p2p-live-share.participants && p2p-live-share:isGuest",
           "group": "navigation"
         },
         {
@@ -285,7 +285,7 @@
         {
           "command": "p2p-live-share.leave",
           "group": "virtualfs_00_p2p-live-share_kermanx",
-          "when": "p2p-live-share:isClient"
+          "when": "p2p-live-share:isGuest"
         },
         {
           "command": "p2p-live-share.copyInviteLink",
@@ -357,7 +357,7 @@
         },
         {
           "command": "p2p-live-share.leave",
-          "when": "p2p-live-share:isClient"
+          "when": "p2p-live-share:isGuest"
         },
         {
           "command": "p2p-live-share.focusParticipant",

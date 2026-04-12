@@ -7,4 +7,4 @@ export type HostFunctions
     & ReturnType<typeof useHostTerminals>
     & ReturnType<typeof useHostScm>
 
-export interface ClientFunctions {}
+export interface GuestFunctions {}

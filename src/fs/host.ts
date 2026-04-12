@@ -22,17 +22,17 @@ export function useHostFs(connection: Connection) {
       Y.applyUpdateV2(file.doc, update, { peerId })
   })
 
-  async function trackContent({ clientId, uri, content }: TrackContentRequest) {
+  async function trackContent({ guestId, uri, content }: TrackContentRequest) {
     const file = files.get(uri)
     if (file) {
-      file.trackers.add(clientId)
+      file.trackers.add(guestId)
       if (content !== undefined)
         file.doc.getText().insert(0, content)
       return Y.encodeStateAsUpdateV2(file.doc)
     }
     else {
       const doc = new Y.Doc()
-      const trackers = new Set<string>([clientId])
+      const trackers = new Set<string>([guestId])
       files.set(uri, { doc, trackers })
 
       doc.on('updateV2', async (update: Uint8Array, origin: any) => {
@@ -50,10 +50,10 @@ export function useHostFs(connection: Connection) {
       return Y.encodeStateAsUpdateV2(doc)
     }
   }
-  function untrackContent({ clientId, uri }: TrackContentRequest) {
+  function untrackContent({ guestId, uri }: TrackContentRequest) {
     const file = files.get(uri)
     if (file) {
-      file.trackers.delete(clientId)
+      file.trackers.delete(guestId)
       if (file.trackers.size === 0) {
         files.delete(uri)
         file.doc.destroy()
@@ -90,7 +90,7 @@ export function useHostFs(connection: Connection) {
   const watchers = new Map<number, IDisposable>()
   const [sendFsChange] = connection.makeAction<FileChangeEvent>('fsChange')
 
-  async function fsWatch(clientId: string, uri: string, options: {
+  async function fsWatch(guestId: string, uri: string, options: {
     readonly recursive: boolean
     readonly excludes: readonly string[]
   }) {
@@ -107,7 +107,7 @@ export function useHostFs(connection: Connection) {
         return
       if (type === FileChangeType.Changed) {
         const file = files.get(uri.toString())
-        if (file?.trackers.has(clientId)) {
+        if (file?.trackers.has(guestId)) {
           if (!workspace.textDocuments.some(doc => doc.uri.toString() === uri_.toString())) {
             // If the text document os open, `workspace.onDidChangeTextDocument` will handle the update, otherwise we need to force update here
             const newContent = await workspace.fs.readFile(uri_)
@@ -116,7 +116,7 @@ export function useHostFs(connection: Connection) {
           return
         }
       }
-      sendFsChange({ uri: uri.toString(), type }, clientId)
+      sendFsChange({ uri: uri.toString(), type }, guestId)
     }
 
     const handle = currentWatchHandle++
@@ -168,7 +168,7 @@ export function useHostFs(connection: Connection) {
   }) {
     const file = files.get(uri)
     if (file) {
-      // Rare. Only happens when the file is being edited by client who doesn't open the file in the editor
+      // Rare. Only happens when the file is being edited by a guest who doesn't open the file in the editor
       forceUpdateContent(uri, file.doc, content)
       return
     }

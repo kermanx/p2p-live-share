@@ -2,7 +2,7 @@ import type { QuickPickItem } from 'vscode'
 import { customAlphabet } from 'nanoid'
 import { ConfigurationTarget, env, ThemeIcon, Uri, window, workspace } from 'vscode'
 import { configs } from '../configs'
-import { ClientUriScheme } from '../fs/provider'
+import { CustomUriScheme } from '../fs/provider'
 import { useUsers } from '../ui/users'
 
 export interface ConnectionConfig {
@@ -27,14 +27,14 @@ export function makeTrackUri(config: ConnectionConfig, uri_: Uri) {
   if (folder.index !== 0)
     authority += `|${folder.index}`
   return Uri.from({
-    scheme: ClientUriScheme,
+    scheme: CustomUriScheme,
     authority,
     path: path.startsWith('/') ? path : `/${path}`,
   })
 }
 
 export function parseTrackUri(uri: Uri): ConnectionConfig & { path: string } | null {
-  if (uri.scheme !== ClientUriScheme) {
+  if (uri.scheme !== CustomUriScheme) {
     return null
   }
   const [typeAndRoomId, folderIndex] = uri.authority.split('|', 2)
@@ -254,8 +254,8 @@ Others may join this session by clicking on the "Join" button and pasting this l
 }
 
 export function validateShareLink(value: string) {
-  if (!value.trim().startsWith(`${ClientUriScheme}://`)) {
-    return `URI must start with ${ClientUriScheme}://`
+  if (!value.trim().startsWith(`${CustomUriScheme}://`)) {
+    return `URI must start with ${CustomUriScheme}://`
   }
   try {
     const parsed = parseTrackUri(Uri.parse(value.trim()))

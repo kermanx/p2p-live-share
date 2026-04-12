@@ -1,18 +1,18 @@
 import type { BirpcReturn } from 'birpc'
 import type { Command, SourceControlResourceDecorations, SourceControlResourceGroup, SourceControlResourceState, TextDocumentShowOptions } from 'vscode'
 import type * as Y from 'yjs'
-import type { ClientFunctions, HostFunctions } from '../rpc/types'
+import type { GuestFunctions, HostFunctions } from '../rpc/types'
 import type { GitExtension } from './git'
 import type { ScmChange, ScmGroupMeta, ScmRepo } from './types'
 import { basename } from 'pathe'
 import { useCommands, useDisposable, watchEffect } from 'reactive-vscode'
 import { extensions, l10n, scm, ThemeColor, Uri, ViewColumn, window, workspace } from 'vscode'
-import { ClientUriScheme } from '../fs/provider'
+import { CustomUriScheme } from '../fs/provider'
 import { useShallowYArray, useShallowYMapValueScopes } from '../sync/doc'
 import { lazy } from '../utils'
 import { Status } from './git'
 
-export function useClientScm(doc: Y.Doc, _rpc: BirpcReturn<HostFunctions, ClientFunctions>) {
+export function useGuestScm(doc: Y.Doc, _rpc: BirpcReturn<HostFunctions, GuestFunctions>) {
   return
 
   const map = doc.getMap<ScmRepo>('scm')
@@ -25,7 +25,7 @@ export function useClientScm(doc: Y.Doc, _rpc: BirpcReturn<HostFunctions, Client
       if (resource) {
         if (resource instanceof Uri) {
           switch (resource.scheme) {
-            case ClientUriScheme:
+            case CustomUriScheme:
               urisToOpen = [resource]
               break
             case 'vsls-scc':{

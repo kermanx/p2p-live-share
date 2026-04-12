@@ -2,7 +2,7 @@ import type { InitializeParams } from 'vscode-languageclient/browser'
 import type { Connection } from '../sync/connection'
 import { useCommand, useDisposable } from 'reactive-vscode'
 import { CloseAction, ErrorAction, LanguageClient, RevealOutputChannelOn } from 'vscode-languageclient/browser'
-import { ClientUriScheme } from '../fs/provider'
+import { CustomUriScheme } from '../fs/provider'
 import { ExecuteHostCommand, useLsConnection } from './common'
 
 class PatchedLanguageClient extends LanguageClient {
@@ -12,15 +12,15 @@ class PatchedLanguageClient extends LanguageClient {
   }
 }
 
-export function useClientLs(connection: Connection, hostId: string) {
+export function useGuestLs(connection: Connection, hostId: string) {
   const lc = useLsConnection(connection, hostId)
 
-  const client = useDisposable(new PatchedLanguageClient(
+  const languageClient = useDisposable(new PatchedLanguageClient(
     'P2PLiveShare',
     'P2P Live Share Language Client',
     async () => lc,
     {
-      documentSelector: [{ scheme: ClientUriScheme }],
+      documentSelector: [{ scheme: CustomUriScheme }],
       revealOutputChannelOn: RevealOutputChannelOn.Debug,
       middleware: {
       },
@@ -37,7 +37,7 @@ export function useClientLs(connection: Connection, hostId: string) {
     },
   ))
 
-  client.start().catch((err) => {
+  languageClient.start().catch((err) => {
     console.error('Language client start error:', err)
   })
 

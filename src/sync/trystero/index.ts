@@ -31,17 +31,12 @@ export function useTrysteroConnection(config: ConnectionConfig): InternalConnect
     onTrysteroMessage: recv,
   }
 
-  try {
-    var ready = rpc.trysteroJoinRoom(strategy, {
-      ...TrysteroConfig,
-      ...configs.trysteroConfig,
-    }, roomId).then(() => {
-      rpc.trysteroListenAction(AckActionName)
-    })
-  }
-  catch (error: any) {
-    console.error('????', error.stack)
-  }
+  const ready = rpc.trysteroJoinRoom(strategy, {
+    ...TrysteroConfig,
+    ...configs.trysteroConfig,
+  }, roomId).then(() => {
+    rpc.trysteroListenAction(AckActionName)
+  })
 
   onScopeDispose(() => {
     closed = true

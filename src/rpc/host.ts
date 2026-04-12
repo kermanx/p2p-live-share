@@ -1,5 +1,5 @@
 import type { Connection } from '../sync/connection'
-import type { ClientFunctions, HostFunctions } from './types'
+import type { GuestFunctions, HostFunctions } from './types'
 import { createBirpc } from 'birpc'
 import { pack, unpack } from 'msgpackr'
 
@@ -9,7 +9,7 @@ export function useHostRpc(
 ) {
   const [sendRpcData, recvRpcData] = connection.makeAction('rpc')
 
-  const rpc = createBirpc<ClientFunctions, HostFunctions>(
+  const rpc = createBirpc<GuestFunctions, HostFunctions>(
     functions,
     {
       post: (data, peerId) => sendRpcData(data, peerId),

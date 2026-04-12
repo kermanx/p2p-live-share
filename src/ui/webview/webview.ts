@@ -40,7 +40,7 @@ export interface ExtensionFunctions extends TrysteroHandlers {
 }
 
 export type UIState = 'none' | 'joining' | {
-  role: 'host' | 'client'
+  role: 'host' | 'guest'
   selfId: string
   hostId: string
   roomId: string
