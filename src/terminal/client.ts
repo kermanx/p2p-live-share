@@ -1,26 +1,32 @@
 import type { BirpcReturn } from 'birpc'
+import type * as Y from 'yjs'
 import type { ClientFunctions, HostFunctions } from '../rpc/types'
+import type { Connection } from '../sync/connection'
 import type { TerminalData } from './common'
 import { useCommand, useDisposable } from 'reactive-vscode'
 import { TerminalProfile, window } from 'vscode'
-import * as Y from 'yjs'
-import { useActiveSession } from '../session'
-import { useObserverDeep } from '../sync/doc'
+import { useObserverShallow } from '../sync/doc'
 import { extractTerminalId, useShadowTerminals } from './common'
 
-export function useClientTerminals(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFunctions>) {
-  const { selfId } = useActiveSession()
+export function useClientTerminals(connection: Connection, doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFunctions>, hostId: string) {
+  const [send, recv] = connection.makeAction<string, string>('terminal')
+  recv((content, _peerId, id) => {
+    const terminal = getShadowTerminal(id!)
+    if (terminal) {
+      terminal.appendOutput(content)
+    }
+  })
 
   const terminalData = doc.getMap<TerminalData>('terminals')
   const createdTerminals = new Set<string>()
 
   const { shadowTerminals, getShadowTerminal, createShadowTerminal } = useShadowTerminals(
     (id, content) => {
-      rpc.handleTerminalInput(id, content)
+      send(content, hostId, id)
     },
     (terminal, dims) => {
       if (createdTerminals.has(terminal.id) || terminal.terminalInstance.value?.state.isInteractedWith) {
-        rpc.updateShadowTerminalDimensions(selfId.value!, terminal.id, dims)
+        rpc.updateShadowTerminalDimensions(connection.selfId, terminal.id, dims)
       }
     },
     (id) => {
@@ -35,14 +41,14 @@ export function useClientTerminals(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, C
     if (id && terminal.state.isInteractedWith) {
       const shadow = getShadowTerminal(id)
       if (shadow && shadow.currentDimensions) {
-        rpc.updateShadowTerminalDimensions(selfId.value!, id, shadow.currentDimensions)
+        rpc.updateShadowTerminalDimensions(connection.selfId, id, shadow.currentDimensions)
       }
     }
   }))
 
   useDisposable(window.registerTerminalProfileProvider('p2p-live-share.sharedTerminal', {
     async provideTerminalProfile() {
-      const { id, name } = await rpc.createSharedTerminal(selfId.value!)
+      const { id, name } = await rpc.createSharedTerminal(connection.selfId)
       const { createOptions } = createShadowTerminal(id, name)
       createdTerminals.add(id)
       return new TerminalProfile(createOptions)
@@ -50,7 +56,7 @@ export function useClientTerminals(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, C
   }))
 
   useCommand('p2p-live-share.createSharedTerminal', async () => {
-    const { id, name } = await rpc.createSharedTerminal(selfId.value!)
+    const { id, name } = await rpc.createSharedTerminal(connection.selfId)
     const terminal = createShadowTerminal(id, name)
     terminal.create().show()
     createdTerminals.add(id)
@@ -60,67 +66,30 @@ export function useClientTerminals(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, C
     const data = terminalData.get(id)!
     let terminal = getShadowTerminal(id)
     if (!terminal) {
-      if (data.getAttribute('creator') === selfId.value) {
+      if (data.creator === connection.selfId) {
         // This terminal is created by self.
         setTimeout(() => syncShadowTerminal(id), 1000)
         return
       }
-      terminal = createShadowTerminal(id, data.getAttribute('name'))
+      terminal = createShadowTerminal(id, data.name)
       terminal.create()
     }
-    terminal.writable.value = data.getAttribute('writable')
-    terminal.overrideDimensions(data.getAttribute('dimensions'))
-    terminal.initOutput(data.toString())
+    terminal.writable.value = data.writable
+    terminal.overrideDimensions(data.dimensions)
   }
 
-  useObserverDeep(() => terminalData, (event) => {
+  useObserverShallow(() => terminalData, (event) => {
     if (event.transaction.local) {
       return
     }
 
-    if (event.target instanceof Y.Map) {
-      for (const [id, { action }] of event.keys) {
-        if (action === 'delete') {
-          const terminal = getShadowTerminal(id)
-          terminal?.dispose()
-        }
-        else {
-          syncShadowTerminal(id)
-        }
-      }
-    }
-
-    else if (event.target instanceof Y.Text) {
-      const id = event.path[0] as string
-      const terminal = getShadowTerminal(id)
-      if (!terminal) {
-        console.warn('Unknown terminal changed')
-        return
-      }
-
-      const delta = event.delta
-      if (delta.length === 0) {
-        // noop
-      }
-      else if (delta.length === 1 && delta[0].insert) {
-        const content = delta[0].insert as string
-        terminal.appendOutput(content)
-      }
-      else if (delta.length === 2 && delta[0].retain && delta[1].insert) {
-        const content = delta[1].insert as string
-        terminal.appendOutput(content)
+    for (const [id, { action }] of event.keys) {
+      if (action === 'delete') {
+        const terminal = getShadowTerminal(id)
+        terminal?.dispose()
       }
       else {
-        console.warn('Unsupported terminal change delta', delta)
-      }
-
-      if (event.keys.has('dimensions')) {
-        const dimension = event.target.getAttribute('dimensions')
-        terminal.overrideDimensions(dimension)
-      }
-      if (event.keys.has('writable')) {
-        const writable = event.target.getAttribute('writable')
-        terminal.writable.value = writable
+        syncShadowTerminal(id)
       }
     }
   }, (terminalData) => {

@@ -1,22 +1,24 @@
 import type { TerminalDimensions } from 'vscode'
+import type * as Y from 'yjs'
+import type { Connection } from '../sync/connection.js'
 import type { TerminalData } from './common'
 import type { ProcessHandle } from './pty/index.js'
 import { env } from 'node:process'
 import { reactive, useCommand, useDisposable, watchEffect } from 'reactive-vscode'
 import { TerminalProfile, window, workspace } from 'vscode'
-import * as Y from 'yjs'
 import { configs } from '../configs'
-import { useActiveSession } from '../session'
-import { useIdAllocator } from '../utils'
+import { CounterMap, useIdAllocator } from '../utils'
 import { useShadowTerminals } from './common'
 import { createProcess } from './pty/index.js'
 
-export function useHostTerminals(doc: Y.Doc) {
-  const { selfId } = useActiveSession()
+export function useHostTerminals(connection: Connection, doc: Y.Doc) {
+  const [send, recv] = connection.makeAction<string, string>('terminal')
+  recv((content, _peerId, id) => handleTerminalInput(id!, content))
 
   const terminalData = doc.getMap<TerminalData>('terminals')
   const processes = new Map<string, ProcessHandle>()
-  const createdTerminals = new Set<string>()
+  const allTerminals = new Set<string>()
+  const usedNames = new CounterMap<string>()
 
   const allocId = useIdAllocator()
 
@@ -28,7 +30,7 @@ export function useHostTerminals(doc: Y.Doc) {
         console.warn('Unknown terminal setDimensions')
         return
       }
-      updateShadowTerminalDimensions(selfId.value!, terminal.id, dims)
+      updateShadowTerminalDimensions(connection.selfId, terminal.id, dims)
     },
     (id) => {
       killSharedTerminal(id)
@@ -37,16 +39,16 @@ export function useHostTerminals(doc: Y.Doc) {
 
   useDisposable(window.registerTerminalProfileProvider('p2p-live-share.sharedTerminal', {
     async provideTerminalProfile() {
-      const { id, terminal } = await createSharedTerminalImpl(selfId.value!)
-      createdTerminals.add(id)
+      const { id, terminal } = await createSharedTerminalImpl(connection.selfId)
+      allTerminals.add(id)
       return new TerminalProfile(terminal.createOptions)
     },
   }))
 
   useCommand('p2p-live-share.createSharedTerminal', async () => {
-    const { id, terminal } = await createSharedTerminalImpl(selfId.value!)
+    const { id, terminal } = await createSharedTerminalImpl(connection.selfId)
     terminal.create().show()
-    createdTerminals.add(id)
+    allTerminals.add(id)
   })
 
   function handleTerminalInput(id: string, content: string) {
@@ -66,22 +68,20 @@ export function useHostTerminals(doc: Y.Doc) {
     })
     processes.set(id, process)
 
-    const name = `${process.windowTitle} [Shared]`
+    const name = `${process.windowTitle} ${usedNames.inc(process.windowTitle)}`
     const terminal = createShadowTerminal(id, name)
 
-    const text = new Y.Text()
     doc.transact(() => {
-      terminalData.set(id, text)
-      text.setAttribute('name', name)
-      text.setAttribute('writable', true)
-      text.setAttribute('creator', creator)
+      terminalData.set(id, {
+        name,
+        writable: true,
+        creator,
+      })
     })
 
     process.onOutput((data) => {
       terminal.appendOutput(data)
-      doc.transact(() => {
-        text.insert(text.length, data)
-      })
+      send(data, null, id)
     })
 
     return { id, name, terminal }
@@ -112,7 +112,7 @@ export function useHostTerminals(doc: Y.Doc) {
         }
       }
       else if (configs.terminal.dimensionsSource === 'host') {
-        const hostDims = peerMap.get(selfId.value!)
+        const hostDims = peerMap.get(connection.selfId)
         if (hostDims) {
           dims.columns = hostDims.columns
           dims.rows = hostDims.rows
@@ -121,8 +121,7 @@ export function useHostTerminals(doc: Y.Doc) {
       else if (configs.terminal.dimensionsSource === 'creator') {
         const data = terminalData.get(id)
         if (data) {
-          const creator = data.getAttribute('creator')
-          const creatorDims = peerMap.get(creator)
+          const creatorDims = peerMap.get(data.creator)
           if (creatorDims) {
             dims.columns = creatorDims.columns
             dims.rows = creatorDims.rows
@@ -143,11 +142,11 @@ export function useHostTerminals(doc: Y.Doc) {
         console.warn('Unknown terminal setDimensions')
         continue
       }
-      const oldDims = data.getAttribute('dimensions')
+      const oldDims = data.dimensions
       if (oldDims && oldDims.columns === dims.columns && oldDims.rows === dims.rows) {
         continue
       }
-      data.setAttribute('dimensions', dims)
+      data.dimensions = dims
 
       // Update the process dimensions
       const process = processes.get(id)
@@ -174,7 +173,7 @@ export function useHostTerminals(doc: Y.Doc) {
     const terminal = getShadowTerminal(id)
     if (terminal) {
       terminal.dispose()
-      createdTerminals.delete(id)
+      allTerminals.delete(id)
     }
     terminalData.delete(id)
   }
@@ -191,6 +190,5 @@ export function useHostTerminals(doc: Y.Doc) {
     },
     updateShadowTerminalDimensions,
     killSharedTerminal,
-    handleTerminalInput,
   }
 }

@@ -72,7 +72,7 @@ export async function createClientSession(config: ConnectionConfig) {
 
     const rpc = useClientRpc(connection, hostId)
     useClientFs(connection, rpc, hostId)
-    const { shadowTerminals } = useClientTerminals(doc, rpc)
+    const { shadowTerminals } = useClientTerminals(connection, doc, rpc, hostId)
     useClientLs(connection, hostId)
     useClientDiagnostics(doc)
     useClientScm(doc, rpc)

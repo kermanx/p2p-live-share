@@ -1,9 +1,13 @@
 import type { ExtensionTerminalOptions, Terminal, TerminalDimensions } from 'vscode'
-import type * as Y from 'yjs'
 import { computed, effectScope, onScopeDispose, readonly, ref, shallowReactive, useEventEmitter } from 'reactive-vscode'
 import { ThemeIcon, window } from 'vscode'
 
-export type TerminalData = Y.Text
+export interface TerminalData {
+  name: string
+  writable: boolean
+  creator: string
+  dimensions?: TerminalDimensions
+}
 
 export function useShadowTerminals(
   handleInput: (terminalId: string, content: string) => void,
@@ -16,7 +20,6 @@ export function useShadowTerminals(
     const scope = effectScope(true)
     const terminal = scope.run(() => {
       let opened = false
-      let outputInitialized = false
       let pendingOutput = ''
       let currentDimensions: TerminalDimensions | undefined
 
@@ -24,7 +27,7 @@ export function useShadowTerminals(
       const outputEmitter = useEventEmitter<string>()
       const overrideDimensionsEmitter = useEventEmitter<TerminalDimensions | undefined>()
       const createOptions: ExtensionTerminalOptions = {
-        name,
+        name: `${name} [Shared]`,
         iconPath: new ThemeIcon('live-share'),
         pty: {
           ['__LiveShareId' as any]: id,
@@ -56,7 +59,6 @@ export function useShadowTerminals(
       }
 
       function appendOutput(content: string) {
-        outputInitialized = true
         if (opened) {
           outputEmitter.fire(content)
         }
@@ -75,6 +77,7 @@ export function useShadowTerminals(
 
       return {
         id,
+        name,
         createOptions,
         writable,
         createdAt: Date.now(),
@@ -84,11 +87,6 @@ export function useShadowTerminals(
         dispose: () => {
           scope.stop()
           idToTerminal.delete(id)
-        },
-        initOutput: (output: string) => {
-          if (!outputInitialized) {
-            appendOutput(output)
-          }
         },
         appendOutput,
         overrideDimensions: overrideDimensionsEmitter.fire,

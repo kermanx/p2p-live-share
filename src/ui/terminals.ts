@@ -34,12 +34,10 @@ export const useTerminalsTree = defineService(() => {
   useTreeView(
     'p2p-live-share.terminals',
     computed(() => sortedTerminals.value.map((terminal) => {
-      const label = terminal.createOptions.name.slice(0, -' [shared]'.length)
-
       return {
         treeItem: {
           iconPath: new ThemeIcon('terminal'),
-          label,
+          label: terminal.name,
           terminal,
           command: {
             title: 'Focus Shared Terminal',
