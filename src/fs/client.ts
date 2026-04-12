@@ -57,6 +57,13 @@ export function useClientFs(connection: Connection, rpc: BirpcReturn<HostFunctio
     }
   }))
 
+  const willSaveDocuments = new Set<string>()
+  useDisposable(workspace.onWillSaveTextDocument(({ document }) => {
+    if (document.uri.scheme === ClientUriScheme) {
+      willSaveDocuments.add(document.uri.toString())
+    }
+  }))
+
   const [_, recvFsChange] = connection.makeAction<FileChangeEvent>('fsChange')
   recvFsChange(({ uri, type }) => fileChanged([{ uri: Uri.parse(uri), type }]))
 
@@ -84,7 +91,10 @@ export function useClientFs(connection: Connection, rpc: BirpcReturn<HostFunctio
     async writeFile(uri, content, options) {
       const file = files.get(uri.toString())
       if (file) {
-        forceUpdateContent(uri, file, content)
+        if (!willSaveDocuments.delete(uri.toString())) {
+          // `workspace.fs.writeFile` by other extension
+          forceUpdateContent(uri, file, content)
+        }
         // Ensure saved to the disk
         await rpc.saveContent(uri.toString())
         return

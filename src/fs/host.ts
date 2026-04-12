@@ -1,9 +1,9 @@
 import type { IDisposable } from 'node-pty'
-import type { Connection } from '../sync/connection'
-import type { FileChangeEvent, TrackContentRequest } from './common'
 import picomatch from 'picomatch'
 import { Disposable, FileChangeType, RelativePattern, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
+import type { Connection } from '../sync/connection'
+import type { FileChangeEvent, TrackContentRequest } from './common'
 import { forceUpdateContent, fsErrorWrapper, setupTextDocumentUpdater, useTextDocumentWatcher } from './common'
 
 export function useHostFs(connection: Connection) {
@@ -97,8 +97,11 @@ export function useHostFs(connection: Connection) {
       if (type === FileChangeType.Changed) {
         const file = files.get(uri.toString())
         if (file?.trackers.has(clientId)) {
-          const newContent = await workspace.fs.readFile(uri_)
-          forceUpdateContent(uri_, file.doc, newContent)
+          if (!workspace.textDocuments.some(doc => doc.uri.toString() === uri_.toString())) {
+            // If the text document os open, `workspace.onDidChangeTextDocument` will handle the update, otherwise we need to force update here
+            const newContent = await workspace.fs.readFile(uri_)
+            forceUpdateContent(uri_, file.doc, newContent)
+          }
           return
         }
       }
@@ -154,6 +157,7 @@ export function useHostFs(connection: Connection) {
   }) {
     const file = files.get(uri)
     if (file) {
+      // Rare. Only happens when the file is being edited by client who doesn't open the file in the editor
       forceUpdateContent(uri, file.doc, content)
       return
     }
