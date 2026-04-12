@@ -9,7 +9,7 @@ const TrysteroConfig = {
   appId: `p2p-live-share-${(114514).toString(36)}`,
 }
 
-export function useSteroConnection(config: ConnectionConfig): InternalConnection {
+export function useTrysteroConnection(config: ConnectionConfig): InternalConnection {
   const { domain: strategy, roomId } = config
   const { rpc, trysteroHandlers, trysteroSelfId } = useWebview()
 
@@ -31,12 +31,17 @@ export function useSteroConnection(config: ConnectionConfig): InternalConnection
     onTrysteroMessage: recv,
   }
 
-  const ready = rpc.trysteroJoinRoom(strategy, {
-    ...TrysteroConfig,
-    ...configs.trysteroConfig,
-  }, roomId).then(() => {
-    rpc.trysteroListenAction(AckActionName)
-  })
+  try {
+    var ready = rpc.trysteroJoinRoom(strategy, {
+      ...TrysteroConfig,
+      ...configs.trysteroConfig,
+    }, roomId).then(() => {
+      rpc.trysteroListenAction(AckActionName)
+    })
+  }
+  catch (error: any) {
+    console.error('????', error.stack)
+  }
 
   onScopeDispose(() => {
     closed = true

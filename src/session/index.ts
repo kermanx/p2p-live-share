@@ -69,6 +69,7 @@ export const useActiveSession = defineService(() => {
         session.value = await createHostSession(config)
       }
       catch (error: any) {
+        console.error(error)
         window.showErrorMessage(
           'P2P Live Share: Failed to start hosting.',
           {

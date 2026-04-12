@@ -7,7 +7,7 @@ import { Uri, window, workspace } from 'vscode'
 import { onSessionClosed } from '../session'
 import { normalizeUint8Array } from '../utils'
 import { makeTrackUri, parseTrackUri } from './share'
-import { useSteroConnection } from './trystero'
+import { useTrysteroConnection } from './trystero'
 import { useWebSocketConnection } from './ws/client'
 
 export type { TargetPeers } from 'trystero'
@@ -37,7 +37,7 @@ export function useConnection(config: ConnectionConfig) {
     internal = useWebSocketConnection(config)
   }
   else if (config.type === 'trystero') {
-    internal = useSteroConnection(config)
+    internal = useTrysteroConnection(config)
   }
   else {
     throw new Error(`Unknown connection type: ${config.type}`)

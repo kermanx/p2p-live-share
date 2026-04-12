@@ -69,8 +69,8 @@ importers:
         specifier: ^4.0.4
         version: 4.0.4
       reactive-vscode:
-        specifier: ^1.0.0-beta.2
-        version: 1.0.0-beta.2(@types/vscode@1.105.0)
+        specifier: ^1.0.0
+        version: 1.0.0(@types/vscode@1.105.0)
       trystero:
         specifier: ^0.22.0
         version: 0.22.0(@multiformats/multiaddr@12.5.1)
@@ -926,8 +926,8 @@ packages:
   '@quansync/fs@1.0.0':
     resolution: {integrity: sha512-4TJ3DFtlf1L5LDMaM6CanJ/0lckGNtJcMjQ1NAV6zDmA0tEHKZtxNKin8EgPaVX1YzljbxckyT2tJrpQKAtngQ==}
 
-  '@reactive-vscode/reactivity@1.0.0-beta.2':
-    resolution: {integrity: sha512-sVddfw2Fq285HMG/hGiOFyCGOMhtIBw7n0y1QG58W1CGdMBSUtJ7gXvQJuQz2qO3c9M6zY/BNYRmWCQHFbzemg==}
+  '@reactive-vscode/reactivity@1.0.0':
+    resolution: {integrity: sha512-mh9wIZua5yG++EBDUfgSed3sMzauKkeVv620UIJNuB9dZr6Md73za4R+w1T3yoClJq4B3OsqUAodmG6ZtPfBdw==}
 
   '@rolldown/binding-android-arm64@1.0.0-beta.59':
     resolution: {integrity: sha512-6yLLgyswYwiCfls9+hoNFY9F8TQdwo15hpXDHzlAR0X/GojeKF+AuNcXjYNbOJ4zjl/5D6lliE8CbpB5t1OWIQ==}
@@ -2997,8 +2997,8 @@ packages:
   rc9@2.1.2:
     resolution: {integrity: sha512-btXCnMmRIBINM2LDZoEmOogIZU7Qe7zn4BpomSKZ/ykbLObuBdvG+mFq11DL6fjH1DRwHhrlgtYWG96bJiC7Cg==}
 
-  reactive-vscode@1.0.0-beta.2:
-    resolution: {integrity: sha512-Er94+XaRhRuJEpSRSCuvXW9pyta53R+VEGxdIG+X/hjruT+rg2HTDZDV0RbtQjwI1yWPflDTB903MkiQOn3w5Q==}
+  reactive-vscode@1.0.0:
+    resolution: {integrity: sha512-C2i0Hz7ksi96BjEpUQ52elor6rvSwcvFLQVVUzwkWyw/CF+XZWvrkR2HoUayuMhDlDF8AgwM/f9JCR6vgu+BAw==}
     peerDependencies:
       '@types/vscode': ^1.101.0
 
@@ -4569,7 +4569,7 @@ snapshots:
     dependencies:
       quansync: 1.0.0
 
-  '@reactive-vscode/reactivity@1.0.0-beta.2': {}
+  '@reactive-vscode/reactivity@1.0.0': {}
 
   '@rolldown/binding-android-arm64@1.0.0-beta.59':
     optional: true
@@ -7059,9 +7059,9 @@ snapshots:
       defu: 6.1.4
       destr: 2.0.5
 
-  reactive-vscode@1.0.0-beta.2(@types/vscode@1.105.0):
+  reactive-vscode@1.0.0(@types/vscode@1.105.0):
     dependencies:
-      '@reactive-vscode/reactivity': 1.0.0-beta.2
+      '@reactive-vscode/reactivity': 1.0.0
       '@types/vscode': 1.105.0
 
   readable-stream@2.3.8:

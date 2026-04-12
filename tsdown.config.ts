@@ -15,11 +15,13 @@ export default defineConfig([
     platform: 'node',
     format: ['cjs'],
     target: 'node22',
+    sourcemap: true,
     external: [
       'vscode',
     ],
     define: {
       'import.meta.env.TARGET': '"node"',
+      '__DEV__': 'true',
     },
     inputOptions: {
       resolve: {
@@ -72,11 +74,13 @@ export default defineConfig([
     platform: 'browser',
     format: ['cjs'],
     target: 'es2020',
+    sourcemap: true,
     external: [
       'vscode',
     ],
     define: {
       'import.meta.env.TARGET': '"browser"',
+      '__DEV__': 'true',
     },
     inputOptions: {
       resolve: {
@@ -97,6 +101,7 @@ export default defineConfig([
     platform: 'browser',
     format: ['esm'],
     target: 'es2020',
+    sourcemap: true,
     inputOptions: {
       transform: {
         jsx: {
@@ -108,6 +113,7 @@ export default defineConfig([
           '__VUE_OPTIONS_API__': 'false',
           '__VUE_PROD_DEVTOOLS__': 'false',
           '__VUE_PROD_HYDRATION_MISMATCH_DETAILS__': 'false',
+          '__DEV__': 'true',
         },
       },
     },
