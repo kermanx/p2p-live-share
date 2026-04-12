@@ -1,24 +1,20 @@
 import type { Uri } from 'vscode'
-import type * as Y from 'yjs'
 import { FileType } from 'vscode'
+import * as Y from 'yjs'
 
-export type FileContent = FileType | Uint8Array | Y.Text
+export type FileContent = FileType | Y.Doc
 export type FilesMap = Y.Map<FileContent>
 
-export function isContentTracked(file: FileContent): file is Uint8Array | Y.Text {
-  return typeof file !== 'number'
+export function isContentTracked(file: FileContent | null | undefined): file is Y.Doc {
+  return file instanceof Y.Doc
 }
 
-export function isDirectory(file: FileContent | undefined): file is FileType {
-  return typeof file === 'number' && !!(file & FileType.Directory)
+export function isDir(file: FileContent | undefined): file is FileType.Directory {
+  return typeof file === 'number' && (file & FileType.Directory) !== 0
 }
 
-export function isFile(file: FileContent | undefined): file is FileType {
-  return typeof file === 'number' && !!(file & FileType.File)
-}
-
-export function toFileType(file: FileContent) {
-  return typeof file === 'number' ? file : FileType.File
+export function toFileType(file: FileContent): FileType {
+  return file instanceof Y.Doc ? FileType.File : file
 }
 
 export function getParent(uri: Uri): string {

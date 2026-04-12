@@ -34,7 +34,7 @@ export async function createHostSession(config: ConnectionConfig) {
     watch(connection.peers, (newPeers, oldPeers) => {
       for (const peerId of newPeers) {
         if (!oldPeers?.includes(peerId)) {
-          sendInit(Y.encodeStateAsUpdate(doc), peerId, hostMeta)
+          sendInit(Y.encodeStateAsUpdateV2(doc), peerId, hostMeta)
         }
       }
     }, { immediate: true })

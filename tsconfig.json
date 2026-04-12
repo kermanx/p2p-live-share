@@ -16,6 +16,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
+  "include": [
+    "src/**/*",
+    "env.d.ts",
+  ],
   "exclude": [
     "test-workspace"
   ]

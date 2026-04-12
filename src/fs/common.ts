@@ -1,9 +1,10 @@
 import type { Uri } from 'vscode'
-import type { FilesMap } from './types'
+import type * as Y from 'yjs'
+import type { FileContent, FilesMap } from './types'
 import { useDisposable } from 'reactive-vscode'
 import { Range, window, workspace } from 'vscode'
-import * as Y from 'yjs'
 import { logger } from '../utils'
+import { asText, isSameContent } from './subdoc'
 import { isContentTracked } from './types'
 
 const editingUris = new Map<string, number>()
@@ -11,6 +12,7 @@ const editingUris = new Map<string, number>()
 export function useTextDocumentWatcher(
   doc: Y.Doc,
   files: FilesMap,
+  trackContent: (uri: Uri, file: FileContent, text: string) => void,
   toTrackedUri: (uri_: Uri) => string | undefined,
 ) {
   useDisposable(workspace.onDidChangeTextDocument((e) => {
@@ -31,27 +33,24 @@ export function useTextDocumentWatcher(
       logger.error('Document missing in YJSFS:', uri)
       return
     }
-    if (!isContentTracked(file)) {
-      // This document is not tracked
+
+    const content = e.document.getText()
+
+    if (!isContentTracked(file) || !file.isLoaded) {
+      // This document is not tracked yet, or the sub-doc hasn't been loaded
+      // (e.g. the client hasn't initialized it via loadSubDoc yet)
+      trackContent(e.document.uri, file, content)
       return
     }
 
-    if (file.toString() === e.document.getText()) {
-      console.warn('Out of sync edit')
+    if (isSameContent(file, content)) {
+      console.warn('Duplicated edit sync')
+      // Content already matches (e.g. this change was triggered by applyTextDocumentDelta)
       return
     }
 
-    let textFile: Y.Text
     doc.transact(() => {
-      if (file instanceof Uint8Array) {
-        const content = new TextDecoder().decode(file)
-        files.set(uri, textFile = new Y.Text(content))
-      }
-      else {
-        textFile = file
-      }
-    })
-    doc.transact(() => {
+      const textFile = asText(file)
       const sortedChanges = e.contentChanges.slice().sort((a, b) => b.rangeOffset - a.rangeOffset)
       for (const change of sortedChanges) {
         textFile.delete(change.rangeOffset, change.rangeLength)
@@ -66,7 +65,7 @@ export const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, 
   if (editor && editor.document.uri.toString() === uri.toString()) {
     const doc = editor.document
     try {
-      editingUris.set(uri.toString(), editingUris.get(uri.toString()) ?? 0 + 1)
+      editingUris.set(uri.toString(), (editingUris.get(uri.toString()) ?? 0) + 1)
       await editor.edit((edits) => {
         let index = 0
         for (const d of delta) {

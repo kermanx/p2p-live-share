@@ -68,7 +68,7 @@ export async function createClientSession(config: ConnectionConfig) {
   return scope.run(() => {
     const doc = new Y.Doc()
     useDocSync(connection, doc)
-    Y.applyUpdate(doc, initUpdate)
+    Y.applyUpdateV2(doc, initUpdate)
 
     const rpc = useClientRpc(connection, hostId)
     useClientFs(doc, rpc)

@@ -22,10 +22,11 @@ export const deserializeDownlink = deserialize<DownlinkMessageContent>
 
 function serialize<T extends { data?: DataPayload }>(content: T): ArrayBuffer | string {
   if (content.data instanceof Uint8Array) {
-    return packBufferJson(content.data, {
+    const metadata = JSON.stringify({
       ...content,
       data: undefined,
     })
+    return packTextAndBuffer(metadata, content.data).buffer
   }
   else {
     return JSON.stringify(content)
@@ -34,9 +35,9 @@ function serialize<T extends { data?: DataPayload }>(content: T): ArrayBuffer | 
 
 function deserialize<T extends { data?: DataPayload }>(input: ArrayBuffer | string): T {
   if (input instanceof ArrayBuffer) {
-    const { buffer, json } = unpackBufferJson(input)
+    const { buffer, text: metadata } = unpackTextAndBuffer(input)
     return {
-      ...json,
+      ...JSON.parse(metadata),
       data: buffer,
     } as unknown as T
   }
@@ -48,23 +49,23 @@ function deserialize<T extends { data?: DataPayload }>(input: ArrayBuffer | stri
   }
 }
 
-function packBufferJson(data: Uint8Array, metadata?: any) {
-  const metadataBuffer = new TextEncoder().encode(JSON.stringify(metadata))
+function packTextAndBuffer(text: string, data: Uint8Array) {
+  const metadataBuffer = new TextEncoder().encode(text)
   const packed = new Uint8Array(4 + metadataBuffer.byteLength + data.byteLength)
   const view = new DataView(packed.buffer)
   view.setUint32(0, metadataBuffer.byteLength, true)
   packed.set(metadataBuffer, 4)
   packed.set(data, 4 + metadataBuffer.byteLength)
-  return packed.buffer
+  return packed
 }
 
-function unpackBufferJson(buffer: ArrayBuffer) {
-  const view = new DataView(buffer)
+function unpackTextAndBuffer(packed: ArrayBufferLike) {
+  const view = new DataView(packed)
   const metadataLength = view.getUint32(0, true)
-  const metadataBuffer = new Uint8Array(buffer, 4, metadataLength)
-  const dataBuffer = new Uint8Array(buffer, 4 + metadataLength)
-  const json = JSON.parse(new TextDecoder().decode(metadataBuffer))
-  return { buffer: dataBuffer, json }
+  const metadataBuffer = new Uint8Array(packed, 4, metadataLength)
+  const dataBuffer = new Uint8Array(packed, 4 + metadataLength)
+  const text = new TextDecoder().decode(metadataBuffer)
+  return { buffer: dataBuffer, text }
 }
 
 export const UpdatePeersAction = '__update_peers__'

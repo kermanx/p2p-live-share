@@ -570,7 +570,7 @@
   },
   "scripts": {
     "build": "tsdown --env.NODE_ENV production --minify --clean",
-    "dev": "tsdown --watch ./src --env.NODE_ENV development",
+    "dev": "tsdown --watch --env.NODE_ENV development",
     "typecheck": "tsc --noEmit",
     "vscode:prepublish": "pnpm run build",
     "browser": "vscode-test-web --quality stable --browser none --extensionDevelopmentPath=. ./test-workspace",

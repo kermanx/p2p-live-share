@@ -1,119 +1,113 @@
 import type { TextDocument } from 'vscode'
 import type { Connection } from '../sync/connection'
 import type { FileContent, FilesMap } from './types'
-import { useFileSystemWatcher } from 'reactive-vscode'
+import { computed, useFileSystemWatcher } from 'reactive-vscode'
 import { FileSystemError, FileType, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
-import { useObserverDeep } from '../sync/doc'
+import { useObserverDeep, useObserverShallow } from '../sync/doc'
 import { logger } from '../utils'
 import { applyTextDocumentDelta, useTextDocumentWatcher } from './common'
-import { getParent, isContentTracked, isDirectory } from './types'
+import { isSameContent, readContent, watchSubDocChanges, writeContent } from './subdoc'
+import { getParent, isContentTracked, isDir, toFileType } from './types'
 
 export function useHostFs(connection: Connection, doc: Y.Doc) {
   const { toHostUri, toTrackUri } = connection
   const files = doc.getMap('fs') as FilesMap
   const trackedDirs = new Set<string>()
+  const isTracked = (uri: Uri | null): uri is Uri => !!uri && trackedDirs.has(getParent(uri))
 
   const filesConfig = workspace.getConfiguration('files')
+  const autoSave = computed(() => filesConfig.get('autoSave') === 'afterDelay' && filesConfig.get('autoSaveDelay', 1000) <= 1100)
   const unsavedDocs = new Map<string, TextDocument>()
+
+  function loadSubDoc(uri_: Uri, subDoc: Y.Doc) {
+    subDoc.load()
+    watchSubDocChanges(
+      subDoc,
+      async (delta) => {
+        const writtenToDoc = await applyTextDocumentDelta(uri_, delta)
+        if (writtenToDoc) {
+          if (!autoSave.value) {
+            unsavedDocs.set(uri_.toString(), writtenToDoc)
+          }
+        }
+        else {
+          workspace.fs.writeFile(uri_, readContent(subDoc))
+        }
+      },
+      () => workspace.fs.writeFile(uri_, readContent(subDoc)),
+    )
+  }
 
   useObserverDeep(() => files, (event) => {
     if (event.transaction.local) {
       return
     }
 
-    if (event.target instanceof Y.Map) {
-      // Files changed
-      for (const [uri, { action }] of event.keys) {
-        const uri_ = toHostUri(Uri.parse(uri))
-        if (action === 'delete') {
-          workspace.fs.delete(uri_, { recursive: true, useTrash: false })
-        }
-        else if (action === 'add') {
-          const newValue = event.target.get(uri) as FileContent
-          if (newValue === FileType.Directory) {
-            workspace.fs.createDirectory(uri_)
-          }
-          else if (newValue === FileType.File) {
-            workspace.fs.writeFile(uri_, new Uint8Array())
-          }
-          else if (newValue instanceof Uint8Array) {
-            workspace.fs.writeFile(uri_, newValue)
-          }
-          else if (newValue instanceof Y.Text) {
-            workspace.fs.writeFile(uri_, new TextEncoder().encode(newValue.toString()))
-          }
-          else {
-            // TODO
-            throw new TypeError(`Not implemented: ${newValue}`)
-          }
-        }
-        else if (action === 'update') {
-          const _newValue = event.target.get(uri) as FileContent
-          // TODO
-        }
-        else {
-          throw new Error(`Invalid action: ${action}`)
-        }
-
-        // TODO: handle changed Y.Text
+    // Files changed
+    for (const [uri, { action, oldValue }] of event.keys) {
+      const uri_ = toHostUri(Uri.parse(uri))
+      console.log('File changed:', uri, uri_.toString(), action, oldValue)
+      if (action !== 'add') {
+        workspace.fs.delete(uri_, { recursive: true, useTrash: false })
+        if (isContentTracked(oldValue))
+          oldValue.destroy()
       }
-    }
-
-    else if (event.target instanceof Y.Text) {
-      const { path, delta } = event
-      const uri_ = toHostUri(Uri.parse(path[0] as string))
-      applyTextDocumentDelta(uri_, delta).then((writtenToDoc) => {
-        if (writtenToDoc) {
-          const autoSave = filesConfig.get('autoSave') === 'afterDelay' && filesConfig.get('autoSaveDelay', 1000) <= 1100
-          if (!autoSave) {
-            unsavedDocs.set(uri_.toString(), writtenToDoc)
-          }
+      if (action !== 'delete') {
+        const newValue = event.target.get(uri) as FileContent
+        if (newValue === FileType.Directory) {
+          workspace.fs.createDirectory(uri_)
+        }
+        else if (newValue === FileType.File) {
+          workspace.fs.writeFile(uri_, new Uint8Array())
+        }
+        else if (isContentTracked(newValue)) {
+          logger.error('Unexpected tracked content added in files map:', uri)
         }
         else {
-          workspace.fs.writeFile(uri_, new TextEncoder().encode(event.target.toString()))
+          throw new TypeError(`Not implemented: ${newValue}`)
         }
-      })
+      }
     }
   })
 
   useFileSystemWatcher('**', {
-    onDidDelete(uri) {
-      const trackedUri = toTrackUri(uri)
-      if (trackedUri) {
-        files.delete(trackedUri.toString())
-      }
-    },
-    async onDidCreate(uri) {
-      const trackedUri = toTrackUri(uri)
-      const stat = await workspace.fs.stat(uri)
+    onDidDelete(uri_) {
+      const uri = toTrackUri(uri_)
+      if (!isTracked(uri))
+        return
       doc.transact(() => {
-        if (trackedUri && !files.has(trackedUri.toString())) {
-          files.set(trackedUri.toString(), stat.type)
-        }
+        files.delete(uri.toString())
       })
     },
-    async onDidChange(uri) {
-      const trackedUri = toTrackUri(uri)
-      if (!trackedUri) {
+    async onDidCreate(uri_) {
+      const uri = toTrackUri(uri_)
+      if (!isTracked(uri))
         return
-      }
-      const stat = await workspace.fs.stat(uri)
-      const content = stat.type & FileType.File ? await workspace.fs.readFile(uri) : null
+      const stat = await workspace.fs.stat(uri_)
       doc.transact(() => {
-        const existing = files.get(trackedUri.toString())
-        if (!existing || !isContentTracked(existing)) {
-          files.set(trackedUri.toString(), stat.type)
+        const existing = files.get(uri.toString())
+        if (isDir(existing) !== isDir(stat.type))
+          logger.error('Directory replaced by file', uri_.toString())
+        if (!existing)
+          files.set(uri.toString(), stat.type)
+      })
+    },
+    async onDidChange(uri_) {
+      const uri = toTrackUri(uri_)
+      if (!isTracked(uri))
+        return
+      const stat = await workspace.fs.stat(uri_)
+      const content = stat.type & FileType.File ? await workspace.fs.readFile(uri_) : null
+      doc.transact(() => {
+        const existing = files.get(uri.toString())
+        if (!existing || toFileType(existing) !== stat.type) {
+          files.set(uri.toString(), stat.type)
         }
-        else if (existing instanceof Uint8Array) {
-          files.set(trackedUri.toString(), new Uint8Array(content!))
-        }
-        else if (existing instanceof Y.Text) {
-          const text = new TextDecoder().decode(content!)
-          if (existing.toString() !== text) {
-            console.warn('External edit', uri.toString())
-            existing.delete(0, existing.length)
-            existing.insert(0, text)
+        else if (isContentTracked(existing)) {
+          if (!isSameContent(existing, content!)) {
+            console.warn('External edit', uri_.toString())
+            writeContent(existing, content!)
           }
         }
       })
@@ -130,63 +124,76 @@ export function useHostFs(connection: Connection, doc: Y.Doc) {
   }
   init()
 
-  useTextDocumentWatcher(doc, files, (uri) => {
-    const clientUri = toTrackUri(uri)
-    if (clientUri && trackedDirs.has(getParent(clientUri))) {
-      return clientUri.toString()
-    }
-  })
+  useTextDocumentWatcher(
+    doc,
+    files,
+    (uri_, _, text) => {
+      const uri = toTrackUri(uri_)
+      const file = uri && files.get(uri.toString())
+      if (isContentTracked(file)) {
+        writeContent(file, text, true)
+      }
+    },
+    (uri_) => {
+      const uri = toTrackUri(uri_)
+      if (isTracked(uri)) {
+        return uri.toString()
+      }
+    },
+  )
 
-  async function trackDirectory(uri: string) {
-    const uri_ = toHostUri(Uri.parse(uri))
-    trackedDirs.add(uri)
-    let file = files.get(uri)
-    if (file === undefined) {
-      const { type } = await workspace.fs.stat(uri_)
-      files.set(uri, type)
-      file = type
-    }
-    if (!isDirectory(file)) {
-      logger.error('Directory requested but not a directory in YJSFS:', uri)
+  async function trackDirectory(uriStr: string) {
+    const uri = Uri.parse(uriStr)
+    // if (!isTracked(uri)) {
+    //   logger.error('Directory not tracked:', uri)
+    //   return
+    // }
+    const uri_ = toHostUri(uri)
+
+    const { type } = await workspace.fs.stat(uri_)
+    if (!isDir(type)) {
+      logger.error('Not a directory:', uri)
       return
     }
+    trackedDirs.add(uriStr)
     const children = await workspace.fs.readDirectory(uri_)
-    for (const [name, type] of children) {
-      const childUri = Uri.joinPath(Uri.parse(uri), name).toString()
-      if (type & FileType.File) {
-        const file = files.get(childUri)
-        if (file === undefined || typeof file === 'number') {
-          files.set(childUri, FileType.File)
-        }
+
+    doc.transact(() => {
+      for (const [name, type] of children) {
+        const childUri = Uri.joinPath(uri, name)
+        files.set(childUri.toString(), type)
       }
-      else {
-        files.set(childUri, type)
-      }
-    }
+    })
+
     return children
   }
 
-  async function trackFile(uri: string, forceText: boolean) {
-    const file = files.get(uri)
-    if (file === undefined) {
-      return undefined
+  async function trackContent(uriStr: string, forceText: boolean, overwrite?: Uint8Array | string): Promise<Uint8Array | null> {
+    const uri = Uri.parse(uriStr)
+    if (!isTracked(uri)) {
+      logger.error('Parent directory not tracked:', uri)
     }
-    if (!isContentTracked(file)) {
-      const uri_ = toHostUri(Uri.parse(uri))
-      const content = new Uint8Array(await workspace.fs.readFile(uri_))
-      if (forceText) {
-        const text = new TextDecoder().decode(content)
-        files.set(uri, new Y.Text(text))
+
+    const uri_ = toHostUri(uri)
+    // // This wrap of `new Uint8Array()` is necessary to convert Uint8Array subclasses (e.g. Buffer) to Uint8Array, which is required for Y.Doc encoding
+    // const content = new Uint8Array(await workspace.fs.readFile(uri_))
+    const content = overwrite ?? await workspace.fs.readFile(uri_)
+    if (overwrite != null)
+      await workspace.fs.writeFile(uri_, typeof overwrite === 'string' ? new TextEncoder().encode(overwrite) : overwrite)
+
+    doc.transact(() => {
+      const existing = files.get(uriStr)
+      if (isContentTracked(existing)) {
+        writeContent(existing, content, forceText)
       }
       else {
-        files.set(uri, content)
+        const doc = files.set(uriStr, new Y.Doc())
+        loadSubDoc(uri_, doc)
+        writeContent(doc, content, forceText)
       }
-      return content
-    }
-    if (file instanceof Y.Text) {
-      return (new TextEncoder()).encode(file.toString())
-    }
-    return file
+    })
+
+    return overwrite == null ? content as Uint8Array : null
   }
 
   async function renameFile(oldUri: string, newUri: string, overwrite: boolean) {
@@ -214,10 +221,20 @@ export function useHostFs(connection: Connection, doc: Y.Doc) {
     }
   }
 
+  async function subDocInit(uri: string) {
+    const subDoc = files.get(uri) as Y.Doc
+    if (!subDoc) {
+      logger.error('Sub-document not found for URI:', uri)
+      return
+    }
+    return Y.encodeStateAsUpdateV2(subDoc)
+  }
+
   return {
     trackDirectory,
-    trackFile,
+    trackContent,
     renameFile,
     saveFile,
+    subDocInit,
   }
 }

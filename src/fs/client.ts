@@ -1,78 +1,103 @@
 import type { BirpcReturn } from 'birpc'
-import type { FileChangeEvent } from 'vscode'
 import type { ClientFunctions, HostFunctions } from '../rpc/types'
 import type { FileContent, FilesMap } from './types'
-import { onScopeDispose } from 'reactive-vscode'
+import { shallowReactive } from 'reactive-vscode'
 import { FileChangeType, FileSystemError, FileType, Uri, window, workspace } from 'vscode'
+import { watchEffect } from 'vue'
 import * as Y from 'yjs'
-import { logger, normalizeUint8Array } from '../utils'
+import { useObserverDeep } from '../sync/doc'
+import { logger } from '../utils'
 import { applyTextDocumentDelta, useTextDocumentWatcher } from './common'
 import { ClientUriScheme, useFsProvider } from './provider'
-import { getName, getParent, isContentTracked, isDirectory, toFileType } from './types'
+import { readContent, watchSubDocChanges, writeContent } from './subdoc'
+import { getName, getParent, isContentTracked, isDir, toFileType } from './types'
 
 export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFunctions>) {
   const files = doc.getMap('fs') as FilesMap
   const { fileChanged, useSetActiveProvider } = useFsProvider()
 
-  const watchMatchers = new Set<(uri: string) => boolean>()
+  const watchMatchers = shallowReactive(new Set<(uri: string) => boolean>())
+  const isFileWatched = (uri: string) => [...watchMatchers].some(matcher => matcher(uri))
+  const subDocs = shallowReactive(new Map<string, Y.Doc>())
 
-  let handler: any
-  onScopeDispose(() => files.unobserveDeep(handler))
-  files.observeDeep(handler = (events: Y.YEvent<any>[]) => {
-    const affectedUris = new Map<string, FileChangeType>()
-    for (const event of events) {
-      if (event.transaction.local) {
-        continue
+  function loadSubDoc(uriStr: string, subDoc: Y.Doc) {
+    rpc.subDocInit(uriStr).then((initData) => {
+      if (!initData) {
+        logger.error('Failed to initialize sub-document for URI:', uriStr)
+        return
       }
+      subDoc.load()
+      Y.applyUpdateV2(subDoc, initData)
+      const uri = Uri.parse(uriStr)
+      watchSubDocChanges(
+        subDoc,
+        delta => applyTextDocumentDelta(uri, delta),
+        () => fileChanged([{ uri, type: FileChangeType.Changed }]),
+      )
+    })
+  }
 
-      if (event.target instanceof Y.Map) {
-        for (const [uri, { action }] of event.keys) {
-          affectedUris.set(uri, {
-            add: FileChangeType.Created,
-            update: FileChangeType.Changed,
-            delete: FileChangeType.Deleted,
-          }[action])
+  watchEffect(() => {
+    for (const [uriStr, subDoc] of subDocs) {
+      const shouldWatch = isFileWatched(uriStr)
+      const isWatched = subDoc.isLoaded
+      if (shouldWatch && !isWatched) {
+        // FIXME: avoid re-loading if already loaded once
+        loadSubDoc(uriStr, subDoc)
+      }
+      else if (!shouldWatch && isWatched) {
+        subDoc.destroy()
+      }
+    }
+  })
 
-          if (action !== 'delete') {
-            const newValue = event.target.get(uri) as FileContent
-            if (newValue instanceof Y.Text) {
-              applyTextDocumentDelta(Uri.parse(uri), [
-                { delete: Infinity },
-                { insert: newValue.toString() },
-              ])
-            }
+  useObserverDeep(() => files, (event) => {
+    if (event.transaction.local) {
+      return
+    }
+
+    if (event.target instanceof Y.Map) {
+      for (const [uri, { action, oldValue }] of event.keys) {
+        if (action !== 'add' && isContentTracked(oldValue)) {
+          subDocs.delete(uri)
+          // FIXME: destroy sub-doc
+        }
+        if (action !== 'update') {
+          const newValue = event.target.get(uri) as FileContent
+          if (isContentTracked(newValue)) {
+            subDocs.set(uri, newValue)
           }
         }
-      }
 
-      else if (event.target instanceof Y.Text) {
-        const { path, delta } = event
-        const uri = path[0] as string
-        affectedUris.set(uri, FileChangeType.Changed)
-        applyTextDocumentDelta(Uri.parse(uri), delta)
-      }
-    }
-
-    const result: FileChangeEvent[] = []
-    for (const [uri, type] of affectedUris) {
-      for (const matcher of watchMatchers) {
-        if (matcher(uri)) {
-          result.push({
+        if (isFileWatched(uri)) {
+          fileChanged([{
             uri: Uri.parse(uri),
-            type,
-          })
-          break
+            type: {
+              add: FileChangeType.Created,
+              update: FileChangeType.Changed,
+              delete: FileChangeType.Deleted,
+            }[action],
+          }])
         }
       }
     }
-    fileChanged(result)
   })
 
-  useTextDocumentWatcher(doc, files, (uri) => {
-    if (uri.scheme === ClientUriScheme) {
-      return uri.toString()
-    }
-  })
+  useTextDocumentWatcher(
+    doc,
+    files,
+    (uri, file, text) => {
+      if (isContentTracked(file))
+        loadSubDoc(uri.toString(), file)
+      else
+        rpc.trackContent(uri.toString(), true, text)
+    },
+    (uri) => {
+      if (uri.scheme === ClientUriScheme) {
+        return uri.toString()
+      }
+    },
+  )
 
   useSetActiveProvider({
     watch(uri_, { recursive, excludes }) {
@@ -106,19 +131,30 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
     },
     async stat(uri) {
       const file = await trackedGet(uri)
-      if (file === undefined) {
+      if (isDir(file)) {
+        return {
+          type: FileType.Directory,
+          ctime: Date.now(),
+          mtime: Date.now(),
+          size: 0,
+        }
+      }
+      const content = isContentTracked(file)
+        ? readContent(file)
+        : await rpc.trackContent(uri.toString(), false)
+      if (!file || !content) {
         throw FileSystemError.FileNotFound(uri)
       }
       return {
         type: toFileType(file),
         ctime: Date.now(),
         mtime: Date.now(),
-        size: file instanceof Uint8Array ? file.byteLength : file instanceof Y.Text ? file.length : Number.NaN,
+        size: content.byteLength,
       }
     },
     async readDirectory(uri) {
       const file = await trackedGet(uri)
-      if (isDirectory(file)) {
+      if (isDir(file)) {
         const result = await rpc.trackDirectory(uri.toString())
         if (!result)
           throw new Error('Failed to read directory')
@@ -145,24 +181,25 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
       if (file === undefined) {
         throw FileSystemError.FileNotFound(uri)
       }
-      if (isDirectory(file)) {
+      if (isDir(file)) {
         throw FileSystemError.FileIsADirectory(uri)
       }
-      if (!isContentTracked(file)) {
-        const forceText = workspace.textDocuments.some(d => d.uri.toString() === uri.toString())
-        const content = await rpc.trackFile(uri.toString(), forceText)
-        if (!content) {
-          throw FileSystemError.FileNotFound(uri)
-        }
-        return content
+      if (isContentTracked(file) && file.isLoaded) {
+        return readContent(file)
       }
-      if (file instanceof Y.Text) {
-        return (new TextEncoder()).encode(file.toString())
+      const forceText = workspace.textDocuments.some(d => d.uri.toString() === uri.toString())
+      const content = await rpc.trackContent(uri.toString(), forceText)
+      if (!content) {
+        throw FileSystemError.FileNotFound(uri)
       }
-      return file
+      return content
     },
     async writeFile(uri, content, options) {
       const file = await trackedGet(uri)
+      if (isDir(file)) {
+        throw FileSystemError.FileIsADirectory(uri)
+      }
+
       if (file === undefined) {
         if (!options.create) {
           throw FileSystemError.FileNotFound(uri)
@@ -171,25 +208,27 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
       else if (!options.overwrite) {
         throw FileSystemError.FileExists(uri)
       }
-      if (isDirectory(file)) {
-        throw FileSystemError.FileIsADirectory(uri)
-      }
-      const editor = window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString())
-      if (editor) {
-        rpc.saveFile(uri.toString())
-        // TODO: Written by other extension?
+
+      if (isContentTracked(file)) {
+        if (window.visibleTextEditors.some(e => e.document.uri.toString() === uri.toString())) {
+          rpc.saveFile(uri.toString())
+          // TODO: Written by other extension?
+          return
+        }
+
+        writeContent(file, content)
       }
       else {
-        files.set(uri.toString(), normalizeUint8Array(content))
+        rpc.trackContent(uri.toString(), false, content)
       }
     },
-    async delete(uri, options) {
+    async delete(uri) {
       const file = await trackedGet(uri)
       if (file === undefined) {
         throw FileSystemError.FileNotFound(uri)
       }
-      if (!options.recursive && isDirectory(file)) {
-        return
+      if (isContentTracked(file)) {
+        file.destroy()
       }
       files.delete(uri.toString())
     },
@@ -203,14 +242,14 @@ export function useClientFs(doc: Y.Doc, rpc: BirpcReturn<HostFunctions, ClientFu
   })
 
   async function trackedGet(uri: Uri): Promise<FileContent | undefined> {
-    const parentUri = getParent(uri)
-    const parent = files.get(parentUri)
-    if (parent !== undefined) {
+    const file = files.get(uri.toString())
+    if (file !== undefined) {
       // Already tracked
-      return files.get(uri.toString())
+      return file
     }
     else {
       // May not tracked
+      const parentUri = getParent(uri)
       const siblings = await rpc.trackDirectory(parentUri)
       if (!siblings)
         throw new Error('Failed to read parent directory')
