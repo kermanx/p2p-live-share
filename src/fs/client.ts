@@ -2,11 +2,13 @@ import type { BirpcReturn } from 'birpc'
 import type { ClientFunctions, HostFunctions } from '../rpc/types'
 import type { Connection } from '../sync/connection'
 import type { FileChangeEvent } from './common'
-import { useDisposable } from 'reactive-vscode'
+import { computed, defineConfig, useDisposable } from 'reactive-vscode'
 import { Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
 import { forceUpdateContent, handleFsError, setupTextDocumentUpdater, useTextDocumentWatcher } from './common'
 import { ClientUriScheme, useFsProvider } from './provider'
+
+const filesConfig = defineConfig<any>('files')
 
 export function useClientFs(connection: Connection, rpc: BirpcReturn<HostFunctions, ClientFunctions>, hostId: string) {
   const { fileChanged, useSetActiveProvider } = useFsProvider()
@@ -56,6 +58,18 @@ export function useClientFs(connection: Connection, rpc: BirpcReturn<HostFunctio
       rpc.untrackContent({ clientId: connection.selfId, uri: uri.toString() })
     }
   }))
+
+  const [__, recvSave] = connection.makeAction<string>('textSave')
+  const autoSave = computed(() => filesConfig.autoSave === 'afterDelay')
+  recvSave(async (uri) => {
+    if (autoSave.value)
+      return
+    const file = files.get(uri)
+    if (file) {
+      const document = await workspace.openTextDocument(Uri.parse(uri))
+      await document.save()
+    }
+  })
 
   const willSaveDocuments = new Set<string>()
   useDisposable(workspace.onWillSaveTextDocument(({ document }) => {

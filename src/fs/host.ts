@@ -1,9 +1,10 @@
 import type { IDisposable } from 'node-pty'
-import picomatch from 'picomatch'
-import { Disposable, FileChangeType, RelativePattern, Uri, workspace } from 'vscode'
-import * as Y from 'yjs'
 import type { Connection } from '../sync/connection'
 import type { FileChangeEvent, TrackContentRequest } from './common'
+import picomatch from 'picomatch'
+import { useDisposable } from 'reactive-vscode'
+import { Disposable, FileChangeType, RelativePattern, Uri, workspace } from 'vscode'
+import * as Y from 'yjs'
 import { forceUpdateContent, fsErrorWrapper, setupTextDocumentUpdater, useTextDocumentWatcher } from './common'
 
 export function useHostFs(connection: Connection) {
@@ -74,6 +75,16 @@ export function useHostFs(connection: Connection) {
       return
     return files.get(uri.toString())?.doc
   })
+
+  const [sendSave, _] = connection.makeAction<string>('textSave')
+  useDisposable(workspace.onDidSaveTextDocument((document) => {
+    const uri = toTrackUri(document.uri)
+    if (!uri)
+      return
+    const file = files.get(uri.toString())
+    if (file)
+      sendSave(uri.toString(), [...file.trackers])
+  }))
 
   let currentWatchHandle = 0
   const watchers = new Map<number, IDisposable>()
