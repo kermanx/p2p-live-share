@@ -3,47 +3,17 @@ import type { Connection } from './connection'
 import { effectScope, onScopeDispose, readonly, ref, shallowReactive, shallowRef, watch } from 'reactive-vscode'
 import * as Y from 'yjs'
 
-export function useDocSync(connection: Connection, rootDoc: Y.Doc) {
-  const [send, recv] = connection.makeAction<Uint8Array, string>('doc')
+export function useDocSync(connection: Connection, doc: Y.Doc) {
+  const [send, recv] = connection.makeAction<Uint8Array>('doc')
 
-  const docs = new Map<string, Y.Doc>()
-
-  async function updateListener(update: Uint8Array, origin: any, doc: Y.Doc) {
-    if (origin?.peerId) {
+  doc.on('updateV2', async (update: Uint8Array, origin: any) => {
+    if (origin?.peerId)
       return
-    }
-    await send(update, null, doc === rootDoc ? undefined : doc.guid)
-  }
-
-  rootDoc.on('updateV2', updateListener)
-  rootDoc.on('subdocs', ({ removed, loaded }) => {
-    removed.forEach((subDoc) => {
-      const existing = docs.get(subDoc.guid)
-      if (existing) {
-        existing.off('updateV2', updateListener)
-        docs.delete(subDoc.guid)
-      }
-    })
-
-    loaded.forEach((subDoc) => {
-      if (!docs.has(subDoc.guid)) {
-        docs.set(subDoc.guid, subDoc)
-        subDoc.on('updateV2', updateListener)
-      }
-    })
+    await send(update)
   })
 
-  onScopeDispose(() => {
-    rootDoc.off('updateV2', updateListener)
-    for (const doc of docs.values()) {
-      doc.off('updateV2', updateListener)
-    }
-  })
-
-  recv((message, peerId, guid) => {
-    const doc = guid ? docs.get(guid) : rootDoc
-    if (doc)
-      Y.applyUpdateV2(doc, message, { peerId })
+  recv((message, peerId) => {
+    Y.applyUpdateV2(doc, message, { peerId })
   })
 }
 

@@ -39,7 +39,7 @@ export async function createHostSession(config: ConnectionConfig) {
       }
     }, { immediate: true })
 
-    const fs = useHostFs(connection, doc)
+    const fs = useHostFs(connection)
     const terminals = useHostTerminals(doc)
     const scm = useHostScm(connection, doc)
     useHostRpc(connection, {

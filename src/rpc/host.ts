@@ -1,7 +1,7 @@
 import type { Connection } from '../sync/connection'
 import type { ClientFunctions, HostFunctions } from './types'
 import { createBirpc } from 'birpc'
-import { deserialize, serialize } from './serialize'
+import { pack, unpack } from 'msgpackr'
 
 export function useHostRpc(
   connection: Connection,
@@ -14,8 +14,8 @@ export function useHostRpc(
     {
       post: (data, peerId) => sendRpcData(data, peerId),
       on: fn => recvRpcData((data, peerId) => fn(data, peerId)),
-      serialize,
-      deserialize,
+      serialize: pack,
+      deserialize: unpack,
     },
   )
 

@@ -71,7 +71,7 @@ export async function createClientSession(config: ConnectionConfig) {
     Y.applyUpdateV2(doc, initUpdate)
 
     const rpc = useClientRpc(connection, hostId)
-    useClientFs(doc, rpc)
+    useClientFs(connection, rpc, hostId)
     const { shadowTerminals } = useClientTerminals(doc, rpc)
     useClientLs(connection, hostId)
     useClientDiagnostics(doc)
