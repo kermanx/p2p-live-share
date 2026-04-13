@@ -31,7 +31,7 @@ interface WebSocketWithData extends WebSocket {
   data?: WebSocketData
 }
 
-export class WebSocketSignalingServer {
+class WebSocketSignalingServer {
   private rooms = new Map<string, Map<string, WebSocketWithData>>()
   private httpServer: HttpServer | null = null
   private wss: WebSocketServer | null = null
@@ -101,6 +101,7 @@ export class WebSocketSignalingServer {
       onPeerJoin?.(peerId, roomId)
 
       ws.binaryType = 'arraybuffer'
+
       ws.onmessage = ({ data }) => {
         try {
           const uplink = deserializeUplink(data as ArrayBuffer | string)

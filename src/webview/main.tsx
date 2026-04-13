@@ -1,5 +1,5 @@
 import type * as trystero from 'trystero'
-import type { ExtensionFunctions, UIState, WebviewFunctions } from './webview'
+import type { ExtensionFunctions, UIState, WebviewFunctions } from '.'
 import * as birpc from 'birpc'
 import * as mqtt from 'trystero/mqtt'
 import * as nostr from 'trystero/nostr'

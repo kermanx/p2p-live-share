@@ -1,12 +1,12 @@
 import type * as trystero from 'trystero'
-import type { Connection, InternalReceiver, InternalSender } from '../../sync/connection'
+import type { Connection, InternalReceiver, InternalSender } from '../sync/connection'
 import type { ChatMessage } from './components/Chat'
 import { createBirpc } from 'birpc'
 import { computed, defineService, extensionContext, onScopeDispose, ref, shallowRef, useEventEmitter, useWebviewView, watchEffect } from 'reactive-vscode'
 import { commands, Uri } from 'vscode'
-import { useActiveSession } from '../../session'
-import { logger } from '../../utils'
-import { useUsers } from '../users'
+import { useActiveSession } from '../session'
+import { useUsers } from '../ui/users'
+import { logger } from '../utils'
 
 export interface WebviewFunctions {
   trysteroJoinRoom: (

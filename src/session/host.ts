@@ -13,7 +13,7 @@ import { useDocSync } from '../sync/doc'
 import { useHostTerminals } from '../terminal/host'
 import { useTunnels } from '../tunnel'
 import { useUsers } from '../ui/users'
-import { useWebview } from '../ui/webview/webview'
+import { useWebview } from '../webview'
 import { ProtocolVersion } from './index'
 
 export async function createHostSession(config: ConnectionConfig) {

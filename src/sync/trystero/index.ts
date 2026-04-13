@@ -2,7 +2,7 @@ import type { InternalConnection, InternalReceiver } from '../connection'
 import type { ConnectionConfig } from '../share'
 import { onScopeDispose, shallowRef, useEventEmitter } from 'reactive-vscode'
 import { configs } from '../../configs'
-import { useWebview } from '../../ui/webview/webview'
+import { useWebview } from '../../webview'
 import { AckActionName, useSyncController } from './controller'
 
 const TrysteroConfig = {

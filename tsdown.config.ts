@@ -96,7 +96,7 @@ export default defineConfig([
   },
   {
     entry: {
-      webview: 'src/ui/webview/main.tsx',
+      webview: 'src/webview/main.tsx',
     },
     platform: 'browser',
     format: ['esm'],
@@ -118,7 +118,7 @@ export default defineConfig([
       },
     },
     onSuccess() {
-      copyFileSync('src/ui/webview/styles.css', 'dist/webview.css')
+      copyFileSync('src/webview/styles.css', 'dist/webview.css')
     },
   },
 ])

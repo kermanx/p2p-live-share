@@ -4,7 +4,7 @@ import { version } from '../../package.json'
 import { CustomUriScheme } from '../fs/provider'
 import { copyShareLink, inquireHostConfig, makeTrackUri, parseTrackUri, validateShareLink } from '../sync/share'
 import { useUsers } from '../ui/users'
-import { useWebview } from '../ui/webview/webview'
+import { useWebview } from '../webview'
 import { createGuestSession } from './guest'
 import { createHostSession } from './host'
 
