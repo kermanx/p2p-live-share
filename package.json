@@ -599,7 +599,7 @@
     "node-pty": "^1.2.0-beta.6",
     "pathe": "^2.0.3",
     "picomatch": "^4.0.4",
-    "reactive-vscode": "^1.0.0",
+    "reactive-vscode": "^1.0.1",
     "trystero": "^0.22.0",
     "tsdown": "^0.19.0",
     "tsx": "^4.21.0",
