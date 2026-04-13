@@ -7,6 +7,8 @@ import { deserializeUplink, serializeDownlink, UpdatePeersAction } from './proto
 export interface WebSocketData {
   peerId: string
   roomId: string
+  uplinkTraffic: number
+  downlinkTraffic: number
 }
 
 export interface ServerOptions {
@@ -83,7 +85,7 @@ class WebSocketSignalingServer {
       }
 
       this.wss!.handleUpgrade(request, socket, head, (ws: WebSocketWithData) => {
-        ws.data = { roomId, peerId }
+        ws.data = { roomId, peerId, uplinkTraffic: 0, downlinkTraffic: 0 }
         this.wss!.emit('connection', ws, request)
       })
     })
@@ -104,6 +106,7 @@ class WebSocketSignalingServer {
 
       ws.onmessage = ({ data }) => {
         try {
+          ws.data!.uplinkTraffic += sizeOf(data as ArrayBuffer | string)
           const uplink = deserializeUplink(data as ArrayBuffer | string)
           this.handleMessage(uplink, roomId, peerId)
         }
@@ -179,8 +182,10 @@ class WebSocketSignalingServer {
       : Array.from(roomClients.values())
     if (wsTargets.length) {
       const downlinkMessage = serializeDownlink(downlinkPayload)
+      const size = sizeOf(downlinkMessage)
       wsTargets.forEach((client) => {
         if (client && client.data?.peerId !== senderId && client.readyState === WebSocket.OPEN) {
+          client.data!.downlinkTraffic += size
           if (this.options.manualDelay) {
             setTimeout(() => {
               client.send(downlinkMessage)
@@ -241,6 +246,10 @@ class WebSocketSignalingServer {
       })
     }
   }
+}
+
+function sizeOf(data: string | ArrayBuffer): number {
+  return typeof data === 'string' ? data.length : data.byteLength
 }
 
 export function createServer(options: ServerOptions): WebSocketSignalingServer {
