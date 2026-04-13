@@ -46,12 +46,15 @@ jobs:
       - run: pnpm i
 
       - name: Publish to VSCE
+        continue-on-error: true
         run: pnpx @vscode/vsce publish --no-dependencies -p ${{secrets.VSCE_TOKEN}}
 
       - name: Publish to OVSX
+        continue-on-error: true
         run: pnpx ovsx publish --no-dependencies -p ${{secrets.OVSX_TOKEN}}
 
       - name: Publish to NPM
+        continue-on-error: true
         working-directory: ./src/sync/ws/
         run: npm publish --access public
         env:
