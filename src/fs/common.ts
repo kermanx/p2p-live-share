@@ -1,4 +1,4 @@
-import type { FileChangeType, TextDocument, Uri } from 'vscode'
+import type { FileChangeType, TextDocument, TextDocumentChangeReason, Uri } from 'vscode'
 import type * as Y from 'yjs'
 import { useDisposable } from 'reactive-vscode'
 import { FileSystemError, Range, window, workspace, WorkspaceEdit } from 'vscode'
@@ -10,7 +10,7 @@ export interface FileChangeEvent { uri: string, type: FileChangeType }
 const editingUris = new Map<string, number>()
 
 export function useTextDocumentWatcher(getDoc: (document: TextDocument) => Y.Doc | null | undefined) {
-  useDisposable(workspace.onDidChangeTextDocument(({ document, contentChanges }) => {
+  useDisposable(workspace.onDidChangeTextDocument(({ document, contentChanges, reason }) => {
     if (contentChanges.length === 0 || editingUris.has(document.uri.toString())) {
       return
     }
@@ -27,7 +27,7 @@ export function useTextDocumentWatcher(getDoc: (document: TextDocument) => Y.Doc
         text.delete(change.rangeOffset, change.rangeLength)
         text.insert(change.rangeOffset, change.text)
       }
-    })
+    }, { reason })
   }))
 }
 
@@ -35,17 +35,28 @@ export function setupTextDocumentUpdater(uri_: Uri, doc: Y.Doc) {
   doc.getText().observe((event) => {
     if (event.transaction.local)
       return
-    applyTextDocumentDelta(uri_, event.delta)
+    applyTextDocumentDelta(uri_, event.delta, event.transaction.origin?.reason)
   })
 }
 
-const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, delta: Y.YEvent<any>['delta']) => {
+const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, delta: Y.YEvent<any>['delta'], _reason: TextDocumentChangeReason | undefined) => {
   try {
     editingUris.set(uri.toString(), (editingUris.get(uri.toString()) ?? 0) + 1)
 
+    // if (reason === TextDocumentChangeReason.Undo) {
+    //   window.showInformationMessage('UNDO')
+    //   await commands.executeCommand('default:undo')
+    //   return
+    // }
+    // else if (reason === TextDocumentChangeReason.Redo) {
+    //   window.showInformationMessage('REDO')
+    //   await commands.executeCommand('default:redo')
+    //   return
+    // }
+
     // Try updating via editor
     const editor = window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString())
-    if (editor && editor.document.uri.toString() === uri.toString()) {
+    if (editor) {
       const doc = editor.document
       await editor.edit((edits) => {
         let index = 0

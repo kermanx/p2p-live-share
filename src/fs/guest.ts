@@ -1,9 +1,10 @@
 import type { BirpcReturn } from 'birpc'
+import type { TextDocumentChangeReason } from 'vscode'
 import type { GuestFunctions, HostFunctions } from '../rpc/types'
 import type { Connection } from '../sync/connection'
 import type { FileChangeEvent } from './common'
 import { computed, defineConfig, useDisposable } from 'reactive-vscode'
-import { Uri, workspace } from 'vscode'
+import { FileType, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
 import { forceUpdateContent, handleFsError, setupTextDocumentUpdater, useTextDocumentWatcher } from './common'
 import { CustomUriScheme, useFsProvider } from './provider'
@@ -13,25 +14,33 @@ const filesConfig = defineConfig<any>('files')
 export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunctions, GuestFunctions>, hostId: string) {
   const { fileChanged, useSetActiveProvider } = useFsProvider()
 
-  const files = new Map<string, Y.Doc>()
-  const [send, recv] = connection.makeAction<Uint8Array, string>('texts')
+  const files = new Map<string, {
+    doc: Y.Doc
+    mtime: number
+    ctime?: number
+  }>()
+  const [send, recv] = connection.makeAction<Uint8Array, [string, TextDocumentChangeReason?]>('texts')
 
-  recv((update, peerId, uri) => {
-    const file = files.get(uri!)
+  recv((update, peerId, meta) => {
+    const [uri, reason] = meta!
+    const file = files.get(uri)
     if (file)
-      Y.applyUpdateV2(file, update, { peerId })
+      Y.applyUpdateV2(file.doc, update, { reason, peerId })
   })
 
   async function trackContent(uri: string) {
     const doc = new Y.Doc()
     const init = await rpc.trackContent({ guestId: connection.selfId, uri })
     Y.applyUpdateV2(doc, init)
-    files.set(uri, doc)
+    files.set(uri, {
+      doc,
+      mtime: Date.now(),
+    })
 
     doc.on('updateV2', async (update: Uint8Array, origin: any) => {
       if (origin?.peerId)
         return
-      await send(update, hostId, uri)
+      await send(update, hostId, [uri, origin?.reason])
     })
     setupTextDocumentUpdater(Uri.parse(uri), doc)
   }
@@ -41,7 +50,7 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
       const uri = document.uri.toString()
       const file = files.get(uri)
       if (file)
-        return file
+        return file.doc
 
       console.warn('Document updated before tracking:', uri)
       trackContent(uri)
@@ -91,6 +100,15 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
       }
     },
     async stat(uri) {
+      const file = files.get(uri.toString())
+      if (file) {
+        return {
+          type: FileType.File,
+          ctime: file.ctime ??= handleFsError(await rpc.fsStat(uri.toString())).ctime,
+          mtime: file.mtime,
+          size: file.doc.getText().length,
+        }
+      }
       return handleFsError(await rpc.fsStat(uri.toString()))
     },
     async readDirectory(uri) {
@@ -107,7 +125,7 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
       if (file) {
         if (!willSaveDocuments.delete(uri.toString())) {
           // `workspace.fs.writeFile` by other extension
-          forceUpdateContent(uri, file, content)
+          forceUpdateContent(uri, file.doc, content)
         }
         // Ensure saved to the disk
         await rpc.saveContent(uri.toString())

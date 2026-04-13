@@ -1,4 +1,5 @@
 import type { IDisposable } from 'node-pty'
+import type { TextDocumentChangeReason } from 'vscode'
 import type { Connection } from '../sync/connection'
 import type { FileChangeEvent, TrackContentRequest } from './common'
 import picomatch from 'picomatch'
@@ -15,11 +16,12 @@ export function useHostFs(connection: Connection) {
     trackers: Set<string>
   }>()
 
-  const [send, recv] = connection.makeAction<Uint8Array, string>('texts')
-  recv((update, peerId, uri) => {
-    const file = files.get(uri!)
+  const [send, recv] = connection.makeAction<Uint8Array, [string, TextDocumentChangeReason?]>('texts')
+  recv((update, peerId, meta) => {
+    const [uri, reason] = meta!
+    const file = files.get(uri)
     if (file)
-      Y.applyUpdateV2(file.doc, update, { peerId })
+      Y.applyUpdateV2(file.doc, update, { reason, peerId })
   })
 
   async function trackContent({ guestId, uri, content }: TrackContentRequest) {
@@ -38,7 +40,7 @@ export function useHostFs(connection: Connection) {
       doc.on('updateV2', async (update: Uint8Array, origin: any) => {
         if (origin?.peerId)
           return
-        await send(update, [...trackers], uri)
+        await send(update, [...trackers], [uri, origin?.reason])
       })
 
       const uri_ = toHostUri(Uri.parse(uri))
@@ -109,7 +111,7 @@ export function useHostFs(connection: Connection) {
         const file = files.get(uri.toString())
         if (file?.trackers.has(guestId)) {
           if (!workspace.textDocuments.some(doc => doc.uri.toString() === uri_.toString())) {
-            // If the text document os open, `workspace.onDidChangeTextDocument` will handle the update, otherwise we need to force update here
+            // If the text document is open, `workspace.onDidChangeTextDocument` will handle the update, otherwise we need to force update here
             const newContent = await workspace.fs.readFile(uri_)
             forceUpdateContent(uri_, file.doc, newContent)
           }
