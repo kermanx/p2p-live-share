@@ -1,21 +1,19 @@
 ![P2P Live Share](https://raw.githubusercontent.com/kermanx/p2p-live-share/main/assets/internal/social-preview.png)
 
-[![Version](https://img.shields.io/github/v/release/kermanx/p2p-live-share)](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share) <!-- [![Installs](https://img.shields.io/visual-studio-marketplace/i/kermanx.p2p-live-share)](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share) --> [![Reactive VSCode](https://img.shields.io/badge/made_with-reactive--vscode-%23007ACC?style=flat&labelColor=%23229863)](https://kermanx.com/reactive-vscode/)
+[![Version](https://img.shields.io/github/v/release/kermanx/p2p-live-share)](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share) <!-- [![Installs](https://img.shields.io/visual-studio-marketplace/i/kermanx.p2p-live-share)](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share) --> [![reactive-vscode](https://img.shields.io/badge/made_with-reactive--vscode-%23007ACC?style=flat&labelColor=%23229863)](https://kermanx.com/reactive-vscode/)
 
-A peer-to-peer and open source alternative to [Live Share](https://visualstudio.microsoft.com/services/live-share/).
+A peer-to-peer and open-source alternative to [Live Share](https://visualstudio.microsoft.com/services/live-share/).
 
-This VSCode extension enables real-time collaborative editing, and...
+This VS Code extension enables real-time collaborative editing, and...
 
 - Remote Language Service
 - Terminal Sharing
 - Port Forwarding
 - Chat with Images
-- Text Selection Sharing
+- Text Selection Sync
 - Workspace Files Sync
 
-You can install this extension by searching "[**P2P Live Share**](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share)" in the [extension panel](https://code.visualstudio.com/docs/getstarted/extensions#_browse-extensions) of VSCode or Cursor.
-
-To start sharing, click the "Share" button in the P2P Live Share panel, which you can find on the [Activity Bar](https://code.visualstudio.com/docs/getstarted/userinterface#_basic-layout).
+You can install this extension by searching "[**P2P Live Share**](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share)" in the [extension panel](https://code.visualstudio.com/docs/getstarted/extensions#_browse-extensions) of VS Code. To start sharing, click the "Share" button in the P2P Live Share panel, which you can find on the [activity bar](https://code.visualstudio.com/docs/getstarted/userinterface#_basic-layout).
 
 ![Screenshot](https://raw.githubusercontent.com/kermanx/p2p-live-share/main/assets/internal/screenshot.png)
 
@@ -23,9 +21,9 @@ To start sharing, click the "Share" button in the P2P Live Share panel, which yo
 
 You won't need to sign in any account to use it. You can also improve its security and connectivity by [self-hosting a relay server](#self-hosted-relay-server). By default, it uses public signaling servers listed by [trystero](https://github.com/dmotz/trystero).
 
-<!-- #### VSCode Web Support
+<!-- #### VS Code Web Support
 
-This extension also works in [VSCode Web](https://vscode.dev/). You can join a session on your browser after installing the extension, and enjoy the same collaborative editing features, terminals and language service provided by the host. -->
+This extension also works in [VS Code Web](https://vscode.dev/). You can join a session on your browser after installing the extension, and enjoy the same collaborative editing features, terminals and language service provided by the host. -->
 
 ## Connectivity
 
@@ -73,7 +71,7 @@ The host can directly listen for incoming WebSocket connections without a relay 
       - WebSocket 支持：启用，空闲时间设置为 120 秒
     - 函数 URL 配置：开启公网访问
 
-3. 部署完成后，进入“函数 URL”栏目，复制公网访问的 `wss://` 地址。在 VSCode 中点击 Share 后，填入该地址即可。
+3. 部署完成后，进入“函数 URL”栏目，复制公网访问的 `wss://` 地址。在 VS Code 中点击 Share 后，填入该地址即可。
 
 </details>
 
@@ -81,8 +79,8 @@ The host can directly listen for incoming WebSocket connections without a relay 
 
 This project is released under the MIT License. It is not affiliated with, endorsed by, or sponsored by Microsoft Corporation.
 
-This project is not intended to replace Live Share, but to provide a free and open-source alternative for users who need it. As an official product, Live Share has access to [VSCode Proposed APIs](https://code.visualstudio.com/api/advanced-topics/using-proposed-api), which enable more advanced features such as sharing any opened terminals.
+This project is not intended to replace Live Share, but to provide a free and open-source alternative for users who need it. As an official product, Live Share has access to [VS Code Proposed APIs](https://code.visualstudio.com/api/advanced-topics/using-proposed-api), which enable more advanced features such as sharing any opened terminals.
 
 This project is not stable yet. Please make sure to only share non-sensitive files. The author is not responsible for any data loss or leakage.
 
-Part of the code under the `src/terminal/pty` folder is adapted from VSCode.
+Part of the code under the `src/terminal/pty` folder is adapted from VS Code.
