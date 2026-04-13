@@ -33,7 +33,7 @@ export function useTrysteroConnection(config: ConnectionConfig): InternalConnect
 
   const ready = rpc.trysteroJoinRoom(strategy, {
     ...TrysteroConfig,
-    ...configs.trysteroConfig,
+    ...configs.trystero,
   }, roomId).then(() => {
     rpc.trysteroListenAction(AckActionName)
   })

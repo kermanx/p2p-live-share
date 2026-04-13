@@ -466,7 +466,7 @@
           "default": "",
           "description": "User name to display to other participants. If empty, will detect from available accounts or ask for a name."
         },
-        "p2p-live-share.trysteroConfig": {
+        "p2p-live-share.trystero": {
           "type": "object",
           "default": {},
           "description": "The first parameter of trystero.joinRoom, see https://github.com/dmotz/trystero."
