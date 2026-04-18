@@ -13,13 +13,9 @@ This VS Code extension enables real-time collaborative editing, and...
 - Text Selection Sync
 - Workspace Files Sync
 
-You can install this extension by searching "[**P2P Live Share**](https://marketplace.visualstudio.com/items?itemName=kermanx.p2p-live-share)" in the [extension panel](https://code.visualstudio.com/docs/getstarted/extensions#_browse-extensions) of VS Code. To start sharing, click the "Share" button in the P2P Live Share panel, which you can find on the [activity bar](https://code.visualstudio.com/docs/getstarted/userinterface#_basic-layout).
+To start sharing, <a target="_blank" href="https://redirect.kermanx.workers.dev/vscode:extension/kermanx.p2p-live-share">install the extension</a>, then click **Share** in the P2P Live Share panel on the [activity bar](https://code.visualstudio.com/docs/getstarted/userinterface#_basic-layout). No account or sign-in is required. It uses [trystero](https://github.com/dmotz/trystero)'s public signaling servers by default, but you can [self-host a relay server](#self-hosted-relay-server) for better security and connectivity.
 
 ![Screenshot](https://raw.githubusercontent.com/kermanx/p2p-live-share/main/assets/internal/screenshot.png)
-
-#### No Account Required
-
-You won't need to sign in any account to use it. You can also improve its security and connectivity by [self-hosting a relay server](#self-hosted-relay-server). By default, it uses public signaling servers listed by [trystero](https://github.com/dmotz/trystero).
 
 <!-- #### VS Code Web Support
 
