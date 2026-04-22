@@ -1,6 +1,6 @@
 import { defineLogger } from 'reactive-vscode'
 
-export const logger = defineLogger('P2P Live Share')
+export const logger = defineLogger('CRC Live Share (Puc Minas)')
 
 export function useIdAllocator() {
   let id = 0

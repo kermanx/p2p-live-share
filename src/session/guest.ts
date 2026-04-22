@@ -15,7 +15,7 @@ import { useTunnels } from '../tunnel'
 import { useUsers } from '../ui/users'
 import { useWebview } from '../webview'
 import { onSessionClosed, ProtocolVersion } from './index'
-
+import { UpdatePermissionsAction, UpdateGlobalLockAction, ForceSyncAction } from '../sync/ws/protocol'
 export async function createGuestSession(config: ConnectionConfig) {
   const scope = effectScope(true)
   const connection = scope.run(() => useConnection(config))!
@@ -25,14 +25,14 @@ export async function createGuestSession(config: ConnectionConfig) {
   const initResult = await window.withProgress(
     {
       location: ProgressLocation.Notification,
-      title: 'P2P Live Share: Joining session...',
+      title: 'CRC Live Share (Puc Minas): Joining session...',
       cancellable: true,
     },
     (_progress, token) => new Promise<null | [Uint8Array, string, HostMeta]>((resolve) => {
       token.onCancellationRequested(() => resolve(null))
       const timeoutId = setTimeout(async () => {
         const res = await window.showErrorMessage(
-          'P2P Live Share: No host found at 15 seconds.',
+          'CRC Live Share (Puc Minas): No host found at 15 seconds.',
           {
             modal: true,
             detail: 'Please make sure the host is online and you have the correct connection link.',
@@ -56,7 +56,7 @@ export async function createGuestSession(config: ConnectionConfig) {
 
   if (!ProtocolVersion.includes(hostMeta.version)) {
     await window.showErrorMessage(
-      'P2P Live Share: Incompatible host version.',
+      'CRC Live Share (Puc Minas): Incompatible host version.',
       {
         modal: true,
         detail: `Host version: ${hostMeta.version}.\nLocal version: ${ProtocolVersion}.`,
@@ -84,7 +84,7 @@ export async function createGuestSession(config: ConnectionConfig) {
       if (!connection.peers.value.includes(hostId)) {
         setTimeout(() => {
           onSessionClosed({
-            title: 'P2P Live Share: Host has disconnected.',
+            title: 'CRC Live Share (Puc Minas): Host has disconnected.',
             detail: 'This may be due to network issues, or the host may have closed the session.',
           })
         })

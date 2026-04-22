@@ -2,7 +2,7 @@
   "name": "p2p-live-share-ws-server",
   "type": "module",
   "version": "0.1.1",
-  "description": "WebSocket server for P2P Live Share",
+  "description": "WebSocket server for CRC Live Share (Puc Minas)",
   "author": {
     "name": "_Kerman",
     "email": "kermanx@qq.com",

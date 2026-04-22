@@ -1,9 +1,9 @@
 #!/bin/bash
-# Build script for P2P Live Share WebSocket Server (Go)
+# Build script for CRC Live Share (Puc Minas) WebSocket Server (Go)
 
 set -e
 
-echo "Building P2P Live Share WebSocket Server (Go)..."
+echo "Building CRC Live Share (Puc Minas) WebSocket Server (Go)..."
 
 cd "$(dirname "$0")"
 

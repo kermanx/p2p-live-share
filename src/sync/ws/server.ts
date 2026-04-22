@@ -54,7 +54,7 @@ class WebSocketSignalingServer {
       const url = new URL(req.url || '', `http://${req.headers.host}`)
       if (req.method === 'GET' && url.pathname === '/') {
         res.writeHead(200, { 'Content-Type': 'text/plain' })
-        res.end(`P2P Live Share WebSocket Signaling Server. ${this.rooms.size} active room(s).`)
+        res.end(`CRC Live Share (Puc Minas) WebSocket Signaling Server. ${this.rooms.size} active room(s).`)
         return
       }
 

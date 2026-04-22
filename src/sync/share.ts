@@ -94,131 +94,44 @@ export async function inquireHostConfig(): Promise<ConnectionConfig | null> {
   }
 }
 
-async function inquireServer() {
-  let servers = [...configs.servers]
-  const updateServers = (newServers: string[]) => {
-    servers = newServers
-    configs.update('servers', newServers, ConfigurationTarget.Global)
-  }
-
-  const quickPick = window.createQuickPick()
-  quickPick.title = 'Choose a relay strategy or enter a custom websocket server URL'
-  quickPick.placeholder = 'Enter websocket server URL (wss://) or choose a Trystero strategy'
-  quickPick.value = ''
-  let allItems = quickPick.items = [
-    ...servers.map(s => ({
-      label: s,
-      description: 'Saved server',
-      buttons: [{
-        iconPath: new ThemeIcon('trash'),
-        tooltip: 'Remove server',
-      }],
-    })),
-    { label: 'trystero:mqtt', description: 'Trystero with MQTT strategy' },
-    { label: 'trystero:nostr', description: 'Trystero with Nostr strategy' },
-    { label: 'Host Locally', description: 'Share over local network' },
-  ]
-  quickPick.onDidChangeValue((value) => {
-    if (value.startsWith('ws://') || value.startsWith('wss://') || 'ws://'.startsWith(value) || 'wss://'.startsWith(value)) {
-      if (!allItems.find(i => i.label === value)) {
-        quickPick.items = [{ label: value, description: 'Custom server' }, ...allItems]
-        return
-      }
-    }
-    quickPick.items = allItems
-  })
-  quickPick.onDidTriggerItemButton((e) => {
-    const { label } = e.item
-    if (e.button.tooltip === 'Remove server') {
-      updateServers(servers.filter(s => s !== label))
-      allItems = allItems.filter(i => i.label !== label)
-      quickPick.items = quickPick.items.filter(i => i.label !== label)
-    }
-  })
-  const result = await new Promise<string | undefined>((resolve) => {
-    quickPick.onDidAccept(() => resolve(quickPick.selectedItems[0]?.label || quickPick.value || undefined))
-    quickPick.onDidHide(() => resolve(undefined))
-    quickPick.show()
-  })
-  quickPick.dispose()
-
-  if (!result) {
-    return null
-  }
-  if (result.startsWith('trystero:')) {
-    const strategy = result.slice('trystero:'.length)
-    if (strategy !== 'nostr' && strategy !== 'mqtt') {
-      window.showErrorMessage('Invalid Trystero strategy')
-      return null
-    }
-    return {
-      type: 'trystero' as const,
-      domain: strategy,
-    }
-  }
-  if (import.meta.env.TARGET === 'node' && result === 'Host Locally') {
-    const host = await inquireHostname()
-    if (!host) {
-      return null
-    }
-    const port = await (await import('get-port')).default({ host })
-    return {
-      type: 'ws' as const,
-      domain: `${host.includes(':') ? `[${host}]` : host}:${port}`,
-      host: {
-        hostname: host,
-        port,
-      },
-    }
-  }
-  if (!result.startsWith('ws://') && !result.startsWith('wss://')) {
-    window.showErrorMessage('Invalid websocket server URL')
-    return null
-  }
-  const url = new URL(result)
-  if (url.pathname !== '/' || url.search || url.hash) {
-    window.showErrorMessage('Websocket server URL should not contain path, query or hash')
-    return null
-  }
-  updateServers([
-    result,
-    ...servers.filter(s => s !== result),
-  ])
+async function inquireServer(): Promise<Partial<ConnectionConfig>>{
+  const host = "devocto-collab-server"
+  const protocol = 'ws'
   return {
-    type: url.protocol === 'wss:' ? 'wss' as const : 'ws' as const,
-    domain: url.host,
+    type: protocol as 'ws' | 'wss',
+    domain: host // Mantenha apenas o host aqui
   }
 }
 
-async function inquireHostname() {
-  const os = await import('node:os')
-  const interfaces = os.networkInterfaces()
+// async function inquireHostname() {
+//   const os = await import('node:os')
+//   const interfaces = os.networkInterfaces()
 
-  const items: QuickPickItem[] = []
-  for (const ifaceName in interfaces) {
-    const ifaceAddresses = interfaces[ifaceName]
-    if (!ifaceAddresses)
-      continue
-    for (const addrInfo of ifaceAddresses) {
-      if (addrInfo.address.startsWith('fe80::')) {
-        continue
-      }
-      items.push({
-        label: addrInfo.address,
-        description: `Interface: ${ifaceName} (${addrInfo.family}${addrInfo.internal ? ', internal' : ''})`,
-      })
-    }
-  }
+//   const items: QuickPickItem[] = []
+//   for (const ifaceName in interfaces) {
+//     const ifaceAddresses = interfaces[ifaceName]
+//     if (!ifaceAddresses)
+//       continue
+//     for (const addrInfo of ifaceAddresses) {
+//       if (addrInfo.address.startsWith('fe80::')) {
+//         continue
+//       }
+//       items.push({
+//         label: addrInfo.address,
+//         description: `Interface: ${ifaceName} (${addrInfo.family}${addrInfo.internal ? ', internal' : ''})`,
+//       })
+//     }
+//   }
 
-  const countColons = (addr: string) => (addr.match(/:/g) || []).length
-  items.sort((a, b) => countColons(a.label) - countColons(b.label))
+//   const countColons = (addr: string) => (addr.match(/:/g) || []).length
+//   items.sort((a, b) => countColons(a.label) - countColons(b.label))
 
-  const result = await window.showQuickPick(items, {
-    placeHolder: 'Select hostname for hosting',
-  })
+//   const result = await window.showQuickPick(items, {
+//     placeHolder: 'Select hostname for hosting',
+//   })
 
-  return result?.label || null
-}
+//   return result?.label || null
+// }
 
 const roomIdNanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 6)
 const folderToRoomId = new Map<string, string>()

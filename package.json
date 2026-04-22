@@ -1,7 +1,7 @@
 {
   "publisher": "kermanx",
   "name": "p2p-live-share",
-  "displayName": "P2P Live Share",
+  "displayName": "CRC Live Share (PUC Minas)",
   "version": "0.1.1",
   "private": true,
   "packageManager": "pnpm@10.28.0",
@@ -33,103 +33,97 @@
       {
         "command": "p2p-live-share.host",
         "title": "Host a Session",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.join",
         "title": "Join a Session",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.joinNewWindow",
         "title": "Join a Session in New Window",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.leave",
         "title": "Leave Session",
         "icon": "$(sign-out)",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.stop",
         "title": "Stop Session",
         "icon": "$(stop-circle)",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.focusParticipant",
         "title": "Focus Participant",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.followParticipant",
         "title": "Follow Participant",
         "icon": "$(eye)",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.unfollowParticipant",
         "title": "Unfollow Participant",
         "icon": "$(eye-closed)",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.copyInviteLink",
         "title": "Copy Invite Link",
         "icon": "$(add)",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.createSharedTerminal",
         "title": "Create Shared Terminal",
         "icon": "$(add)",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.focusSharedTerminal",
         "title": "Focus Shared Terminal",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.closeSharedTerminal",
         "title": "Close Shared Terminal",
         "icon": "$(close)",
-        "category": "P2P Live Share"
-      },
-      {
-        "command": "p2p-live-share.shareServer",
-        "title": "Share Server",
-        "icon": "$(add)",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.stopSharingServer",
         "title": "Stop Sharing Server",
         "icon": "$(stop-circle)",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.connectToSharedServer",
         "title": "Connect to Shared Server",
         "icon": "$(plug)",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.disconnectFromSharedServer",
         "title": "Disconnect from Shared Server",
         "icon": "$(debug-disconnect)",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.copySharedServerLocalURL",
         "title": "Copy Shared Server Local URL",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.executeHostCommand",
         "title": "Dummy command",
-        "category": "P2P Live Share"
+        "category": "CRC Live Share (Puc Minas)"
       },
       {
         "command": "p2p-live-share.scm.openChange",
@@ -163,13 +157,43 @@
         "title": "Revert Changes",
         "category": "Live Share Source Control",
         "icon": "$(discard)"
+      },
+      {
+        "command": "p2p-live-share.allowEdit",
+        "title": "Liberar Edição",
+        "icon": "$(lock)",
+        "category": "CRC Live Share (Puc Minas)"
+      },
+      {
+        "command": "p2p-live-share.revokeEdit",
+        "title": "Bloquear Edição",
+        "icon": "$(unlock)",
+        "category": "CRC Live Share (Puc Minas)"
+      },
+      {
+        "command": "p2p-live-share.unlockAll",
+        "title": "Modo de Controle Ativado (clique para ir para Modo Livre)",
+        "icon": "$(lock)",
+        "category": "CRC Live Share (Puc Minas)"
+      },
+      {
+        "command": "p2p-live-share.lockAll",
+        "title": "Modo Livre Ativado (clique para ir para modo Controle)",
+        "icon": "$(unlock)",
+        "category": "CRC Live Share (Puc Minas)"
+      },
+      {
+        "command": "p2p-live-share.forceSync",
+        "title": "Forçar Sincronização (Corrigir Erros)",
+        "icon": "$(sync)",
+        "category": "CRC Live Share (Puc Minas)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "p2p-live-share-panel",
-          "title": "P2P Live Share",
+          "title": "CRC Live Share (Puc Minas)",
           "icon": "./assets/panel-icon.svg"
         }
       ]
@@ -187,12 +211,6 @@
           "name": "Terminals",
           "type": "tree",
           "when": "p2p-live-share:inSession"
-        },
-        {
-          "id": "p2p-live-share.tunnels",
-          "name": "Shared Servers",
-          "type": "tree",
-          "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
         },
         {
           "id": "p2p-live-share.webview",
@@ -227,6 +245,21 @@
           "command": "p2p-live-share.shareServer",
           "when": "view == p2p-live-share.tunnels",
           "group": "navigation"
+        },
+        {
+          "command": "p2p-live-share.unlockAll",
+          "when": "view == p2p-live-share.participants && p2p-live-share:isHost && p2p-live-share:globalLock",
+          "group": "navigation@1"
+        },
+        {
+          "command": "p2p-live-share.lockAll",
+          "when": "view == p2p-live-share.participants && p2p-live-share:isHost && !p2p-live-share:globalLock",
+          "group": "navigation@1"
+        },
+        {
+          "command": "p2p-live-share.forceSync",
+          "when": "view == p2p-live-share.participants && p2p-live-share:isHost",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -259,6 +292,16 @@
           "command": "p2p-live-share.disconnectFromSharedServer",
           "when": "view == p2p-live-share.tunnels && viewItem == connected",
           "group": "inline"
+        },
+        {
+          "command": "p2p-live-share.allowEdit",
+          "when": "view == p2p-live-share.participants && p2p-live-share:isHost && p2p-live-share:globalLock && viewItem =~ /readonly/",
+          "group": "inline@2"
+        },
+        {
+          "command": "p2p-live-share.revokeEdit",
+          "when": "view == p2p-live-share.participants && p2p-live-share:isHost && p2p-live-share:globalLock && viewItem =~ /can-edit/",
+          "group": "inline@2"
         }
       ],
       "statusBar/remoteIndicator": [
@@ -441,17 +484,12 @@
       },
       {
         "view": "p2p-live-share.terminals",
-        "contents": "A shared terminal allows all participants to see the terminal output and input commands. \n[Create Terminal](command:p2p-live-share.createSharedTerminal)",
+        "contents": "Um terminal compartilhado permite que todos os participantes vejam a saída do terminal e insiram comandos. \n[Create Terminal](command:p2p-live-share.createSharedTerminal)",
         "when": "p2p-live-share:inSession"
-      },
-      {
-        "view": "p2p-live-share.tunnels",
-        "contents": "Share a local server with all participants. \n[Share Server](command:p2p-live-share.shareServer)",
-        "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
       }
     ],
     "configuration": {
-      "title": "P2P Live Share",
+      "title": "CRC Live Share (Puc Minas)",
       "properties": {
         "p2p-live-share.servers": {
           "type": "array",

@@ -64,7 +64,7 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		roomCount := len(rooms)
 		roomsLock.RUnlock()
 
-		msg := fmt.Sprintf("P2P Live Share WebSocket Signaling Server. %d active room(s).", roomCount)
+		msg := fmt.Sprintf("CRC Live Share (Puc Minas) WebSocket Signaling Server. %d active room(s).", roomCount)
 		w.Header().Set("Content-Type", "text/plain")
 		w.Write([]byte(msg))
 		return

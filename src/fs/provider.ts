@@ -1,8 +1,9 @@
 import type { FileChangeEvent, FileSystemProvider } from 'vscode'
-import { defineService, onScopeDispose, useDisposable, useEventEmitter } from 'reactive-vscode'
-import { workspace } from 'vscode'
+import { defineService, onScopeDispose, useDisposable, useEventEmitter, shallowRef } from 'reactive-vscode'
+import { workspace, FileSystemError } from 'vscode'
 
 export const CustomUriScheme = 'p2p-live-share'
+
 
 type FileSystemProviderImpl = Omit<FileSystemProvider, 'onDidChangeFile'>
 interface DeferredWatch {
@@ -15,6 +16,10 @@ export const useFsProvider = defineService(() => {
   let resolveInit: () => void
   const initPromise = new Promise<void>(r => resolveInit = r)
   let deferredWatches: DeferredWatch[] = []
+
+  // TRAVA DE SEGURANÇA (DEFAULT DENY)
+  // Nasce bloqueado. Apenas o Host ou um pacote de permissão via rede pode mudar isso para false.
+  const isReadonly = shallowRef(true)
 
   let activeProvider: FileSystemProviderImpl | null = null
   const useSetActiveProvider = (provider: FileSystemProviderImpl) => {
@@ -40,11 +45,23 @@ export const useFsProvider = defineService(() => {
   }
 
   function getHandler<K extends keyof FileSystemProviderImpl>(method: K) {
+    // esse método é chamado toda vez que o VS Code quer usar uma função do 
+    // nosso FS, tipo stat, readFile, etc.
     return async (...args: any) => {
       await initPromise
       if (!activeProvider) {
         throw new Error('No active FS provider')
       }
+
+      // --- O CADEADO DO DEVOCTO ---
+      // Lista de métodos que alteram o disco.
+      const mutativeMethods = ['writeFile', 'delete', 'rename', 'createDirectory']
+      
+      // Se a trava estiver ativa e o método for mutativo, barramos a ação na hora!
+      if (isReadonly.value && mutativeMethods.includes(method)) {
+        throw FileSystemError.NoPermissions('Sessão Bloqueada: O Professor (Host) restringiu a edição para você.')
+      }
+
       if (!activeProvider[method]) {
         throw new Error(`Active FS provider does not implement ${method}`)
       }
@@ -85,14 +102,17 @@ export const useFsProvider = defineService(() => {
       rename: getHandler('rename'),
     },
     {
-      // TODO:
       isCaseSensitive: true,
-      isReadonly: false,
+      // deixamos isso como false para o VS Code tentar chamar o writeFile,
+      // assim podemos disparar o nosso erro personalizado e bonitinho em vez 
+      // de um erro genérico do VS Code.
+      isReadonly: false, 
     },
   ))
 
   return {
     useSetActiveProvider,
     fileChanged: fileChange.fire,
+    isReadonly, // EXPORTAMOS A TRAVA para podermos abrir/fechar via protocolo de rede
   }
 })

@@ -68,9 +68,7 @@ export const useUsers = defineService(() => {
   async function inquireUserName(isHost: boolean) {
     return userName.value = await worker()
     async function worker() {
-      if (configs.userName) {
-        return configs.userName
-      }
+      // Retorna o nome já processado se ele já existir na memória
       if (userName.value) {
         return userName.value
       }
@@ -84,42 +82,48 @@ export const useUsers = defineService(() => {
         return result
       }
 
-      const providers = ['github', 'microsoft']
-      for (const providerId of providers) {
-        const accounts = await authentication.getAccounts?.(providerId)
-        if (accounts.length > 0) {
-          if (!avatarUrl.value && providerId === 'github') {
-            avatarUrl.value = `https://github.com/${accounts[0].id}.png?size=128`
-          }
-          return toFreeName(accounts[0].label)
-        }
+      // Lógica de captura das variáveis de ambiente do Devocto
+      const usernameUsuarioDevocto = process.env.DEVOCTO_USERNAME
+      const nomeCompletoUsuario = process.env.DEVOCTO_NAME
+      
+      if (usernameUsuarioDevocto) {
+        const primeiroNome = nomeCompletoUsuario?.split(' ')[0] || usernameUsuarioDevocto
+        const nomeFormatado = `${primeiroNome} (${usernameUsuarioDevocto})`
+        return toFreeName(nomeFormatado)
+      }
+
+      // Fallback para as configurações do VS Code caso a ENV não exista
+      if (configs.userName) {
+        return toFreeName(configs.userName)
       }
 
       if (isHost) {
-        return 'Host'
+        return 'Professor'
       }
 
       const newName = await window.showInputBox({
-        prompt: 'Enter your name',
-        placeHolder: 'Your name',
-        value: toFreeName('Guest'),
+        prompt: 'Informe seu nome para a sessão',
+        placeHolder: 'Seu nome',
+        value: toFreeName('Estudante'),
         ignoreFocusOut: true,
         validateInput: (value) => {
           if (occupied.has(value)) {
-            return 'This name is already taken. Please choose another one.'
+            return 'Este nome já está sendo usado na sala.'
           }
           if (value.length === 0) {
-            return 'Name cannot be empty.'
+            return 'O nome não pode ficar vazio.'
           }
-          if (value.length > 16) {
-            return 'Name is too long.'
+          if (value.length > 25) { // Aumentei um pouco o limite por causa do formato "Nome (User)"
+            return 'O nome está muito longo.'
           }
           return null
         },
       })
+
       if (newName === undefined) {
-        return null
+        return toFreeName('Estudante')
       }
+
       configs.update('userName', newName, ConfigurationTarget.Global)
       return newName
     }

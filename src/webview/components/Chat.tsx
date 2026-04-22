@@ -253,7 +253,7 @@ export default defineComponent(() => {
                 padding: '12px',
               }}
               >
-                No messages yet. Start chatting.
+                Nenhuma mensagem enviada, comece a conversar e tirar suas dúvidas! 😉
               </div>
             )
           : (

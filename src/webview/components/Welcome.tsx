@@ -6,7 +6,7 @@ export default defineAsyncComponent(async () => {
   return defineComponent(() => () => (
     <>
       <div style={{ marginTop: '16px', marginBottom: '16px' }}>
-        Start collaboratively editing with others in real-time.
+        Comece a editar colaborativamente com seus colegas e professores em tempo real.
       </div>
 
       <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
@@ -19,7 +19,7 @@ export default defineAsyncComponent(async () => {
                 }}
                 disabled={state.value === 'joining'}
               >
-                Share
+                Compartilhar Workspace
               </vscode-button>
             )
           : (
@@ -34,7 +34,7 @@ export default defineAsyncComponent(async () => {
           }}
           disabled={state.value === 'joining'}
         >
-          Join
+          Entrar
         </vscode-button>
       </div>
     </>

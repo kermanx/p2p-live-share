@@ -79,3 +79,5 @@ export function useWebSocketHostConnection(config: ConnectionConfig): InternalCo
     onClose: onClose.event,
   }
 }
+
+

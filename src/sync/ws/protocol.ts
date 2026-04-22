@@ -69,3 +69,8 @@ function unpackTextAndBuffer(packed: ArrayBufferLike) {
 }
 
 export const UpdatePeersAction = '__update_peers__'
+
+// Actions para mensagens customizadas devocto
+export const UpdatePermissionsAction = 'p2p-upd-perms'
+export const UpdateGlobalLockAction = 'p2p-upd-global-lock'
+export const ForceSyncAction = 'p2p-force-sync'

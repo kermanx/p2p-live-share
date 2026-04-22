@@ -17,7 +17,7 @@ export function useGuestLs(connection: Connection, hostId: string) {
 
   const languageClient = useDisposable(new PatchedLanguageClient(
     'P2PLiveShare',
-    'P2P Live Share Language Client',
+    'CRC Live Share (Puc Minas) Language Client',
     async () => lc,
     {
       documentSelector: [{ scheme: CustomUriScheme }],

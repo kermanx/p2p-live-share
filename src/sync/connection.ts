@@ -87,7 +87,7 @@ export function useConnection(config: ConnectionConfig) {
 
   internal.onClose(() => {
     onSessionClosed({
-      title: 'P2P Live Share: Connection closed.',
+      title: 'CRC Live Share (Puc Minas): Connection closed.',
       detail: 'The connection has been closed. This may be due to network issues or the relay server going offline.',
     })
   })

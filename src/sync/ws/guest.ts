@@ -18,7 +18,12 @@ export function useWebSocketGuestConnection(config: ConnectionConfig): InternalC
   }
 
   const selfId = nanoid(10)
-  const serverUrl = `${config.type}://${config.domain}/${config.roomId}/${selfId}`
+  const serverUrl = `${config.type}://${config.domain}:3030/${config.roomId}/${selfId}`
+  
+  // import('vscode').then(vscode => {
+  //   vscode.window.showInformationMessage(`Tentando conectar em: ${serverUrl}`);
+  // });
+
   logger.info('Connecting to WebSocket server:', serverUrl)
   const socket = new WebSocket_(serverUrl)
   socket.binaryType = 'arraybuffer'
