@@ -30,8 +30,35 @@ export async function createHostSession(config: ConnectionConfig) {
       version: ProtocolVersion,
       os: process.platform,
     }
+    
+    
     const [sendInit] = connection.makeAction<Uint8Array, HostMeta>('init')
+    const [sendKick] = connection.makeAction<void>('kick-clone')
+    const [_, recvIdentify] = connection.makeAction<string>('identify-guest')
+
+    const activeGuests = new Map<string, string>()
+
+    recvIdentify((guestName, peerId) => {
+      const oldPeerId = activeGuests.get(guestName)
+      if (oldPeerId && oldPeerId !== peerId) {
+        sendKick(undefined, oldPeerId)
+      }
+      activeGuests.set(guestName, peerId)
+    })
+
     watch(connection.peers, (newPeers, oldPeers) => {
+      if (oldPeers) {
+        for (const oldPeer of oldPeers) {
+          if (!newPeers.includes(oldPeer)) {
+            for (const [name, id] of activeGuests.entries()) {
+              if (id === oldPeer) {
+                activeGuests.delete(name)
+              }
+            }
+          }
+        }
+      }
+
       for (const peerId of newPeers) {
         if (!oldPeers?.includes(peerId)) {
           sendInit(Y.encodeStateAsUpdateV2(doc), peerId, hostMeta)

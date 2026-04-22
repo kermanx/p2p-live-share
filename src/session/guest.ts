@@ -1,7 +1,7 @@
 import type { ConnectionConfig } from '../sync/share'
 import type { HostMeta } from './types'
 import { effectScope, watchEffect } from 'reactive-vscode'
-import { ProgressLocation, window } from 'vscode'
+import { ProgressLocation, window, commands } from 'vscode'
 import * as Y from 'yjs'
 import { useGuestDiagnostics } from '../diagnostics/guest'
 import { useGuestFs } from '../fs/guest'
@@ -16,12 +16,21 @@ import { useUsers } from '../ui/users'
 import { useWebview } from '../webview'
 import { onSessionClosed, ProtocolVersion } from './index'
 import { UpdatePermissionsAction, UpdateGlobalLockAction, ForceSyncAction } from '../sync/ws/protocol'
-export async function createGuestSession(config: ConnectionConfig) {
+
+export async function createGuestSession(config: ConnectionConfig & { path: string }, guestName: string) {
+
   const scope = effectScope(true)
   const connection = scope.run(() => useConnection(config))!
   await connection.ready
 
   const [_, recvInit] = connection.makeAction<Uint8Array, HostMeta>('init')
+
+  const [sendIdentify] = connection.makeAction<string>('identify-guest')
+  
+  // Ignora o primeiro parametro e evita erro de redeclaracao de variavel
+  const [, recvKick] = connection.makeAction<void>('kick-clone')
+
+
   const initResult = await window.withProgress(
     {
       location: ProgressLocation.Notification,
@@ -64,7 +73,16 @@ export async function createGuestSession(config: ConnectionConfig) {
     )
     return null
   }
-
+  // Envia o nome de identificação para o host assim que conectar
+  sendIdentify(guestName, hostId)
+  // Ouve a ordem de aniquilação vinda do host
+  recvKick(() => {
+    // Mostra um aviso claro de que a aba virou um zumbi
+    window.showWarningMessage("Sessão transferida: Você conectou em outra aba. Esta janela foi desconectada.")
+    
+    // Chama a Morte Silenciosa que acabamos de criar, preservando o Workspace para a Aba 2!
+    commands.executeCommand('p2p-live-share.kickLeave')
+  })
   return scope.run(() => {
     const doc = new Y.Doc()
     useDocSync(connection, doc)

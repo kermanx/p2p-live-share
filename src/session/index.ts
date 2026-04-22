@@ -238,6 +238,44 @@ export const useActiveSession = defineService(() => {
       window.showInformationMessage('You have left the session.')
     }
   }
+  /*
+   * DEVOCTO FIX: A Morte Silenciosa do Clone
+   * Aniquila a sessão apenas na memória desta aba (cortando o WebSocket),
+   * mas NÃO toca nas pastas do VS Code nem no isReadonly, para não derrubar a Aba Nova.
+   */
+  async function kickLeave() {
+    if (!session.value) return
+    
+    // Matar a sessão aqui dispara o scope.stop() automaticamente,
+    // o que corta a conexão de rede desta aba com o professor.
+    session.value = null
+  }
+
+  /*
+   * Executa a destruicao imediata da sessao atual sem solicitar confirmacao do usuario.
+   * Usado para desconectar forcadamente abas fantasmas (clones).
+   */
+  async function forceLeave() {
+    if (!session.value) return
+
+    const wasGuest = session.value.role === 'guest'
+
+    // Aniquila o estado da sessao localmente
+    session.value = null
+    isConnectingGlobal = false 
+    
+    // Devolve a trava de seguranca do disco
+    const fs = useFsProvider()
+    fs.isReadonly.value = true
+
+    // Remove a pasta virtual da barra lateral para limpar a interface
+    if (wasGuest) {
+      const indexParaRemover = workspace.workspaceFolders?.findIndex(f => f.uri.scheme === CustomUriScheme)
+      if (indexParaRemover !== undefined && indexParaRemover !== -1) {
+        workspace.updateWorkspaceFolders(indexParaRemover, 1)
+      }
+    }
+  }
 
   watch(session, (_, oldState) => oldState?.scope.stop())
   onScopeDispose(() => session.value?.scope.stop())
@@ -250,7 +288,11 @@ export const useActiveSession = defineService(() => {
   useCommand('p2p-live-share.join', () => join(false))
   useCommand('p2p-live-share.joinNewWindow', () => join(true))
   useCommand('p2p-live-share.leave', leave)
+  // Adicione esta linha:
+  useCommand('p2p-live-share.kickLeave', kickLeave)
   useCommand('p2p-live-share.stop', leave)
+  // Registra o comando de aniquilacao silenciosa
+  useCommand('p2p-live-share.forceLeave', forceLeave)
   useCommand('p2p-live-share.copyInviteLink', () => {
     if (session.value?.connection) {
       copyShareLink(session.value?.connection.config)
