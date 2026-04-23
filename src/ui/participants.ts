@@ -12,9 +12,10 @@ export const useParticipantsTree = defineService(() => {
   const { peers, getUserInfo } = useUsers()
   const { getSelection, following } = useSelections()
   const { toLocalUri, hostId, connection } = useActiveSession()
+  const allowedNames = ref<string[]>([])
 
-  // 2. SEGUNDO: Criamos nossas variáveis de segurança do Devocto
-  const allowedPeers = ref<string[]>([])
+  // // 2. SEGUNDO: Criamos nossas variáveis de segurança do Devocto
+  // const allowedPeers = ref<string[]>([])
   
   const globalLock = ref(true)
   useVscodeContext('p2p-live-share:globalLock', globalLock)
@@ -22,19 +23,33 @@ export const useParticipantsTree = defineService(() => {
   // 3. TERCEIRO: Uma única função de rede que envia TUDO (VIP + Cadeado Global)
   function broadcastPermissions() {
     if (!connection.value) return
-    
+    // Tradutor de Identidade: Busca quem esta online agora e converte os Nomes VIPs 
+    // de volta para os peerIds temporarios que o sistema de rede exige.
+    const currentAllowedPeerIds = (peers.value || []).filter(peerId => {
+      const user = getUserInfo(peerId)
+      return user && allowedNames.value.includes(user.name)
+    })
     // Manda a lista VIP
     const [sendVip] = connection.value.makeAction<string[]>(UpdatePermissionsAction)
-    sendVip(allowedPeers.value)
+    sendVip(currentAllowedPeerIds)
     
     // Manda o status do Cadeado Global
     const [sendGlobal] = connection.value.makeAction<boolean>(UpdateGlobalLockAction)
     sendGlobal(globalLock.value)
   }
 
-  // 4. QUARTO: Os Monitores e Comandos dos Botões
-  // Se um aluno entrar novo na sala, avisa a rede como estão as travas
-  watch(peers, () => {
+  //  Criamos um "Radar de Identidades"
+  // Esta variavel computada vai mudar sempre que o Y.js terminar de 
+  // carregar o nome verdadeiro de um aluno que acabou de entrar.
+  const identidadesDaSala = computed(() => {
+    return (peers.value || []).map(id => getUserInfo(id).name).join(',')
+  })
+
+  // O Vigia Duplo
+  // Agora reavaliamos os VIPs em dois cenarios:
+  // - Quando um cabo (peerId) conecta ou desconecta.
+  // - Quando uma mascara cai e o nome verdadeiro sincroniza (identidadesDaSala muda).
+  watch([peers, identidadesDaSala], () => {
     broadcastPermissions()
   })
 
@@ -54,9 +69,9 @@ export const useParticipantsTree = defineService(() => {
     const peerId = node?.treeItem?.peerId || node?.peerId
     if (!peerId) return
 
-    // Força a reatividade do Vue recriando o array
-    if (!allowedPeers.value.includes(peerId)) {
-      allowedPeers.value = [...allowedPeers.value, peerId];
+  const userName = getUserInfo(peerId).name
+    if (!allowedNames.value.includes(userName)) {
+      allowedNames.value = [...allowedNames.value, userName];
       broadcastPermissions();
     }
   })
@@ -67,7 +82,8 @@ export const useParticipantsTree = defineService(() => {
     if (!peerId) return
 
     // Remove o aluno criando um array novo (Reatividade garantida)
-    allowedPeers.value = allowedPeers.value.filter(id => id !== peerId);
+    const userName = getUserInfo(peerId).name
+    allowedNames.value = allowedNames.value.filter(name => name !== userName);
     broadcastPermissions();
   })
 
@@ -141,7 +157,8 @@ export const useParticipantsTree = defineService(() => {
       }
       // DEVOCTO: Altera a descrição para mostrar quem está bloqueado na tela do Professor
       // O aluno pode editar se: É host OU a trava global está desligada OU ele é VIP.
-      const canEdit = isHost || !globalLock.value || allowedPeers.value.includes(peerId);
+      // Validacao visual atualizada para usar o nome em vez do peerId
+      const canEdit = isHost || !globalLock.value || allowedNames.value.includes(user.name);
       
       if (!canEdit) {
         description += ' 🔒 (Somente Leitura)'

@@ -29,7 +29,17 @@ export const useActiveSession = defineService(() => {
     const folder = workspace.workspaceFolders?.find(folder => folder.uri.scheme === CustomUriScheme)
     try {
       if (folder) {
-        await joinImpl(folder.uri)
+        // Tenta conectar. Se for a Aba B herdando da Aba A, isso retorna true rapidao.
+        // Se for um container reiniciado, isso vai esperar 15s, falhar e retornar false.
+        const sucesso = await joinImpl(folder.uri)
+        
+        if (!sucesso) {
+          // LIMPEZA PÓS-MORTEM DEVOCTO: A sessao realmente morreu. Limpamos a arvore.
+          const indexParaRemover = workspace.workspaceFolders?.findIndex(f => f.uri.scheme === CustomUriScheme)
+          if (indexParaRemover !== undefined && indexParaRemover !== -1) {
+            workspace.updateWorkspaceFolders(indexParaRemover, 1)
+          }
+        }
       }
     }
     finally {
@@ -174,7 +184,7 @@ export const useActiveSession = defineService(() => {
           detail: 'The link you provided is not valid. Please check and try again. A valid link looks like: p2p-live-share://ws.room.domain:port/ or p2p-live-share://trystero.room.mqtt/',
         },
       )
-      return
+      return false
     }
 
     const { inquireUserName } = useUsers()
@@ -184,11 +194,20 @@ export const useActiveSession = defineService(() => {
       useWebview().ensureReady(),
     ])
     if (!name) {
-      return
+      return false 
     }
 
     try {
-      session.value = await createGuestSession(parsed)
+      // Modificacao: Guardamos o resultado antes de atribuir à session
+      const novaSessao = await createGuestSession(parsed, name)
+      
+      // Se novaSessao for null, significa que o timeout de 15s estourou no guest.ts!
+      if (!novaSessao) {
+        return false // Falhou (Container reiniciado / Zumbi)
+      }
+
+      session.value = novaSessao
+      return true // Sucesso absoluto! A aba foi herdada ou a conexao é nova.
     }
     catch (error: any) {
       console.error(error)
@@ -199,6 +218,7 @@ export const useActiveSession = defineService(() => {
           detail: error?.message || String(error),
         },
       )
+      return false
     }
   }
 

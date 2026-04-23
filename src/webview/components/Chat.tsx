@@ -451,7 +451,7 @@ export default defineComponent(() => {
             overflow: 'hidden',
             width: '100%',
           }}
-          placeholder="Type a message and press Enter to send"
+          placeholder="Digite uma mensagem... (Shift + Enter para nova linha)"
           value={editingMessage.value}
           onInput={(e: any) => {
             editingMessage.value = e.target.value

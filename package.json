@@ -238,7 +238,7 @@
         },
         {
           "command": "p2p-live-share.createSharedTerminal",
-          "when": "view == p2p-live-share.terminals",
+          "when": "view == p2p-live-share.terminals && p2p-live-share:isHost", 
           "group": "navigation"
         },
         {
@@ -275,7 +275,7 @@
         },
         {
           "command": "p2p-live-share.closeSharedTerminal",
-          "when": "view == p2p-live-share.terminals",
+          "when": "view == p2p-live-share.terminals && p2p-live-share:isHost",
           "group": "inline"
         },
         {
@@ -420,7 +420,7 @@
         },
         {
           "command": "p2p-live-share.createSharedTerminal",
-          "when": "p2p-live-share:inSession"
+          "when": "p2p-live-share:inSession && p2p-live-share:isHost"
         },
         {
           "command": "p2p-live-share.focusSharedTerminal",
@@ -485,7 +485,7 @@
       {
         "view": "p2p-live-share.terminals",
         "contents": "Um terminal compartilhado permite que todos os participantes vejam a saída do terminal e insiram comandos. \n[Create Terminal](command:p2p-live-share.createSharedTerminal)",
-        "when": "p2p-live-share:inSession"
+        "when": "p2p-live-share:inSession && p2p-live-share:isHost"
       }
     ],
     "configuration": {

@@ -36,7 +36,7 @@ export const useUsers = defineService(() => {
         if (role.value === 'host') {
           map.set(peerId, {
             ...user,
-            color: colorAllocator.alloc(peerId),
+            color: colorAllocator.alloc(user.name),
           })
         }
 
@@ -45,9 +45,7 @@ export const useUsers = defineService(() => {
         }
       }
       else if (action === 'delete') {
-        if (role.value === 'host') {
-          colorAllocator.free(peerId)
-        }
+
 
         if (peerId !== selfId.value && state.value) {
           window.showInformationMessage(`${oldValue.name} left the session.`)
@@ -59,7 +57,7 @@ export const useUsers = defineService(() => {
       for (const [peerId, user] of map.entries()) {
         map.set(peerId, {
           ...user,
-          color: colorAllocator.alloc(peerId),
+          color: colorAllocator.alloc(user.name),
         })
       }
     }
