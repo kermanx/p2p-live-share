@@ -97,67 +97,17 @@
         "icon": "$(close)",
         "category": "CRC Live Share (Puc Minas)"
       },
-      {
-        "command": "p2p-live-share.stopSharingServer",
-        "title": "Stop Sharing Server",
-        "icon": "$(stop-circle)",
-        "category": "CRC Live Share (Puc Minas)"
-      },
-      {
-        "command": "p2p-live-share.connectToSharedServer",
-        "title": "Connect to Shared Server",
-        "icon": "$(plug)",
-        "category": "CRC Live Share (Puc Minas)"
-      },
-      {
-        "command": "p2p-live-share.disconnectFromSharedServer",
-        "title": "Disconnect from Shared Server",
-        "icon": "$(debug-disconnect)",
-        "category": "CRC Live Share (Puc Minas)"
-      },
-      {
-        "command": "p2p-live-share.copySharedServerLocalURL",
-        "title": "Copy Shared Server Local URL",
-        "category": "CRC Live Share (Puc Minas)"
-      },
+
+
+
+
       {
         "command": "p2p-live-share.executeHostCommand",
         "title": "Dummy command",
         "category": "CRC Live Share (Puc Minas)"
       },
-      {
-        "command": "p2p-live-share.scm.openChange",
-        "title": "Open Changes",
-        "category": "Live Share Source Control",
-        "icon": {
-          "light": "images/light/open-change.svg",
-          "dark": "images/dark/open-change.svg"
-        }
-      },
-      {
-        "command": "p2p-live-share.scm.openFile",
-        "title": "Open File",
-        "category": "Live Share Source Control",
-        "icon": "$(go-to-file)"
-      },
-      {
-        "command": "p2p-live-share.scm.clean",
-        "title": "Discard Changes",
-        "category": "Live Share Source Control",
-        "icon": "$(discard)"
-      },
-      {
-        "command": "p2p-live-share.scm.cleanAll",
-        "title": "Discard All Changes",
-        "category": "Live Share Source Control",
-        "icon": "$(discard)"
-      },
-      {
-        "command": "p2p-live-share.scm.revertChange",
-        "title": "Revert Changes",
-        "category": "Live Share Source Control",
-        "icon": "$(discard)"
-      },
+
+      
       {
         "command": "p2p-live-share.allowEdit",
         "title": "Liberar Edição",
@@ -241,11 +191,7 @@
           "when": "view == p2p-live-share.terminals && p2p-live-share:isHost", 
           "group": "navigation"
         },
-        {
-          "command": "p2p-live-share.shareServer",
-          "when": "view == p2p-live-share.tunnels",
-          "group": "navigation"
-        },
+
         {
           "command": "p2p-live-share.unlockAll",
           "when": "view == p2p-live-share.participants && p2p-live-share:isHost && p2p-live-share:globalLock",
@@ -278,21 +224,9 @@
           "when": "view == p2p-live-share.terminals && p2p-live-share:isHost",
           "group": "inline"
         },
-        {
-          "command": "p2p-live-share.stopSharingServer",
-          "when": "view == p2p-live-share.tunnels && viewItem == serving",
-          "group": "inline"
-        },
-        {
-          "command": "p2p-live-share.connectToSharedServer",
-          "when": "view == p2p-live-share.tunnels && viewItem == available",
-          "group": "inline"
-        },
-        {
-          "command": "p2p-live-share.disconnectFromSharedServer",
-          "when": "view == p2p-live-share.tunnels && viewItem == connected",
-          "group": "inline"
-        },
+
+
+
         {
           "command": "p2p-live-share.allowEdit",
           "when": "view == p2p-live-share.participants && p2p-live-share:isHost && p2p-live-share:globalLock && viewItem =~ /readonly/",
@@ -430,48 +364,13 @@
           "command": "p2p-live-share.closeSharedTerminal",
           "when": "false"
         },
-        {
-          "command": "p2p-live-share.shareServer",
-          "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
-        },
-        {
-          "command": "p2p-live-share.stopSharingServer",
-          "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
-        },
-        {
-          "command": "p2p-live-share.connectToSharedServer",
-          "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
-        },
-        {
-          "command": "p2p-live-share.disconnectFromSharedServer",
-          "when": "p2p-live-share:inSession && p2p-live-share:supportsTunnels"
-        },
-        {
-          "command": "p2p-live-share.copySharedServerLocalURL",
-          "when": "false"
-        },
+
+
+
+
+
         {
           "command": "p2p-live-share.executeHostCommand",
-          "when": "false"
-        },
-        {
-          "command": "p2p-live-share.scm.openFile",
-          "when": "false"
-        },
-        {
-          "command": "p2p-live-share.scm.openChange",
-          "when": "false"
-        },
-        {
-          "command": "p2p-live-share.scm.clean",
-          "when": "false"
-        },
-        {
-          "command": "p2p-live-share.scm.cleanAll",
-          "when": "false"
-        },
-        {
-          "command": "p2p-live-share.scm.revertChange",
           "when": "false"
         }
       ]
@@ -491,23 +390,10 @@
     "configuration": {
       "title": "CRC Live Share (Puc Minas)",
       "properties": {
-        "p2p-live-share.servers": {
-          "type": "array",
-          "default": [],
-          "description": "List of custom servers",
-          "items": {
-            "type": "string"
-          }
-        },
         "p2p-live-share.userName": {
           "type": "string",
           "default": "",
           "description": "User name to display to other participants. If empty, will detect from available accounts or ask for a name."
-        },
-        "p2p-live-share.trystero": {
-          "type": "object",
-          "default": {},
-          "description": "The first parameter of trystero.joinRoom, see https://github.com/dmotz/trystero."
         },
         "p2p-live-share.terminal.dimensionsSource": {
           "type": "string",
@@ -612,7 +498,6 @@
     "typecheck": "tsc --noEmit",
     "vscode:prepublish": "pnpm run build",
     "browser": "vscode-test-web --quality stable --browser none --extensionDevelopmentPath=. ./test-workspace",
-    "wsserver": "tsx --watch ./src/sync/ws/cli.ts",
     "lint": "eslint . --cache",
     "release": "bumpp package.json src/sync/ws/package.json"
   },
@@ -630,7 +515,6 @@
     "bumpp": "^10.4.0",
     "eslint": "^9.39.2",
     "eslint-plugin-format": "^1.3.1",
-    "get-port": "^7.1.0",
     "lib0": "^0.2.117",
     "msgpackr": "^1.11.9",
     "nanoid": "^5.1.6",
@@ -638,7 +522,6 @@
     "pathe": "^2.0.3",
     "picomatch": "^4.0.4",
     "reactive-vscode": "^1.0.1",
-    "trystero": "^0.22.0",
     "tsdown": "^0.19.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

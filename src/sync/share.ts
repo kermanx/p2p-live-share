@@ -6,7 +6,7 @@ import { CustomUriScheme } from '../fs/provider'
 import { useUsers } from '../ui/users'
 
 export interface ConnectionConfig {
-  type: 'ws' | 'wss' | 'trystero'
+  type: 'ws' | 'wss'
   domain: string
   roomId: string
   workspace: number
@@ -43,12 +43,12 @@ export function parseTrackUri(uri: Uri): ConnectionConfig & { path: string } | n
   if (!type || !roomId || !domain) {
     return null
   }
-  if (type !== 'ws' && type !== 'wss' && type !== 'trystero') {
+  if (type !== 'ws' && type !== 'wss') {
     return null
   }
   return {
     path: uri.path,
-    type,
+    type: type as 'ws' | 'wss',
     roomId,
     domain,
     workspace: +folderIndex || 0,
@@ -103,36 +103,6 @@ async function inquireServer(): Promise<Partial<ConnectionConfig>>{
   }
 }
 
-// async function inquireHostname() {
-//   const os = await import('node:os')
-//   const interfaces = os.networkInterfaces()
-
-//   const items: QuickPickItem[] = []
-//   for (const ifaceName in interfaces) {
-//     const ifaceAddresses = interfaces[ifaceName]
-//     if (!ifaceAddresses)
-//       continue
-//     for (const addrInfo of ifaceAddresses) {
-//       if (addrInfo.address.startsWith('fe80::')) {
-//         continue
-//       }
-//       items.push({
-//         label: addrInfo.address,
-//         description: `Interface: ${ifaceName} (${addrInfo.family}${addrInfo.internal ? ', internal' : ''})`,
-//       })
-//     }
-//   }
-
-//   const countColons = (addr: string) => (addr.match(/:/g) || []).length
-//   items.sort((a, b) => countColons(a.label) - countColons(b.label))
-
-//   const result = await window.showQuickPick(items, {
-//     placeHolder: 'Select hostname for hosting',
-//   })
-
-//   return result?.label || null
-// }
-
 const roomIdNanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 6)
 const folderToRoomId = new Map<string, string>()
 
@@ -177,5 +147,5 @@ export function validateShareLink(value: string) {
     }
   }
   catch {}
-  return `Invalid invitation link. A valid link looks like: p2p-live-share://ws.room.domain:port/ or p2p-live-share://trystero.room.mqtt/`
+  return `Invalid invitation link. A valid link looks like: p2p-live-share://ws.room.domain:port/`
 }

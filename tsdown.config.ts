@@ -4,8 +4,6 @@ import { defineConfig } from 'tsdown'
 
 const needsStub = [
   'src/session/host.ts',
-  'src/tunnel/index.ts',
-  'src/ui/tunnels.ts',
   'src/sync/ws/host.ts',
 ]
 

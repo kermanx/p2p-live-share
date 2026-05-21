@@ -7,11 +7,9 @@ import { useHostDiagnostics } from '../diagnostics/host'
 import { useHostFs } from '../fs/host'
 import { useHostLs } from '../ls/host'
 import { useHostRpc } from '../rpc/host'
-import { useHostScm } from '../scm/host'
 import { useConnection } from '../sync/connection'
 import { useDocSync } from '../sync/doc'
 import { useHostTerminals } from '../terminal/host'
-import { useTunnels } from '../tunnel'
 import { useUsers } from '../ui/users'
 import { useWebview } from '../webview'
 import { ProtocolVersion } from './index'
@@ -68,15 +66,12 @@ export async function createHostSession(config: ConnectionConfig) {
 
     const fs = useHostFs(connection)
     const terminals = useHostTerminals(connection, doc)
-    const scm = useHostScm(connection, doc)
     useHostRpc(connection, {
       ...fs,
       ...terminals,
-      ...scm,
     })
     useHostLs(connection)
     useHostDiagnostics(connection, doc)
-    const tunnels = useTunnels(connection, doc)
     useWebview().useChat(connection)
     useUsers().useCurrentUser(connection, doc)
 
@@ -88,7 +83,6 @@ export async function createHostSession(config: ConnectionConfig) {
       doc,
       scope,
       shadowTerminals: terminals.shadowTerminals,
-      tunnels,
     }
   })!
 }

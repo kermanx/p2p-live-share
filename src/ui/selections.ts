@@ -7,7 +7,7 @@ import { useActiveSession } from '../session'
 import { useShallowYMapKeyScopes } from '../sync/doc'
 import { withOpacity } from './colors'
 import { useUsers } from './users'
-
+import { useFsProvider } from '../fs/provider'
 interface SelectionInfo {
   uri: string
   selections: ConstructorParameters<typeof Selection>[]
@@ -16,13 +16,22 @@ interface SelectionInfo {
 export const useSelections = defineService(() => {
   const { doc, selfId, toTrackUri, toLocalUri } = useActiveSession()
   const { getUserInfo } = useUsers()
-
+  // 1. Puxa o estado atual do Cadeado do aluno
+  const { isReadonly } = useFsProvider()
   const map = computed(() => doc.value?.getMap<SelectionInfo>('selections'))
 
   const { editor, selections: selfCoEditSelections } = useCoEditFriendlySelections()
-  watch([map, selfId, editor, selfCoEditSelections], () => {
+  watch([map, selfId, editor, selfCoEditSelections, isReadonly], () => {
     if (map.value && selfId.value) {
       const clientUri = editor.value && toTrackUri(editor.value.document.uri)
+      // Se o aluno esta acorrentado (Somente Leitura), apagamos a existencia do
+      // cursor dele da arvore compartilhada do Y.js e matamos a transmissao.
+      if (isReadonly.value) {
+        if (map.value.has(selfId.value)) {
+          map.value.delete(selfId.value)
+        }
+        return // Aborta a funcao aqui! O cursor nao sera enviado.
+      }
       if (clientUri) {
         map.value.set(selfId.value, {
           uri: clientUri.toString(),

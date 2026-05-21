@@ -1,5 +1,4 @@
 import type { Ref } from 'reactive-vscode'
-import type { TargetPeers } from 'trystero'
 import type { Event } from 'vscode'
 import type { ConnectionConfig } from './share'
 import { nanoid } from 'nanoid'
@@ -7,10 +6,9 @@ import { Uri, window, workspace } from 'vscode'
 import { onSessionClosed } from '../session'
 import { normalizeUint8Array } from '../utils'
 import { makeTrackUri, parseTrackUri } from './share'
-import { useTrysteroConnection } from './trystero'
 import { useWebSocketGuestConnection } from './ws/guest'
 
-export type { TargetPeers } from 'trystero'
+export type TargetPeers = string | string[]
 
 export type JsonValue = null | boolean | number | string | any[] | { [key: string]: any }
 export type DataPayload = JsonValue | Uint8Array
@@ -36,9 +34,6 @@ export function useConnection(config: ConnectionConfig) {
   if (config.type === 'ws' || config.type === 'wss') {
     internal = useWebSocketGuestConnection(config)
   }
-  else if (config.type === 'trystero') {
-    internal = useTrysteroConnection(config)
-  }
   else {
     throw new Error(`Unknown connection type: ${config.type}`)
   }
@@ -53,12 +48,12 @@ export function useConnection(config: ConnectionConfig) {
     return [
       (data: T, targetPeers?: TargetPeers, metadata?: M) => {
         // Development-only checks
-        if (import.meta.env.NODE_ENV === 'development') {
-          const nameBytes = new TextEncoder().encode(action)
-          if (nameBytes.length > 12) {
-            throw new Error('Trystero only supports action names up to 12 bytes')
-          }
-        }
+        // if (import.meta.env.NODE_ENV === 'development') {
+        //   const nameBytes = new TextEncoder().encode(action)
+        //   if (nameBytes.length > 12) {
+        //     throw new Error('Trystero only supports action names up to 12 bytes')
+        //   }
+        // }
 
         if (data instanceof Uint8Array) {
           data = normalizeUint8Array(data)

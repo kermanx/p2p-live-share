@@ -1,7 +1,6 @@
-import { selfId } from 'trystero'
 import { defineComponent, nextTick, onMounted, ref, watchEffect } from 'vue'
 import { rpc, state } from '../main'
-
+const selfId = Math.random().toString(36).substring(2, 10)
 export interface ChatMessage {
   sender: string
   senderName: string

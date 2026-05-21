@@ -181,7 +181,7 @@ export const useActiveSession = defineService(() => {
         'CRC Live Share (Puc Minas): Invalid Invite Link.',
         {
           modal: true,
-          detail: 'The link you provided is not valid. Please check and try again. A valid link looks like: p2p-live-share://ws.room.domain:port/ or p2p-live-share://trystero.room.mqtt/',
+          detail: 'The link you provided is not valid. Please check and try again. A valid link looks like: p2p-live-share://ws.room.domain:port/',
         },
       )
       return false
@@ -332,7 +332,6 @@ export const useActiveSession = defineService(() => {
     peers: computed(() => session.value?.connection.peers.value),
     connection: computed(() => session.value?.connection),
     shadowTerminals: computed(() => session.value?.shadowTerminals),
-    tunnels: computed(() => session.value?.tunnels),
     isJoining,
     makeTrackUri,
     toTrackUri,

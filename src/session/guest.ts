@@ -7,11 +7,9 @@ import { useGuestDiagnostics } from '../diagnostics/guest'
 import { useGuestFs } from '../fs/guest'
 import { useGuestLs } from '../ls/guest'
 import { useGuestRpc } from '../rpc/guest'
-import { useGuestScm } from '../scm/guest'
 import { useConnection } from '../sync/connection'
 import { useDocSync } from '../sync/doc'
 import { useGuestTerminals } from '../terminal/guest'
-import { useTunnels } from '../tunnel'
 import { useUsers } from '../ui/users'
 import { useWebview } from '../webview'
 import { onSessionClosed, ProtocolVersion } from './index'
@@ -93,8 +91,6 @@ export async function createGuestSession(config: ConnectionConfig & { path: stri
     const { shadowTerminals } = useGuestTerminals(connection, doc, rpc, hostId)
     useGuestLs(connection, hostId)
     useGuestDiagnostics(doc)
-    useGuestScm(doc, rpc)
-    const tunnels = useTunnels(connection, doc)
     useWebview().useChat(connection)
     useUsers().useCurrentUser(connection, doc)
 
@@ -117,7 +113,6 @@ export async function createGuestSession(config: ConnectionConfig & { path: stri
       doc,
       scope,
       shadowTerminals,
-      tunnels,
     }
   })!
 }

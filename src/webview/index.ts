@@ -1,4 +1,3 @@
-import type * as trystero from 'trystero'
 import type { Connection, InternalReceiver, InternalSender } from '../sync/connection'
 import type { ChatMessage } from './components/Chat'
 import { createBirpc } from 'birpc'
@@ -9,26 +8,11 @@ import { useUsers } from '../ui/users'
 import { logger } from '../utils'
 
 export interface WebviewFunctions {
-  trysteroJoinRoom: (
-    strategy: string,
-    config: trystero.BaseRoomConfig & trystero.RelayConfig & trystero.TurnConfig,
-    roomId: string,
-  ) => void
-  trysteroSend: InternalSender
-  trysteroListenAction: (action: string) => void
-  trysteroLeaveRoom: () => void
-
   recvChatMessage: (message: ChatMessage | 'clear') => void
   updateUIState: (state: UIState) => void
 }
 
-export interface TrysteroHandlers {
-  onTrysteroError: (message: string) => void
-  onTrysteroUpdatePeers: (peers: string[]) => void
-  onTrysteroMessage: InternalReceiver
-}
-
-export interface ExtensionFunctions extends TrysteroHandlers {
+export interface ExtensionFunctions {
   share: () => void
   join: (newWindow: boolean | 'auto') => void
   leave: () => void
@@ -38,7 +22,6 @@ export interface ExtensionFunctions extends TrysteroHandlers {
   ping: (peerId: string) => Promise<number>
   getSelfName: () => Promise<string | null>
 }
-
 export type UIState = 'none' | 'joining' | {
   role: 'host' | 'guest'
   selfId: string
@@ -48,13 +31,11 @@ export type UIState = 'none' | 'joining' | {
 }
 
 export const useWebview = defineService(() => {
-  const trysteroHandlers = shallowRef<TrysteroHandlers | null>(null)
-
-  const isReady = ref<{ trysteroSelfId: string } | null>(null)
+  const isReady = ref<boolean>(false)
   let onReady: (data: any) => void
   const readyPromise = new Promise<void>(resolve => onReady = (data) => {
     resolve()
-    isReady.value = data
+    isReady.value = true
   })
 
   const webviewEvent = useEventEmitter<any>()
@@ -62,15 +43,6 @@ export const useWebview = defineService(() => {
     {
       getPlatform() {
         return import.meta.env.TARGET === 'browser' ? 'web' : 'desktop'
-      },
-      onTrysteroError(message) {
-        trysteroHandlers.value?.onTrysteroError(message)
-      },
-      onTrysteroUpdatePeers(peers) {
-        trysteroHandlers.value?.onTrysteroUpdatePeers(peers)
-      },
-      onTrysteroMessage(...args) {
-        trysteroHandlers.value?.onTrysteroMessage(...args)
       },
       share() {
         useActiveSession().host()
@@ -190,10 +162,6 @@ export const useWebview = defineService(() => {
 
   return {
     rpc,
-    trysteroHandlers,
-    get trysteroSelfId() {
-      return isReady.value!.trysteroSelfId
-    },
     showWebview,
     ensureReady,
     useChat,

@@ -4,7 +4,6 @@ import { useActiveSession } from './session'
 import { useParticipantsTree } from './ui/participants'
 import { useSelections } from './ui/selections'
 import { useTerminalsTree } from './ui/terminals'
-import { useTunnelsTree } from './ui/tunnels'
 import { useWebview } from './webview'
 import { logger } from './utils'
 
@@ -17,5 +16,4 @@ export const { activate, deactivate } = defineExtension(() => {
   useSelections()
   useParticipantsTree()
   useTerminalsTree()
-  useTunnelsTree()
 })
