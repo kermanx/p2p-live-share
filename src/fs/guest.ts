@@ -1,13 +1,3 @@
-/*
- * Arquivo: guestFs.ts (ou similar)
- * Objetivo Principal:
- * Gerenciar o sistema de arquivos virtual do aluno (Guest) e a sincronização de texto em tempo real com o professor (Host).
- * * Topologia de Controle:
- * 1. Rede: Recebe e envia pacotes Y.js.
- * 2. Interface: Atualiza a tela do VS Code.
- * 3. Bloqueio (Mutex/Trava): Garante que atualizações concorrentes não quebrem o estado do documento.
- */
-
 import type { BirpcReturn } from 'birpc'
 import type { TextDocumentChangeReason } from 'vscode'
 import type { GuestFunctions, HostFunctions } from '../rpc/types'
@@ -23,190 +13,101 @@ import { UpdatePermissionsAction, UpdateGlobalLockAction, ForceSyncAction } from
 const filesConfig = defineConfig<any>('files')
 
 export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunctions, GuestFunctions>, hostId: string) {
-  const { fileChanged, useSetActiveProvider, isReadonly } = useFsProvider()
+  const { fileChanged, useSetActiveProvider, isReadonly, isPermissionLocked, isSystemOverride } = useFsProvider()
 
-  // Mapeamento dos arquivos abertos e gerenciados na sessão.
-  // lastSafeText: Armazena o último estado validado pelo professor para uso em reversões (rollback).
   const files = new Map<string, {
     doc: Y.Doc
     mtime: number
     ctime?: number
     lastSafeText?: string
   }>()
-  
-  // Variáveis de controle de concorrência (Mutex) para a fila de sincronização.
+
   let sincronizando = false;
   let sincronizacaoPendente = false;
 
-  /*
-   * Força o alinhamento absoluto do texto do aluno com o texto do professor.
-   * Utiliza um sistema de fila única (Mutex) para evitar conflitos de renderização no VS Code.
-   */
   async function syncAux() {
-    // Evita execuções simultâneas. Marca que há uma chamada na fila e aborta a atual.
     if (sincronizando) {
       sincronizacaoPendente = true;
       return;
     }
-
     sincronizando = true;
     sincronizacaoPendente = false;
 
-    // Guarda o estado atual da trava para restaurar no final.
-    // Abaixa a trava do disco temporariamente para permitir a reescrita do arquivo pelo sistema.
-    const estavaBloqueado = isReadonly.value;
-    isReadonly.value = false;
-
     try {
       for (const [uriStr, file] of files.entries()) {
-        const uri = Uri.parse(uriStr);
-        
-        // Busca o estado real da memória do professor via RPC.
         const hostState = await rpc.trackContent({ guestId: connection.selfId, uri: uriStr });
-        
-        // Processa o binário do professor em um documento temporário para extrair a string exata.
-        const tempDoc = new Y.Doc();
-        Y.applyUpdateV2(tempDoc, hostState);
-        const textoDoProfessor = tempDoc.getText().toString();
-
-        // Limpa a tela do aluno e injeta o texto validado do professor.
-        const doc = await workspace.openTextDocument(uri);
-        const edit = new WorkspaceEdit();
-        const fullRange = new Range(
-            new Position(0, 0),
-            doc.lineAt(doc.lineCount > 0 ? doc.lineCount - 1 : 0).range.end
-        );
-        edit.replace(uri, fullRange, textoDoProfessor);
-        
-        await workspace.applyEdit(edit);
-        await doc.save();
-
-        // Atualiza a rede de segurança (rollback) com o texto correto.
-        file.lastSafeText = textoDoProfessor;
-        
-        // Sincroniza a memória local (Y.js) com o pacote recebido.
+        // Aplica na memoria. O arquivo common.ts detecta e atualiza a interface confiavelmente.
         Y.applyUpdateV2(file.doc, hostState);
+        file.lastSafeText = file.doc.getText().toString();
       }
     } catch (e) {
-      console.error("Falha ao forçar sincronia no arquivo", e);
+      console.error("Falha ao forçar sincronia", e);
     } finally {
-      // Restaura o cadeado para o estado original.
-      isReadonly.value = estavaBloqueado;
-
-      // Respiro do VS Code: Aguarda a interface processar o save() antes de atualizar o FileSystem.
-      setTimeout(() => {
-        const mudancas = Array.from(files.keys()).map(u => ({ uri: Uri.parse(u), type: 2 }));
-        if (mudancas.length > 0) fileChanged(mudancas);
-        
-        sincronizando = false;
-        
-        // Executa o próximo item da fila caso chamadas tenham sido bloqueadas durante o processo.
-        if (sincronizacaoPendente) {
-          syncAux();
-        }
-      }, 400);
+      sincronizando = false;
+      if (sincronizacaoPendente) syncAux();
     }
   }
 
-  // Canal de comunicação de texto via rede.
   const [send, recv] = connection.makeAction<Uint8Array, [string, TextDocumentChangeReason?]>('texts')
-  // Recebe as atualizações do Professor
-  recv(async (update, peerId, meta) => {
+
+  recv((update, peerId, meta) => {
     const [uriStr, reason] = meta!
     const file = files.get(uriStr)
     if (file) {
       Y.applyUpdateV2(file.doc, update, { reason, peerId })
-
-      // FIX DA PREGUIÇA: Se o aluno estiver bloqueado, forçamos o VS Code a escrever na tela.
-      if (isReadonly.value) {
-        try {
-          isReadonly.value = false; // Abaixa o escudo num piscar de olhos
-          const uri = Uri.parse(uriStr);
-          const doc = await workspace.openTextDocument(uri);
-          const edit = new WorkspaceEdit();
-          const fullRange = new Range(
-              new Position(0, 0),
-              doc.lineAt(doc.lineCount > 0 ? doc.lineCount - 1 : 0).range.end
-          );
-          edit.replace(uri, fullRange, file.doc.getText().toString());
-          await workspace.applyEdit(edit);
-          await doc.save();
-        } catch (e) {
-          console.error("Erro na atualização furtiva", e);
-        } finally {
-          isReadonly.value = true; // Sobe o escudo novamente
-        }
-      }
     }
   })
- 
 
-  /*
-   * Inicializa o rastreamento de um arquivo no Y.js e vincula os eventos de rede e interface.
-   */
   async function trackContent(uri: string) {
     const doc = new Y.Doc()
     const init = await rpc.trackContent({ guestId: connection.selfId, uri })
     Y.applyUpdateV2(doc, init)
-    
     files.set(uri, {
       doc,
       mtime: Date.now(),
       lastSafeText: doc.getText().toString()
     })
 
-    // Dispara sempre que o documento Y.js local sofre alguma alteração.
     doc.on('updateV2', async (update: Uint8Array, origin: any) => {
-      if (origin?.peerId) return; // Ignora se a alteração veio da rede.
-
-      // Se passou pela validação visual, envia para o host.
+      if (origin?.peerId) return
+      if (isPermissionLocked.value) return
       await send(update, hostId, [uri, origin?.reason])
     })
-    
-    // Liga o mecanismo de atualização visual do common.ts
     setupTextDocumentUpdater(Uri.parse(uri), doc)
   }
 
-  /*
-   * Captura a digitação do aluno no VS Code. 
-   * Configurado com a trava de segurança visual.
-   */
   useTextDocumentWatcher(
     (document) => {
       if (document.uri.scheme === CustomUriScheme) {
         const uri = document.uri.toString()
         const file = files.get(uri)
         if (file) return file.doc
-
-        console.warn('Document updated before tracking:', uri)
         trackContent(uri)
       }
     },
-    // Condição de bloqueio: Verifica se o escudo está ativo.
-    () => isReadonly.value,
+    () => isPermissionLocked.value,
     syncAux,
-    // Callback de Reversão: Se o usuário tentar digitar bloqueado, aciona a reversão imediata.
     async (document) => {
       const file = files.get(document.uri.toString())
       if (file && file.lastSafeText !== undefined) {
-        const edit = new WorkspaceEdit()
-        const fullRange = new Range(
-          new Position(0, 0),
-          document.lineAt(document.lineCount > 0 ? document.lineCount - 1 : 0).range.end
-        )
-        edit.replace(document.uri, fullRange, file.lastSafeText)
-        await workspace.applyEdit(edit)
-        await document.save()
+        // Usa o override temporal para reverter a alteracao nao-autorizada na tela
+        isSystemOverride.value = true;
+        try {
+          const edit = new WorkspaceEdit()
+          const fullRange = new Range(new Position(0, 0), document.lineAt(document.lineCount > 0 ? document.lineCount - 1 : 0).range.end)
+          edit.replace(document.uri, fullRange, file.lastSafeText)
+          await workspace.applyEdit(edit)
+          await document.save()
+        } finally {
+          isSystemOverride.value = false;
+        }
       }
     }
   )
 
-  // Gerenciamento de ciclo de vida das abas abertas no VS Code.
   useDisposable(workspace.onDidOpenTextDocument(({ uri }) => {
-    if (uri.scheme === CustomUriScheme)
-      trackContent(uri.toString())
+    if (uri.scheme === CustomUriScheme) trackContent(uri.toString())
   }))
-  
   useDisposable(workspace.onDidCloseTextDocument(({ uri }) => {
     if (uri.scheme === CustomUriScheme) {
       files.delete(uri.toString())
@@ -214,10 +115,8 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
     }
   }))
 
-  // Controle de salvamento automático com base na configuração do VS Code.
   const [__, recvSave] = connection.makeAction<string>('textSave')
   const autoSave = computed(() => filesConfig.autoSave === 'afterDelay')
-  
   recvSave(async (uri) => {
     if (autoSave.value) return
     const file = files.get(uri)
@@ -237,34 +136,24 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
   const [_, recvFsChange] = connection.makeAction<FileChangeEvent>('fsChange')
   recvFsChange(({ uri, type }) => fileChanged([{ uri: Uri.parse(uri), type }]))
 
-  // Estado lógico de permissões e controle.
   let isGlobalLocked = true;
   let isVip = false;
 
-  /*
-   * Avalia a combinação de permissões e decide se a interface visual será bloqueada.
-   */
-  async function atualizarCadeado() {
-    const estavaTrancado = isReadonly.value;
-    isReadonly.value = isGlobalLocked && !isVip;
+  function atualizarCadeado() {
+    const estavaTrancado = isPermissionLocked.value;
+    isPermissionLocked.value = isGlobalLocked && !isVip;
 
-    if (estavaTrancado !== isReadonly.value) {
-      if (isReadonly.value) {
+    if (estavaTrancado !== isPermissionLocked.value) {
+      if (isPermissionLocked.value) {
         window.showWarningMessage("O Professor ativou o Modo Controle. Você agora é Somente Leitura.");
       } else {
         window.showInformationMessage("Modo de Edição liberado para você!");
       }
-
-      // A MÁGICA DA LIMPEZA: 
-      // Independentemente de ser um bloqueio ou desbloqueio, forçamos o syncAux.
-      // Se for um bloqueio, o syncAux força um doc.save() no VS Code. 
-      // Isso zera o estado "dirty" do arquivo, obrigando o VS Code a aplicar 
-      // o cadeado nativo na interface instantaneamente e matando a corrida de teclas.
-      await syncAux();
+      const mudancas = Array.from(files.keys()).map(uriStr => ({ uri: Uri.parse(uriStr), type: 2 }));
+      if (mudancas.length > 0) fileChanged(mudancas);
     }
   }
 
-  // Ouvintes de ações administrativas enviadas pelo Host.
   const [___, recvPermissions] = connection.makeAction<string[]>(UpdatePermissionsAction)
   recvPermissions((allowedPeers) => {
     isVip = allowedPeers.includes(connection.selfId);
@@ -283,23 +172,14 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
     await syncAux();
   })
 
-  /*
-   * Fornecedor do Sistema de Arquivos Virtual.
-   * Intercepta chamadas de arquivo do VS Code e as redireciona via RPC para o disco do professor.
-   */
   useSetActiveProvider({
     watch(uri_, options) {
       const handle = rpc.fsWatch(connection.selfId, uri_.toString(), options)
-      return {
-        async dispose() {
-          await rpc.fsUnwatch(await handle)
-        },
-      }
+      return { async dispose() { await rpc.fsUnwatch(await handle) } }
     },
     async stat(uri) {
       const file = files.get(uri.toString())
-      // Transforma a trava lógica na propriedade "permissions" requerida pelo VS Code.
-      const permissoes = isReadonly.value ? 1 : undefined;
+      const permissoes = isReadonly.value ? 1 : undefined; // Obedece estritamente à trava fisica!
 
       if (file) {
         return {
@@ -310,20 +190,13 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
           permissions: permissoes
         }
       }
-      
       const hostStat = handleFsError(await rpc.fsStat(uri.toString()));
       hostStat.permissions = permissoes;
       return hostStat;
     },
-    async readDirectory(uri) {
-      return handleFsError(await rpc.fsReadDirectory(uri.toString()))
-    },
-    async createDirectory(uri) {
-      return handleFsError(await rpc.fsCreateDirectory(uri.toString()))
-    },
-    async readFile(uri) {
-      return handleFsError(await rpc.fsReadFile(uri.toString()))
-    },
+    async readDirectory(uri) { return handleFsError(await rpc.fsReadDirectory(uri.toString())) },
+    async createDirectory(uri) { return handleFsError(await rpc.fsCreateDirectory(uri.toString())) },
+    async readFile(uri) { return handleFsError(await rpc.fsReadFile(uri.toString())) },
     async writeFile(uri, content, options) {
       const file = files.get(uri.toString())
       if (file) {
@@ -335,11 +208,7 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
       }
       return handleFsError(await rpc.fsWriteFile(uri.toString(), content, options))
     },
-    async delete(uri, options) {
-      return handleFsError(await rpc.fsDelete(uri.toString(), options))
-    },
-    async rename(oldUri, newUri, options) {
-      return handleFsError(await rpc.fsRename(oldUri.toString(), newUri.toString(), options))
-    },
+    async delete(uri, options) { return handleFsError(await rpc.fsDelete(uri.toString(), options)) },
+    async rename(oldUri, newUri, options) { return handleFsError(await rpc.fsRename(oldUri.toString(), newUri.toString(), options)) },
   })
 }

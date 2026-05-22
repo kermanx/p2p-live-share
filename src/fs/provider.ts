@@ -1,9 +1,8 @@
 import type { FileChangeEvent, FileSystemProvider } from 'vscode'
-import { defineService, onScopeDispose, useDisposable, useEventEmitter, shallowRef } from 'reactive-vscode'
+import { defineService, onScopeDispose, useDisposable, useEventEmitter, shallowRef, computed } from 'reactive-vscode'
 import { workspace, FileSystemError } from 'vscode'
 
 export const CustomUriScheme = 'p2p-live-share'
-
 
 type FileSystemProviderImpl = Omit<FileSystemProvider, 'onDidChangeFile'>
 interface DeferredWatch {
@@ -17,9 +16,14 @@ export const useFsProvider = defineService(() => {
   const initPromise = new Promise<void>(r => resolveInit = r)
   let deferredWatches: DeferredWatch[] = []
 
-  // TRAVA DE SEGURANÇA (DEFAULT DENY)
-  // Nasce bloqueado. Apenas o Host ou um pacote de permissão via rede pode mudar isso para false.
-  const isReadonly = shallowRef(true)
+  // CONTROLE HÍBRIDO DE TRAVA
+  // isPermissionLocked: Status lógico do aluno. Oculta cursores e aciona avisos visuais.
+  // isSystemOverride: Chave do sistema. Ignora o bloqueio temporariamente para atualizações de rede.
+  const isPermissionLocked = shallowRef(true)
+  const isSystemOverride = shallowRef(false)
+
+  // Trava Física Nativa: O arquivo só fica trancado para o VS Code se o sistema não estiver sobrescrevendo.
+  const isReadonly = computed(() => isPermissionLocked.value && !isSystemOverride.value)
 
   let activeProvider: FileSystemProviderImpl | null = null
   const useSetActiveProvider = (provider: FileSystemProviderImpl) => {
@@ -31,13 +35,11 @@ export const useFsProvider = defineService(() => {
     resolveInit()
 
     for (const info of deferredWatches) {
-      if (info.disposed)
-        continue
+      if (info.disposed) continue
       try {
         const disposable = provider.watch(...info.args)
         info.dispose = () => disposable.dispose()
-      }
-      catch (e) {
+      } catch (e) {
         console.error('Failed to process deferred watch', e)
       }
     }
@@ -45,26 +47,18 @@ export const useFsProvider = defineService(() => {
   }
 
   function getHandler<K extends keyof FileSystemProviderImpl>(method: K) {
-    // esse método é chamado toda vez que o VS Code quer usar uma função do 
-    // nosso FS, tipo stat, readFile, etc.
     return async (...args: any) => {
       await initPromise
-      if (!activeProvider) {
-        throw new Error('No active FS provider')
-      }
+      if (!activeProvider) throw new Error('No active FS provider')
 
-      // --- O CADEADO DO DEVOCTO ---
-      // Lista de métodos que alteram o disco.
       const mutativeMethods = ['writeFile', 'delete', 'rename', 'createDirectory']
       
-      // Se a trava estiver ativa e o método for mutativo, barramos a ação na hora!
+      // Validação de escrita baseada na Trava Física Híbrida
       if (isReadonly.value && mutativeMethods.includes(method)) {
         throw FileSystemError.NoPermissions('Sessão Bloqueada: O Professor (Host) restringiu a edição para você.')
       }
 
-      if (!activeProvider[method]) {
-        throw new Error(`Active FS provider does not implement ${method}`)
-      }
+      if (!activeProvider[method]) throw new Error(`Active FS provider does not implement ${method}`)
       return (activeProvider[method] as any)(...args)
     }
   }
@@ -76,22 +70,10 @@ export const useFsProvider = defineService(() => {
     {
       onDidChangeFile: fileChange.event,
       watch: (...args) => {
-        if (activeProvider) {
-          return activeProvider.watch(...args)
-        }
-        else {
-          const info: DeferredWatch = {
-            args,
-            disposed: false,
-            dispose() {
-              info.disposed = true
-            },
-          }
-          deferredWatches.push(info)
-          return {
-            dispose() { info.dispose() },
-          }
-        }
+        if (activeProvider) return activeProvider.watch(...args)
+        const info: DeferredWatch = { args, disposed: false, dispose() { info.disposed = true } }
+        deferredWatches.push(info)
+        return { dispose() { info.dispose() } }
       },
       stat: getHandler('stat'),
       readDirectory: getHandler('readDirectory'),
@@ -103,9 +85,6 @@ export const useFsProvider = defineService(() => {
     },
     {
       isCaseSensitive: true,
-      // deixamos isso como false para o VS Code tentar chamar o writeFile,
-      // assim podemos disparar o nosso erro personalizado e bonitinho em vez 
-      // de um erro genérico do VS Code.
       isReadonly: false, 
     },
   ))
@@ -113,6 +92,8 @@ export const useFsProvider = defineService(() => {
   return {
     useSetActiveProvider,
     fileChanged: fileChange.fire,
-    isReadonly, // EXPORTAMOS A TRAVA para podermos abrir/fechar via protocolo de rede
+    isReadonly,
+    isPermissionLocked,
+    isSystemOverride
   }
 })

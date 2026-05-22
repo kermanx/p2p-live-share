@@ -14,19 +14,23 @@ interface SelectionInfo {
 }
 
 export const useSelections = defineService(() => {
-  const { doc, selfId, toTrackUri, toLocalUri } = useActiveSession()
+  const { doc, selfId, toTrackUri, toLocalUri, role } = useActiveSession()
   const { getUserInfo } = useUsers()
-  // 1. Puxa o estado atual do Cadeado do aluno
-  const { isReadonly } = useFsProvider()
+
+  // Puxa estritamente o cadeado lógico (ignora as escritas rápidas do sistema)
+  const { isPermissionLocked } = useFsProvider()
   const map = computed(() => doc.value?.getMap<SelectionInfo>('selections'))
 
   const { editor, selections: selfCoEditSelections } = useCoEditFriendlySelections()
-  watch([map, selfId, editor, selfCoEditSelections, isReadonly], () => {
+  watch([map, selfId, editor, selfCoEditSelections, isPermissionLocked], () => {
     if (map.value && selfId.value) {
       const clientUri = editor.value && toTrackUri(editor.value.document.uri)
+      // Imunidade Mágica: O Professor (host) nunca sofre bloqueio de cursor.
+      // A trava de permissão só é válida se o usuário for um aluno.
+      const usuarioEstaBloqueado = role.value !== 'host' && isPermissionLocked.value;
       // Se o aluno esta acorrentado (Somente Leitura), apagamos a existencia do
       // cursor dele da arvore compartilhada do Y.js e matamos a transmissao.
-      if (isReadonly.value) {
+      if (usuarioEstaBloqueado) {
         if (map.value.has(selfId.value)) {
           map.value.delete(selfId.value)
         }
