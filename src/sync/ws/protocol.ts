@@ -1,9 +1,11 @@
 import type { DataPayload, JsonValue, TargetPeers } from '../connection'
-
+import type { Ref } from 'reactive-vscode'
+import { pack, unpack } from 'msgpackr'
+import { logger } from '../../utils'
 export interface UplinkMessageContent {
   acao: string         // Mantendo o padrão em português que colocamos no Django
   uri?: string
-  update?: string       // String em formato Base64 contendo os bytes do Y.js
+  update?: Uint8Array       //
   targetPeers?: TargetPeers
   metadata?: JsonValue
 }
@@ -11,43 +13,77 @@ export interface UplinkMessageContent {
 export interface DownlinkMessageContent {
   acao: string
   uri?: string
-  update?: string       // String em formato Base64 enviada pelo Django
+  update?: Uint8Array       // 
   peerId: string
   metadata?: JsonValue
 }
 
-/**
- * Converte um buffer Uint8Array do Y.js para String Base64 de forma eficiente
- */
-export function uint8ArrayToBase64(bytes: Uint8Array): string {
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64');
+export function createWsSender(socket: WebSocket, selfId: string, isClosed: () => boolean) {
+  return async function sendMessage(action: string, data: any, targetPeers?: TargetPeers, metadata?: any) {
+    if (isClosed()) {
+      throw new Error('WebSocket fechado')
+    }
+
+    if (data instanceof Uint8Array || action === 'doc') {
+      const envelope = {
+        acao: action === 'doc' ? 'sincronizar_arquivo' : action,
+        peerId: selfId,
+        uri: metadata?.uri || 'documento_principal',
+        update: data,
+        targetPeers,
+        metadata
+      }
+      socket.send(pack(envelope))
+      return
+    }
+
+    const jsonEnvelope = {
+      acao: action,
+      peerId: selfId,
+      data: data,
+      targetPeers,
+      metadata
+    }
+    socket.send(JSON.stringify(jsonEnvelope))
   }
-  // Fallback caso rode puramente em ambientes sem o nó Buffer global
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return globalThis.btoa(binary);
 }
 
-/**
- * Converte uma String Base64 de volta para Uint8Array
- */
-export function base64ToUint8Array(base64: string): Uint8Array {
-  if (typeof Buffer !== 'undefined') {
-    const buf = Buffer.from(base64, 'base64');
-    return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+export function handleWsMessage(
+  event: MessageEvent,
+  selfId: string,
+  peers: Ref<string[]>,
+  onMessageFire: (args: Parameters<InternalReceiver>) => void
+) {
+  try {
+    if (typeof event.data === 'string') {
+      const conteudo = JSON.parse(event.data)
+      
+      if (conteudo.acao === UpdatePeersAction) {
+        peers.value = (conteudo.data as string[]).filter((id: string) => id !== selfId)
+        return
+      }
+
+      onMessageFire([conteudo.acao, conteudo.data, conteudo.peerId, conteudo.metadata])
+      return
+    }
+
+    if (event.data instanceof ArrayBuffer) {
+      const conteudo = unpack(new Uint8Array(event.data))
+      const metaPura = conteudo.metadata === null ? undefined : conteudo.metadata
+      
+      if (conteudo.acao === 'atualizar_arquivo' && conteudo.update instanceof Uint8Array) {
+        onMessageFire(['doc', conteudo.update, conteudo.peerId || 'servidor', metaPura])
+        return
+      }
+
+      if (conteudo.update instanceof Uint8Array) {
+        onMessageFire([conteudo.acao, conteudo.update, conteudo.peerId, metaPura])
+        return
+      }
+    }
+  } catch (err) {
+    logger.error('Erro ao rotear pacote no WebSocket:', err)
   }
-  // Fallback para ambientes web puros
-  const binaryString = globalThis.atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
 }
 
 export const UpdatePeersAction = '__update_peers__'

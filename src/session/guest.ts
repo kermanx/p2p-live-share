@@ -91,7 +91,6 @@ export async function createGuestSession(config: ConnectionConfig & { path: stri
     const { shadowTerminals } = useGuestTerminals(connection, doc, rpc, hostId)
     useGuestLs(connection, hostId)
     useGuestDiagnostics(doc)
-    useWebview().useChat(connection)
     useUsers().useCurrentUser(connection, doc)
 
     watchEffect(() => {

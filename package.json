@@ -164,7 +164,7 @@
         },
         {
           "id": "p2p-live-share.webview",
-          "name": "",
+          "name": "Sessão",
           "type": "webview"
         }
       ]

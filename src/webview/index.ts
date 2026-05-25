@@ -1,5 +1,4 @@
 import type { Connection, InternalReceiver, InternalSender } from '../sync/connection'
-import type { ChatMessage } from './components/Chat'
 import { createBirpc } from 'birpc'
 import { computed, defineService, extensionContext, onScopeDispose, ref, shallowRef, useEventEmitter, useWebviewView, watchEffect } from 'reactive-vscode'
 import { commands, Uri } from 'vscode'
@@ -8,7 +7,6 @@ import { useUsers } from '../ui/users'
 import { logger } from '../utils'
 
 export interface WebviewFunctions {
-  recvChatMessage: (message: ChatMessage | 'clear') => void
   updateUIState: (state: UIState) => void
 }
 
@@ -18,7 +16,6 @@ export interface ExtensionFunctions {
   leave: () => void
 
   getPlatform: () => 'web' | 'desktop'
-  sendChatMessage: (content: any) => void
   ping: (peerId: string) => Promise<number>
   getSelfName: () => Promise<string | null>
 }
@@ -52,9 +49,6 @@ export const useWebview = defineService(() => {
       },
       leave() {
         useActiveSession().leave()
-      },
-      sendChatMessage(content) {
-        sendChatMessage.value?.(content)
       },
       async ping(peerId) {
         const { connection } = useActiveSession()
@@ -126,13 +120,6 @@ export const useWebview = defineService(() => {
     await readyPromise
   }
 
-  const sendChatMessage = ref<(content: any) => void>()
-  function useChat(connection: Connection) {
-    const [send, recv] = connection.makeAction<ChatMessage>('chat')
-    sendChatMessage.value = send
-    recv(message => rpc.recvChatMessage(message))
-    onScopeDispose(() => rpc.recvChatMessage('clear'))
-  }
 
   setTimeout(() => {
     const { state, isJoining } = useActiveSession()
@@ -155,7 +142,7 @@ export const useWebview = defineService(() => {
     })
     watchEffect(() => {
       if (view.value) {
-        view.value.title = state.value ? 'Chat' : undefined
+        view.value.title = state.value ? 'Sessão' : undefined
       }
     })
   })
@@ -164,6 +151,5 @@ export const useWebview = defineService(() => {
     rpc,
     showWebview,
     ensureReady,
-    useChat,
   }
 })
