@@ -350,22 +350,23 @@ export function onSessionClosed(options: {
   if (!state.value) {
     return
   }
-  const config = state.value.connection.config
-  const creator = state.value.role === 'host' ? createHostSession : createGuestSession
-
+  
+  const wasGuest = state.value.role === 'guest'
+  
   state.value = null
-  const delay = new Promise(resolve => setTimeout(resolve, 500))
+
   window.showErrorMessage(
     options.title,
     {
       modal: true,
       detail: options.detail,
-    },
-    'Reconnect',
-  ).then(async (choice) => {
-    if (choice === 'Reconnect') {
-      await delay
-      state.value = await creator(config)
+    }
+  ).then(() => {
+    if (wasGuest) {
+      const indexParaRemover = workspace.workspaceFolders?.findIndex(f => f.uri.scheme === CustomUriScheme)
+      if (indexParaRemover !== undefined && indexParaRemover !== -1) {
+        workspace.updateWorkspaceFolders(indexParaRemover, 1)
+      }
     }
   })
 }

@@ -96,18 +96,7 @@ export const useParticipantsTree = defineService(() => {
     window.showInformationMessage("Sinal de sincronização forçada enviado para os alunos.");
   })
   // -------------------------------------------------------------------
-  const pings = ref<Record<string, number>>({})
-  setInterval(() => {
-    if (!peers.value || !connection.value) {
-      pings.value = {}
-      return
-    }
-    for (const peerId of peers.value) {
-      connection.value.ping(peerId).then((time) => {
-        pings.value[peerId] = time
-      })
-    }
-  }, 5000)
+  
 
   const orderedPeers = computed(() => {
     return (peers.value || []).slice().sort((a, b) => {
@@ -136,7 +125,7 @@ export const useParticipantsTree = defineService(() => {
         }
       }
 
-      let description = `${pings.value[peerId] ?? '-'}ms `
+      let description = ''
 
       // if (peerId === hostId.value) {
       //   description += ' (Host)'

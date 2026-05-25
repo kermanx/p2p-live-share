@@ -32,24 +32,16 @@ export async function createGuestSession(config: ConnectionConfig & { path: stri
   const initResult = await window.withProgress(
     {
       location: ProgressLocation.Notification,
-      title: 'CRC Live Share (Puc Minas): Joining session...',
+      title: 'CRC Live Share (Puc Minas): Tentando entrar na sessão...',
       cancellable: true,
     },
     (_progress, token) => new Promise<null | [Uint8Array, string, HostMeta]>((resolve) => {
       token.onCancellationRequested(() => resolve(null))
-      const timeoutId = setTimeout(async () => {
-        const res = await window.showErrorMessage(
-          'CRC Live Share (Puc Minas): No host found at 15 seconds.',
-          {
-            modal: true,
-            detail: 'Please make sure the host is online and you have the correct connection link.',
-          },
-          'Continue Waiting',
-        )
-        if (!res) {
-          resolve(null)
-        }
+      
+      const timeoutId = setTimeout(() => {
+        resolve(null)
       }, 15000)
+      
       recvInit((data, hostId, hostMeta) => {
         resolve([data, hostId, hostMeta!])
         clearTimeout(timeoutId)

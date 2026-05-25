@@ -16,7 +16,6 @@ export interface ExtensionFunctions {
   leave: () => void
 
   getPlatform: () => 'web' | 'desktop'
-  ping: (peerId: string) => Promise<number>
   getSelfName: () => Promise<string | null>
 }
 export type UIState = 'none' | 'joining' | {
@@ -49,10 +48,6 @@ export const useWebview = defineService(() => {
       },
       leave() {
         useActiveSession().leave()
-      },
-      async ping(peerId) {
-        const { connection } = useActiveSession()
-        return connection.value!.ping(peerId)
       },
       getSelfName() {
         return useUsers().inquireUserName(false)

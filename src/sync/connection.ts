@@ -87,21 +87,7 @@ export function useConnection(config: ConnectionConfig) {
     })
   })
 
-  const [sendPing, recvPing] = makeAction<string>('__ping__')
-  const [sendPong, recvPong] = makeAction<string>('__pong__')
-  const activePings = new Map<string, {
-    key: string
-    start: number
-    resolve: (value: number) => void
-  }>()
-  recvPing(sendPong)
-  recvPong((key_, peerId) => {
-    const ping = activePings.get(peerId)
-    if (ping && ping.key === key_) {
-      ping.resolve(Date.now() - ping.start)
-      activePings.delete(peerId)
-    }
-  })
+  
 
   return {
     config,
@@ -109,22 +95,7 @@ export function useConnection(config: ConnectionConfig) {
     peers: internal.peers,
     ready: internal.ready,
     makeAction,
-    ping(peerId: string) {
-      return Promise.race([
-        new Promise<number>((resolve) => {
-          const key = nanoid()
-          activePings.set(peerId, {
-            key,
-            start: Date.now(),
-            resolve,
-          })
-          sendPing(key, peerId)
-        }),
-        new Promise<number>((resolve) => {
-          setTimeout(() => resolve(Number.POSITIVE_INFINITY), 10000)
-        }),
-      ])
-    },
+    
     toTrackUri(uri: Uri) {
       return makeTrackUri(config, uri)
     },
