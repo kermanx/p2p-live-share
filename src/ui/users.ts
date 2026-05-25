@@ -51,67 +51,18 @@ export const useUsers = defineService(() => {
   })
 
   async function inquireUserName(isHost: boolean) {
-    return userName.value = await worker()
-    async function worker() {
-      // Retorna o nome já processado se ele já existir na memória
-      if (userName.value) {
-        return userName.value
-      }
+    if (userName.value) return userName.value
 
-      const occupied = new Set(map.value?.keys())
-      function toFreeName(name: string) {
-        let result = name
-        for (let i = 1; occupied.has(result); i++) {
-          result = `${name} ${i}`
-        }
-        return result
-      }
-
-      // Lógica de captura das variáveis de ambiente do Devocto
-      const usernameUsuarioDevocto = process.env.DEVOCTO_USERNAME
-      const nomeCompletoUsuario = process.env.DEVOCTO_NAME
-      
-      if (usernameUsuarioDevocto) {
-        const primeiroNome = nomeCompletoUsuario?.split(' ')[0] || usernameUsuarioDevocto
-        const nomeFormatado = `${primeiroNome} (${usernameUsuarioDevocto})`
-        return toFreeName(nomeFormatado)
-      }
-
-      // Fallback para as configurações do VS Code caso a ENV não exista
-      if (configs.userName) {
-        return toFreeName(configs.userName)
-      }
-
-      if (isHost) {
-        return 'Professor'
-      }
-
-      const newName = await window.showInputBox({
-        prompt: 'Informe seu nome para a sessão',
-        placeHolder: 'Seu nome',
-        value: toFreeName('Estudante'),
-        ignoreFocusOut: true,
-        validateInput: (value) => {
-          if (occupied.has(value)) {
-            return 'Este nome já está sendo usado na sala.'
-          }
-          if (value.length === 0) {
-            return 'O nome não pode ficar vazio.'
-          }
-          if (value.length > 25) { // Aumentei um pouco o limite por causa do formato "Nome (User)"
-            return 'O nome está muito longo.'
-          }
-          return null
-        },
-      })
-
-      if (newName === undefined) {
-        return toFreeName('Estudante')
-      }
-
-      configs.update('userName', newName, ConfigurationTarget.Global)
-      return newName
+    const usernameUsuarioDevocto = process.env.DEVOCTO_USERNAME
+    const nomeCompletoUsuario = process.env.DEVOCTO_NAME
+    
+    if (usernameUsuarioDevocto) {
+      const primeiroNome = nomeCompletoUsuario?.split(' ')[0] || usernameUsuarioDevocto
+      return userName.value = `${primeiroNome} (${usernameUsuarioDevocto})`
     }
+
+    // Se o professor/aluno abrir fora do ecossistema principal em modo de teste local
+    return userName.value = isHost ? 'Professor' : 'Estudante'
   }
 
   function getUserInfo(peerId: string) {
