@@ -3,7 +3,7 @@ import type { HostMeta } from './types'
 import process from 'node:process'
 import { effectScope, watch } from 'reactive-vscode'
 import * as Y from 'yjs'
-import { useHostDiagnostics } from '../diagnostics/host'
+
 import { useHostFs } from '../fs/host'
 import { useHostLs } from '../ls/host'
 import { useHostRpc } from '../rpc/host'
@@ -71,7 +71,6 @@ export async function createHostSession(config: ConnectionConfig) {
       ...terminals,
     })
     useHostLs(connection)
-    useHostDiagnostics(connection, doc)
     useUsers().useCurrentUser(connection, doc)
 
     return {

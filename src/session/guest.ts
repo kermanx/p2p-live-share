@@ -3,7 +3,6 @@ import type { HostMeta } from './types'
 import { effectScope, watchEffect } from 'reactive-vscode'
 import { ProgressLocation, window, commands } from 'vscode'
 import * as Y from 'yjs'
-import { useGuestDiagnostics } from '../diagnostics/guest'
 import { useGuestFs } from '../fs/guest'
 import { useGuestLs } from '../ls/guest'
 import { useGuestRpc } from '../rpc/guest'
@@ -82,7 +81,6 @@ export async function createGuestSession(config: ConnectionConfig & { path: stri
     useGuestFs(connection, rpc, hostId)
     const { shadowTerminals } = useGuestTerminals(connection, doc, rpc, hostId)
     useGuestLs(connection, hostId)
-    useGuestDiagnostics(doc)
     useUsers().useCurrentUser(connection, doc)
 
     watchEffect(() => {

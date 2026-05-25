@@ -1,7 +1,7 @@
 import type { Converter as CodeConverter } from 'vscode-languageclient/$test/common/codeConverter'
 import type { Connection } from '../sync/connection'
 import { nanoid } from 'nanoid'
-import { onScopeDispose, watch } from 'reactive-vscode'
+import { onScopeDispose, watch, useDisposable } from 'reactive-vscode'
 import * as vscode from 'vscode'
 import { commands, Uri } from 'vscode'
 import { createConverter as codeConverter } from 'vscode-languageclient/$test/common/codeConverter'
@@ -43,6 +43,26 @@ export function useHostLs(connection: Connection) {
 }
 
 function setupConnection(lc: lsp.Connection, c: Connection) {
+  useDisposable(vscode.languages.onDidChangeDiagnostics(({ uris }) => {
+    /**
+     * isso é para passar erros de sintaxe para os alunos
+     * **/
+    for (const uri_ of uris) {
+      const uri = c.toTrackUri(uri_)
+      if (!uri) continue
+
+      const nativeDiags = vscode.languages.getDiagnostics(uri_)
+
+      // Converte os diagnósticos do VS Code para o padrão LSP (Protocolo)
+      const lspDiagnostics = nativeDiags.map(d => c2p.asDiagnostic(d))
+
+      // Envia a notificação oficial do protocolo LSP para o cliente do aluno
+      lc.sendDiagnostics({
+        uri: uri.toString(),
+        diagnostics: lspDiagnostics
+      })
+    }
+  }))
   const p2c = protocolConverter(uri => c.toHostUri(Uri.parse(uri)), true, true, true)
   const c2p = codeConverter(uri => (c.toTrackUri(uri) ?? uri).toString())
   const c2pExt = c2pExtension(c2p)
@@ -370,6 +390,7 @@ function setupConnection(lc: lsp.Connection, c: Connection) {
       return null
     }
   })
+
 }
 
 function c2pExtension(c2p: CodeConverter) {
@@ -523,11 +544,11 @@ function c2pExtension(c2p: CodeConverter) {
       if (result) {
         return Array.isArray(result)
           ? result.map(link =>
-              lsp.Location.create(
-                c2p.asUri(link.targetUri),
-                c2p.asRange(link.targetRange),
-              ),
-            )
+            lsp.Location.create(
+              c2p.asUri(link.targetUri),
+              c2p.asRange(link.targetRange),
+            ),
+          )
           : undefined
       }
     },
