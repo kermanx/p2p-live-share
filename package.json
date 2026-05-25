@@ -383,7 +383,7 @@
       },
       {
         "view": "p2p-live-share.terminals",
-        "contents": "Um terminal compartilhado permite que todos os participantes vejam a saída do terminal e insiram comandos. \n[Create Terminal](command:p2p-live-share.createSharedTerminal)",
+        "contents": "Um terminal compartilhado permite que os alunos acompanhem a execução de comandos e logs do servidor em tempo real (Modo Leitura). \n[Criar Terminal](command:p2p-live-share.createSharedTerminal)",
         "when": "p2p-live-share:inSession && p2p-live-share:isHost"
       }
     ],

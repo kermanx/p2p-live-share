@@ -22,7 +22,7 @@ export function useGuestTerminals(connection: Connection, doc: Y.Doc, rpc: Birpc
 
   const { shadowTerminals, getShadowTerminal, createShadowTerminal } = useShadowTerminals(
     (id, content) => {
-      send(content, hostId, id)
+      // os alunos não podem enviar conteúdo para o terminal, apenas receber
     },
     (terminal, dims) => {
       if (createdTerminals.has(terminal.id) || terminal.terminalInstance.value?.state.isInteractedWith) {

@@ -126,11 +126,11 @@ export async function copyShareLink(config: ConnectionConfig, isHosting = false)
   const shareLink = makeTrackUri(config, workspace.workspaceFolders![config.workspace].uri)!.toString()
   while (true) {
     env.clipboard.writeText(decodeURIComponent(shareLink))
-    const res = await window.showInformationMessage(`${isHosting ? 'Hosting session. ' : ''}The invitation link has been copied to clipboard.
+    const res = await window.showInformationMessage(`${isHosting ? 'Hosting session. ' : ''}O link de convite foi copiado para a área de transferência.
 
-Others may join this session by clicking on the "Join" button and pasting this link.`, 'Copy Again')
+Outros podem participar desta sessão clicando no botão "Entrar" e colando este link..`, 'Copiar novamente')
     isHosting = false
-    if (res !== 'Copy Again') {
+    if (res !== 'Copiar novamente') {
       break
     }
   }

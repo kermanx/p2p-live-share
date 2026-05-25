@@ -13,7 +13,9 @@ import { createProcess } from './pty/index.js'
 
 export function useHostTerminals(connection: Connection, doc: Y.Doc) {
   const [send, recv] = connection.makeAction<string, string>('terminal')
-  recv((content, _peerId, id) => handleTerminalInput(id!, content))
+  // não recebe mais conteúdo do terminal, os convidados apenas recebem. 
+  // O host é o único que pode enviar conteúdo para o terminal.
+
 
   const terminalData = doc.getMap<TerminalData>('terminals')
   const processes = new Map<string, ProcessHandle>()
