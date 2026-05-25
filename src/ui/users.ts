@@ -15,7 +15,6 @@ export interface UserColor {
 
 export interface UserInfo {
   name: string
-  avatarUrl: string | null
   color: UserColor | null
 }
 
@@ -26,10 +25,9 @@ export const useUsers = defineService(() => {
 
   const colorAllocator = createColorAllocator()
   const userName = ref<string | null>(null)
-  const avatarUrl = ref<string | null>(null)
 
   const mapVersion = useObserverDeep(map, (event, map) => {
-    for (const [peerId, { action, oldValue }] of event.keys) {
+    for (const [peerId, { action }] of event.keys) {
       if (action === 'add') {
         const user = map.get(peerId) as UserInfo
 
@@ -38,17 +36,6 @@ export const useUsers = defineService(() => {
             ...user,
             color: colorAllocator.alloc(user.name),
           })
-        }
-
-        if (peerId !== selfId.value) {
-          window.showInformationMessage(`${user.name} joined the session.`)
-        }
-      }
-      else if (action === 'delete') {
-
-
-        if (peerId !== selfId.value && state.value) {
-          window.showInformationMessage(`${oldValue.name} left the session.`)
         }
       }
     }
@@ -132,7 +119,6 @@ export const useUsers = defineService(() => {
     const user = map.value?.get(peerId)
     return {
       name: user?.name || 'Unknown',
-      avatarUrl: user?.avatarUrl || null,
       color: user?.color || LoadingColor,
     }
   }
@@ -176,7 +162,6 @@ export const useUsers = defineService(() => {
     const map = doc.getMap<UserInfo>('users')
     map.set(selfId, {
       name: userName.value,
-      avatarUrl: avatarUrl.value,
       color: null,
     })
     onScopeDispose(() => {
