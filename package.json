@@ -256,51 +256,6 @@
           "when": "p2p-live-share:inSession"
         }
       ],
-      "scm/resourceGroup/context": [
-        {
-          "command": "p2p-live-share.scm.cleanAll",
-          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(clean\\)/",
-          "group": "inline"
-        },
-        {
-          "command": "p2p-live-share.scm.cleanAll",
-          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(clean\\)/",
-          "group": "1_modification"
-        }
-      ],
-      "scm/resourceState/context": [
-        {
-          "command": "p2p-live-share.scm.openFile",
-          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(openFile\\)/",
-          "group": "navigation"
-        },
-        {
-          "command": "p2p-live-share.scm.openChange",
-          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(openChanges\\)/",
-          "group": "navigation"
-        },
-        {
-          "command": "p2p-live-share.scm.clean",
-          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(clean\\)/",
-          "group": "1_modification"
-        },
-        {
-          "command": "p2p-live-share.scm.openFile",
-          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(openFile\\)/",
-          "group": "inline@0"
-        },
-        {
-          "command": "p2p-live-share.scm.clean",
-          "when": "scmProvider == p2p-live-share-scm && scmResourceGroup =~ /\\(clean\\)/",
-          "group": "inline@1"
-        }
-      ],
-      "scm/change/title": [
-        {
-          "command": "p2p-live-share.scm.revertChange",
-          "when": "originalResourceScheme == p2p-live-share-scm"
-        }
-      ],
       "commandPalette": [
         {
           "command": "p2p-live-share.host",
