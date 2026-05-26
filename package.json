@@ -5,7 +5,7 @@
   "version": "0.1.1",
   "private": true,
   "packageManager": "pnpm@10.28.0",
-  "description": "Live collaboration - a peer-to-peer and open source alternative to Live Share.",
+  "description": "Colaboração ao vivo para o ecossistema DevOcto.",
   "author": {
     "name": "_Kerman",
     "email": "kermanx@qq.com",
@@ -32,118 +32,114 @@
     "commands": [
       {
         "command": "p2p-live-share.host",
-        "title": "Host a Session",
-        "category": "CRC Live Share (Puc Minas)"
+        "title": "Iniciar Sessão (Professor)",
+        "icon": "$(play)",
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.join",
-        "title": "Join a Session",
-        "category": "CRC Live Share (Puc Minas)"
+        "title": "Entrar na Sala",
+        "icon": "$(sign-in)",
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.joinNewWindow",
-        "title": "Join a Session in New Window",
-        "category": "CRC Live Share (Puc Minas)"
+        "title": "Entrar na Sala (Nova Janela)",
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.leave",
-        "title": "Leave Session",
+        "title": "Sair da Sala",
         "icon": "$(sign-out)",
-        "category": "CRC Live Share (Puc Minas)"
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.stop",
-        "title": "Stop Session",
+        "title": "Encerrar Sessão",
         "icon": "$(stop-circle)",
-        "category": "CRC Live Share (Puc Minas)"
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.focusParticipant",
-        "title": "Focus Participant",
-        "category": "CRC Live Share (Puc Minas)"
+        "title": "Focar Estudante",
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.followParticipant",
-        "title": "Follow Participant",
+        "title": "Acompanhar Estudante",
         "icon": "$(eye)",
-        "category": "CRC Live Share (Puc Minas)"
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.unfollowParticipant",
-        "title": "Unfollow Participant",
+        "title": "Parar de Acompanhar",
         "icon": "$(eye-closed)",
-        "category": "CRC Live Share (Puc Minas)"
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.copyInviteLink",
-        "title": "Copy Invite Link",
-        "icon": "$(add)",
-        "category": "CRC Live Share (Puc Minas)"
+        "title": "Copiar Link de Convite",
+        "icon": "$(link)",
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.createSharedTerminal",
-        "title": "Create Shared Terminal",
+        "title": "Criar Terminal Compartilhado",
         "icon": "$(add)",
-        "category": "CRC Live Share (Puc Minas)"
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.focusSharedTerminal",
-        "title": "Focus Shared Terminal",
-        "category": "CRC Live Share (Puc Minas)"
+        "title": "Focar Terminal Compartilhado",
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.closeSharedTerminal",
-        "title": "Close Shared Terminal",
+        "title": "Fechar Terminal Compartilhado",
         "icon": "$(close)",
-        "category": "CRC Live Share (Puc Minas)"
+        "category": "CRC Live Share"
       },
-
-
-
-
       {
         "command": "p2p-live-share.executeHostCommand",
         "title": "Dummy command",
-        "category": "CRC Live Share (Puc Minas)"
+        "category": "CRC Live Share"
       },
-
-      
       {
         "command": "p2p-live-share.allowEdit",
         "title": "Liberar Edição",
         "icon": "$(lock)",
-        "category": "CRC Live Share (Puc Minas)"
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.revokeEdit",
         "title": "Bloquear Edição",
         "icon": "$(unlock)",
-        "category": "CRC Live Share (Puc Minas)"
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.unlockAll",
-        "title": "Modo de Controle Ativado (clique para ir para Modo Livre)",
+        "title": "Modo Controle Ativado (Ir para Livre)",
         "icon": "$(lock)",
-        "category": "CRC Live Share (Puc Minas)"
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.lockAll",
-        "title": "Modo Livre Ativado (clique para ir para modo Controle)",
+        "title": "Modo Livre Ativado (Ir para Controle)",
         "icon": "$(unlock)",
-        "category": "CRC Live Share (Puc Minas)"
+        "category": "CRC Live Share"
       },
       {
         "command": "p2p-live-share.forceSync",
         "title": "Forçar Sincronização (Corrigir Erros)",
         "icon": "$(sync)",
-        "category": "CRC Live Share (Puc Minas)"
+        "category": "CRC Live Share"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "p2p-live-share-panel",
-          "title": "CRC Live Share (Puc Minas)",
+          "title": "CRC Live Share",
           "icon": "./assets/panel-icon.svg"
         }
       ]
@@ -152,20 +148,14 @@
       "p2p-live-share-panel": [
         {
           "id": "p2p-live-share.participants",
-          "name": "Participants",
-          "type": "tree",
-          "when": "p2p-live-share:inSession"
+          "name": "Participantes",
+          "type": "tree"
         },
         {
           "id": "p2p-live-share.terminals",
-          "name": "Terminals",
+          "name": "Terminais Compartilhados",
           "type": "tree",
           "when": "p2p-live-share:inSession"
-        },
-        {
-          "id": "p2p-live-share.webview",
-          "name": "Sessão",
-          "type": "webview"
         }
       ]
     },
@@ -178,7 +168,7 @@
         },
         {
           "command": "p2p-live-share.copyInviteLink",
-          "when": "view == p2p-live-share.participants",
+          "when": "view == p2p-live-share.participants && p2p-live-share:inSession",
           "group": "navigation"
         },
         {
@@ -188,10 +178,9 @@
         },
         {
           "command": "p2p-live-share.createSharedTerminal",
-          "when": "view == p2p-live-share.terminals && p2p-live-share:isHost", 
+          "when": "view == p2p-live-share.terminals && p2p-live-share:isHost",
           "group": "navigation"
         },
-
         {
           "command": "p2p-live-share.unlockAll",
           "when": "view == p2p-live-share.participants && p2p-live-share:isHost && p2p-live-share:globalLock",
@@ -224,9 +213,6 @@
           "when": "view == p2p-live-share.terminals && p2p-live-share:isHost",
           "group": "inline"
         },
-
-
-
         {
           "command": "p2p-live-share.allowEdit",
           "when": "view == p2p-live-share.participants && p2p-live-share:isHost && p2p-live-share:globalLock && viewItem =~ /readonly/",
@@ -364,11 +350,6 @@
           "command": "p2p-live-share.closeSharedTerminal",
           "when": "false"
         },
-
-
-
-
-
         {
           "command": "p2p-live-share.executeHostCommand",
           "when": "false"
@@ -378,22 +359,27 @@
     "viewsWelcome": [
       {
         "view": "p2p-live-share.participants",
-        "contents": "Invite others to join your session by sharing the link. \n[Copy Link](command:p2p-live-share.copyInviteLink)",
+        "contents": "Bem-vindo ao painel do CRC Live Share.\n[Iniciar Sessão (Professor)](command:p2p-live-share.host)\n[Entrar na Sala](command:p2p-live-share.join)",
+        "when": "!p2p-live-share:inSession"
+      },
+      {
+        "view": "p2p-live-share.participants",
+        "contents": "Convide alunos compartilhando o link.\n[Copiar Link](command:p2p-live-share.copyInviteLink)",
         "when": "p2p-live-share:inSession"
       },
       {
         "view": "p2p-live-share.terminals",
-        "contents": "Um terminal compartilhado permite que os alunos acompanhem a execução de comandos e logs do servidor em tempo real (Modo Leitura). \n[Criar Terminal](command:p2p-live-share.createSharedTerminal)",
+        "contents": "Um terminal remoto permite que alunos assistam aos logs da sua máquina em tempo real. \n[Criar Terminal Compartilhado](command:p2p-live-share.createSharedTerminal)",
         "when": "p2p-live-share:inSession && p2p-live-share:isHost"
       }
     ],
     "configuration": {
-      "title": "CRC Live Share (Puc Minas)",
+      "title": "CRC Live Share (PUC Minas)",
       "properties": {
         "p2p-live-share.userName": {
           "type": "string",
           "default": "",
-          "description": "User name to display to other participants. If empty, will detect from available accounts or ask for a name."
+          "description": "Seu nome na sessão."
         },
         "p2p-live-share.terminal.dimensionsSource": {
           "type": "string",
@@ -404,7 +390,7 @@
             "maximum"
           ],
           "default": "minimum",
-          "description": "Determines how terminal dimensions are calculated for shared terminals."
+          "description": "Calculo de dimensões para terminais."
         }
       }
     },
@@ -420,7 +406,7 @@
     "colors": [
       {
         "id": "p2pliveshare.participant.loading",
-        "description": "Color for loading participant",
+        "description": "Cor de carregamento",
         "defaults": {
           "dark": "#808080",
           "light": "#808080"
@@ -428,67 +414,43 @@
       },
       {
         "id": "p2pliveshare.participant.1",
-        "description": "Color for participant 1",
-        "defaults": {
-          "dark": "#ffb900",
-          "light": "#ffb900"
-        }
+        "description": "Cor 1",
+        "defaults": { "dark": "#ffb900", "light": "#ffb900" }
       },
       {
         "id": "p2pliveshare.participant.2",
-        "description": "Color for participant 2",
-        "defaults": {
-          "dark": "#107c10",
-          "light": "#107c10"
-        }
+        "description": "Cor 2",
+        "defaults": { "dark": "#107c10", "light": "#107c10" }
       },
       {
         "id": "p2pliveshare.participant.3",
-        "description": "Color for participant 3",
-        "defaults": {
-          "dark": "#b4009e",
-          "light": "#b4009e"
-        }
+        "description": "Cor 3",
+        "defaults": { "dark": "#b4009e", "light": "#b4009e" }
       },
       {
         "id": "p2pliveshare.participant.4",
-        "description": "Color for participant 4",
-        "defaults": {
-          "dark": "#ff8c00",
-          "light": "#ff8c00"
-        }
+        "description": "Cor 4",
+        "defaults": { "dark": "#ff8c00", "light": "#ff8c00" }
       },
       {
         "id": "p2pliveshare.participant.5",
-        "description": "Color for participant 5",
-        "defaults": {
-          "dark": "#e3008c",
-          "light": "#e3008c"
-        }
+        "description": "Cor 5",
+        "defaults": { "dark": "#e3008c", "light": "#e3008c" }
       },
       {
         "id": "p2pliveshare.participant.6",
-        "description": "Color for participant 6",
-        "defaults": {
-          "dark": "#5c2d91",
-          "light": "#5c2d91"
-        }
+        "description": "Cor 6",
+        "defaults": { "dark": "#5c2d91", "light": "#5c2d91" }
       },
       {
         "id": "p2pliveshare.participant.7",
-        "description": "Color for participant 7",
-        "defaults": {
-          "dark": "#fff100",
-          "light": "#fff100"
-        }
+        "description": "Cor 7",
+        "defaults": { "dark": "#fff100", "light": "#fff100" }
       },
       {
         "id": "p2pliveshare.participant.8",
-        "description": "Color for participant 8",
-        "defaults": {
-          "dark": "#b4a0ff",
-          "light": "#b4a0ff"
-        }
+        "description": "Cor 8",
+        "defaults": { "dark": "#b4a0ff", "light": "#b4a0ff" }
       }
     ]
   },
@@ -499,7 +461,7 @@
     "vscode:prepublish": "pnpm run build",
     "browser": "vscode-test-web --quality stable --browser none --extensionDevelopmentPath=. ./test-workspace",
     "lint": "eslint . --cache",
-    "release": "bumpp package.json src/sync/ws/package.json"
+    "release": "bumpp package.json"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^7.0.1",
@@ -507,7 +469,6 @@
     "@types/picomatch": "^4.0.3",
     "@types/vscode": "^1.99.0",
     "@types/ws": "^8.18.1",
-    "@vscode-elements/elements": "^2.4.0",
     "@vscode/test-web": "^0.0.78",
     "@vscode/windows-process-tree": "^0.6.3",
     "@y/protocols": "1.0.6-0",
@@ -527,7 +488,6 @@
     "typescript": "^5.9.3",
     "vscode-languageclient": "^10.0.0-next.19",
     "vscode-languageserver": "^10.0.0-next.16",
-    "vue": "^3.5.26",
     "ws": "^8.19.0",
     "y-array": "^10.1.4",
     "y-protocols": "^1.0.7",

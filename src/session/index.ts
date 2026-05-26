@@ -4,7 +4,7 @@ import { version } from '../../package.json'
 import { CustomUriScheme } from '../fs/provider'
 import { copyShareLink, inquireHostConfig, makeTrackUri, parseTrackUri, validateShareLink } from '../sync/share'
 import { useUsers } from '../ui/users'
-import { useWebview } from '../webview'
+
 import { createGuestSession } from './guest'
 import { createHostSession } from './host'
 import { useFsProvider } from '../fs/provider'
@@ -76,10 +76,7 @@ export const useActiveSession = defineService(() => {
     }
     isJoining.value = true
     try {
-      const [config, _] = await Promise.all([
-        inquireHostConfig(),
-        useWebview().ensureReady(),
-      ])
+      const config = await inquireHostConfig()
       if (!config) {
         return
       }
@@ -189,10 +186,7 @@ export const useActiveSession = defineService(() => {
 
     const { inquireUserName } = useUsers()
 
-    const [name, _] = await Promise.all([
-      inquireUserName(false),
-      useWebview().ensureReady(),
-    ])
+    const name = await inquireUserName(false)
     if (!name) {
       return false 
     }

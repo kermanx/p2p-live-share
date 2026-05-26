@@ -10,7 +10,7 @@ import { useConnection } from '../sync/connection'
 import { useDocSync } from '../sync/doc'
 import { useGuestTerminals } from '../terminal/guest'
 import { useUsers } from '../ui/users'
-import { useWebview } from '../webview'
+
 import { onSessionClosed, ProtocolVersion } from './index'
 import { UpdatePermissionsAction, UpdateGlobalLockAction, ForceSyncAction } from '../sync/ws/protocol'
 

@@ -11,7 +11,7 @@ import { useConnection } from '../sync/connection'
 import { useDocSync } from '../sync/doc'
 import { useHostTerminals } from '../terminal/host'
 import { useUsers } from '../ui/users'
-import { useWebview } from '../webview'
+
 import { ProtocolVersion } from './index'
 
 export async function createHostSession(config: ConnectionConfig) {
