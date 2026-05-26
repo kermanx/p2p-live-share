@@ -21,7 +21,7 @@ export function useHostFs(connection: Connection) {
     const [uri, reason] = meta!
     const file = files.get(uri)
     if (file)
-      Y.applyUpdateV2(file.doc, update, { reason, peerId })
+      Y.applyUpdate(file.doc, update, { reason, peerId })
   })
 
   async function trackContent({ guestId, uri, content }: TrackContentRequest) {
@@ -30,14 +30,14 @@ export function useHostFs(connection: Connection) {
       file.trackers.add(guestId)
       if (content !== undefined)
         file.doc.getText().insert(0, content)
-      return Y.encodeStateAsUpdateV2(file.doc)
+      return Y.encodeStateAsUpdate(file.doc)
     }
     else {
       const doc = new Y.Doc()
       const trackers = new Set<string>([guestId])
       files.set(uri, { doc, trackers })
 
-      doc.on('updateV2', async (update: Uint8Array, origin: any) => {
+      doc.on('update', async (update: Uint8Array, origin: any) => {
         if (origin?.peerId)
           return
         await send(update, [...trackers], [uri, origin?.reason])
@@ -49,7 +49,7 @@ export function useHostFs(connection: Connection) {
       const newText = content ?? new TextDecoder().decode(await workspace.fs.readFile(uri_))
       doc.getText().insert(0, newText)
 
-      return Y.encodeStateAsUpdateV2(doc)
+      return Y.encodeStateAsUpdate(doc)
     }
   }
   function untrackContent({ guestId, uri }: TrackContentRequest) {

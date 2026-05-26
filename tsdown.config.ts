@@ -1,11 +1,5 @@
-import { copyFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { defineConfig } from 'tsdown'
-
-const needsStub = [
-  'src/session/host.ts',
-  'src/sync/ws/host.ts',
-]
 
 export default defineConfig([
   {
@@ -83,40 +77,12 @@ export default defineConfig([
     inputOptions: {
       resolve: {
         conditionNames: ['browser', 'module', 'main'],
-        alias: Object.fromEntries(
-          needsStub.map(path => [
-            resolve(import.meta.dirname, path),
-            resolve(import.meta.dirname, path.replace(/\.ts$/, '.stub.ts')),
-          ]),
-        ),
+        alias: {
+
+          'node-pty': resolve(import.meta.dirname, './src/terminal/pty/shims/node-pty.ts'),
+          '@vscode/windows-process-tree': resolve(import.meta.dirname, './src/terminal/pty/shims/windows-process-tree.ts'),
+        }
       },
     },
-  },
-  {
-    entry: {
-      webview: 'src/webview/main.tsx',
-    },
-    platform: 'browser',
-    format: ['esm'],
-    target: 'es2020',
-    sourcemap: true,
-    inputOptions: {
-      transform: {
-        jsx: {
-          runtime: 'automatic',
-          importSource: 'vue',
-        },
-        define: {
-          'import.meta.env.TARGET': '"webview"',
-          '__VUE_OPTIONS_API__': 'false',
-          '__VUE_PROD_DEVTOOLS__': 'false',
-          '__VUE_PROD_HYDRATION_MISMATCH_DETAILS__': 'false',
-          '__DEV__': 'true',
-        },
-      },
-    },
-    onSuccess() {
-      copyFileSync('src/webview/styles.css', 'dist/webview.css')
-    },
-  },
+  }
 ])

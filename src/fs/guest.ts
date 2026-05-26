@@ -37,7 +37,7 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
       for (const [uriStr, file] of files.entries()) {
         const hostState = await rpc.trackContent({ guestId: connection.selfId, uri: uriStr });
         // Aplica na memoria. O arquivo common.ts detecta e atualiza a interface confiavelmente.
-        Y.applyUpdateV2(file.doc, hostState);
+        Y.applyUpdate(file.doc, hostState);
         file.lastSafeText = file.doc.getText().toString();
       }
     } catch (e) {
@@ -54,21 +54,21 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
     const [uriStr, reason] = meta!
     const file = files.get(uriStr)
     if (file) {
-      Y.applyUpdateV2(file.doc, update, { reason, peerId })
+      Y.applyUpdate(file.doc, update, { reason, peerId })
     }
   })
 
   async function trackContent(uri: string) {
     const doc = new Y.Doc()
     const init = await rpc.trackContent({ guestId: connection.selfId, uri })
-    Y.applyUpdateV2(doc, init)
+    Y.applyUpdate(doc, init)
     files.set(uri, {
       doc,
       mtime: Date.now(),
       lastSafeText: doc.getText().toString()
     })
 
-    doc.on('updateV2', async (update: Uint8Array, origin: any) => {
+    doc.on('update', async (update: Uint8Array, origin: any) => {
       if (origin?.peerId) return
       if (isPermissionLocked.value) return
       await send(update, hostId, [uri, origin?.reason])

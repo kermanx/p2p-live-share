@@ -9,7 +9,7 @@ import { useHostLs } from '../ls/host'
 import { useHostRpc } from '../rpc/host'
 import { useConnection } from '../sync/connection'
 import { useDocSync } from '../sync/doc'
-import { useHostTerminals } from '../terminal/host'
+
 import { useUsers } from '../ui/users'
 
 import { ProtocolVersion } from './index'
@@ -29,12 +29,13 @@ export async function createHostSession(config: ConnectionConfig) {
       os: process.platform,
     }
     
-    
-    const [sendInit] = connection.makeAction<Uint8Array, HostMeta>('init')
+    const [sendHostRegister] = connection.makeAction<void, HostMeta>('register-host')
     const [sendKick] = connection.makeAction<void>('kick-clone')
     const [_, recvIdentify] = connection.makeAction<string>('identify-guest')
 
     const activeGuests = new Map<string, string>()
+
+    sendHostRegister(undefined, undefined, hostMeta)
 
     recvIdentify((guestName, peerId) => {
       const oldPeerId = activeGuests.get(guestName)
@@ -56,19 +57,11 @@ export async function createHostSession(config: ConnectionConfig) {
           }
         }
       }
-
-      for (const peerId of newPeers) {
-        if (!oldPeers?.includes(peerId)) {
-          sendInit(Y.encodeStateAsUpdateV2(doc), peerId, hostMeta)
-        }
-      }
     }, { immediate: true })
 
     const fs = useHostFs(connection)
-    const terminals = useHostTerminals(connection, doc)
     useHostRpc(connection, {
       ...fs,
-      ...terminals,
     })
     useHostLs(connection)
     useUsers().useCurrentUser(connection, doc)
@@ -80,7 +73,6 @@ export async function createHostSession(config: ConnectionConfig) {
       connection,
       doc,
       scope,
-      shadowTerminals: terminals.shadowTerminals,
     }
   })!
 }

@@ -83,23 +83,6 @@
         "category": "CRC Live Share"
       },
       {
-        "command": "p2p-live-share.createSharedTerminal",
-        "title": "Criar Terminal Compartilhado",
-        "icon": "$(add)",
-        "category": "CRC Live Share"
-      },
-      {
-        "command": "p2p-live-share.focusSharedTerminal",
-        "title": "Focar Terminal Compartilhado",
-        "category": "CRC Live Share"
-      },
-      {
-        "command": "p2p-live-share.closeSharedTerminal",
-        "title": "Fechar Terminal Compartilhado",
-        "icon": "$(close)",
-        "category": "CRC Live Share"
-      },
-      {
         "command": "p2p-live-share.executeHostCommand",
         "title": "Dummy command",
         "category": "CRC Live Share"
@@ -150,12 +133,6 @@
           "id": "p2p-live-share.participants",
           "name": "Participantes",
           "type": "tree"
-        },
-        {
-          "id": "p2p-live-share.terminals",
-          "name": "Terminais Compartilhados",
-          "type": "tree",
-          "when": "p2p-live-share:inSession"
         }
       ]
     },
@@ -174,11 +151,6 @@
         {
           "command": "p2p-live-share.leave",
           "when": "view == p2p-live-share.participants && p2p-live-share:isGuest",
-          "group": "navigation"
-        },
-        {
-          "command": "p2p-live-share.createSharedTerminal",
-          "when": "view == p2p-live-share.terminals && p2p-live-share:isHost",
           "group": "navigation"
         },
         {
@@ -206,11 +178,6 @@
         {
           "command": "p2p-live-share.unfollowParticipant",
           "when": "view == p2p-live-share.participants && viewItem == following",
-          "group": "inline"
-        },
-        {
-          "command": "p2p-live-share.closeSharedTerminal",
-          "when": "view == p2p-live-share.terminals && p2p-live-share:isHost",
           "group": "inline"
         },
         {
@@ -294,18 +261,6 @@
           "when": "p2p-live-share:inSession"
         },
         {
-          "command": "p2p-live-share.createSharedTerminal",
-          "when": "p2p-live-share:inSession && p2p-live-share:isHost"
-        },
-        {
-          "command": "p2p-live-share.focusSharedTerminal",
-          "when": "false"
-        },
-        {
-          "command": "p2p-live-share.closeSharedTerminal",
-          "when": "false"
-        },
-        {
           "command": "p2p-live-share.executeHostCommand",
           "when": "false"
         }
@@ -321,11 +276,6 @@
         "view": "p2p-live-share.participants",
         "contents": "Convide alunos compartilhando o link.\n[Copiar Link](command:p2p-live-share.copyInviteLink)",
         "when": "p2p-live-share:inSession"
-      },
-      {
-        "view": "p2p-live-share.terminals",
-        "contents": "Um terminal remoto permite que alunos assistam aos logs da sua máquina em tempo real. \n[Criar Terminal Compartilhado](command:p2p-live-share.createSharedTerminal)",
-        "when": "p2p-live-share:inSession && p2p-live-share:isHost"
       }
     ],
     "configuration": {
@@ -335,28 +285,8 @@
           "type": "string",
           "default": "",
           "description": "Seu nome na sessão."
-        },
-        "p2p-live-share.terminal.dimensionsSource": {
-          "type": "string",
-          "enum": [
-            "host",
-            "creator",
-            "minimum",
-            "maximum"
-          ],
-          "default": "minimum",
-          "description": "Calculo de dimensões para terminais."
         }
       }
-    },
-    "terminal": {
-      "profiles": [
-        {
-          "id": "p2p-live-share.sharedTerminal",
-          "title": "Shared Terminal",
-          "icon": "live-share"
-        }
-      ]
     },
     "colors": [
       {
@@ -434,7 +364,6 @@
     "lib0": "^0.2.117",
     "msgpackr": "^1.11.9",
     "nanoid": "^5.1.6",
-    "node-pty": "^1.2.0-beta.6",
     "pathe": "^2.0.3",
     "picomatch": "^4.0.4",
     "reactive-vscode": "^1.0.1",

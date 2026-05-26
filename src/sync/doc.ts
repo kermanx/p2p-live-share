@@ -6,14 +6,14 @@ import * as Y from 'yjs'
 export function useDocSync(connection: Connection, doc: Y.Doc) {
   const [send, recv] = connection.makeAction<Uint8Array>('doc')
 
-  doc.on('updateV2', async (update: Uint8Array, origin: any) => {
+  doc.on('update', async (update: Uint8Array, origin: any) => {
     if (origin?.peerId)
       return
     await send(update)
   })
 
   recv((message, peerId) => {
-    Y.applyUpdateV2(doc, message, { peerId })
+    Y.applyUpdate(doc, message, { peerId })
   })
 }
 

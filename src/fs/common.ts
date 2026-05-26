@@ -13,7 +13,8 @@ export interface TrackContentRequest { guestId: string, uri: string, content?: s
 export interface FileChangeEvent { uri: string, type: FileChangeType }
 
 const editingUris = new Map<string, number>()
-
+const pendingSaves = new Map<string, any>()
+let overrideLocks = 0
 export function useTextDocumentWatcher(
   getDoc: (document: TextDocument) => Y.Doc | null | undefined,
   isLocked?: () => boolean,
@@ -57,14 +58,13 @@ const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, delta: 
   try {
     editingUris.set(uri.toString(), (editingUris.get(uri.toString()) ?? 0) + 1)
     
-    // Abre a trava nativa do sistema exclusivamente para a operacao assincrona
+    overrideLocks++
     isSystemOverride.value = true
 
     const doc = await workspace.openTextDocument(uri)
     const edits = new WorkspaceEdit()
     let index = 0
     
-    // Calcula a edicao exata (evitando pular a tela ou mover cursores)
     for (const d of delta) {
       if (d.retain) {
         index += d.retain
@@ -80,15 +80,34 @@ const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, delta: 
       }
     }
     
-    // Aplica e salva instantaneamente para sincronizar a interface
     await workspace.applyEdit(edits)
-    await doc.save()
+
+    const uriStr = uri.toString()
+    if (pendingSaves.has(uriStr)) {
+      clearTimeout(pendingSaves.get(uriStr))
+    }
+    
+    pendingSaves.set(uriStr, setTimeout(async () => {
+      pendingSaves.delete(uriStr)
+      overrideLocks++
+      isSystemOverride.value = true
+      
+      try {
+        await doc.save()
+      } catch (e) {
+        console.error(e)
+      } finally {
+        overrideLocks--
+        if (overrideLocks <= 0) isSystemOverride.value = false
+      }
+    }, 600)) 
 
   } catch (e) {
-    console.error("Falha ao aplicar delta", e)
+    console.error(e)
   } finally {
-    // Fecha a trava do disco apos a conclusao do salvamento
-    isSystemOverride.value = false
+    overrideLocks--
+    if (overrideLocks <= 0) isSystemOverride.value = false
+    
     const count = (editingUris.get(uri.toString()) ?? 1) - 1
     if (count <= 0) editingUris.delete(uri.toString())
     else editingUris.set(uri.toString(), count)
@@ -109,7 +128,6 @@ export function forceUpdateContent(uri: Uri | string, doc: Y.Doc, content: Uint8
       text.delete(0, text.length)
       text.insert(0, newText)
     })
-    console.warn('External edit to', uri.toString())
   }
 }
 

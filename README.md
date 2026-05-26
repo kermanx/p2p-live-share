@@ -8,7 +8,6 @@ Esta extensão permite a edição colaborativa entre alunos e professores sem a 
 
 - **Edição Colaborativa:** Vários alunos editando o mesmo código simultaneamente.
 - **Suporte a Salas Grandes:** Escalonamento de cores otimizado para turmas de até 60 participantes.
-- **Terminal Partilhado:** Professores podem partilhar o acesso ao terminal com alunos.
 
 - **Sincronização de Seleção:** Veja exatamente o que o seu colega está a selecionar em tempo real.
 

@@ -8,7 +8,7 @@ import { useGuestLs } from '../ls/guest'
 import { useGuestRpc } from '../rpc/guest'
 import { useConnection } from '../sync/connection'
 import { useDocSync } from '../sync/doc'
-import { useGuestTerminals } from '../terminal/guest'
+
 import { useUsers } from '../ui/users'
 
 import { onSessionClosed, ProtocolVersion } from './index'
@@ -75,11 +75,11 @@ export async function createGuestSession(config: ConnectionConfig & { path: stri
   return scope.run(() => {
     const doc = new Y.Doc()
     useDocSync(connection, doc)
-    Y.applyUpdateV2(doc, initUpdate)
+    Y.applyUpdate(doc, initUpdate)
 
     const rpc = useGuestRpc(connection, hostId)
     useGuestFs(connection, rpc, hostId)
-    const { shadowTerminals } = useGuestTerminals(connection, doc, rpc, hostId)
+    
     useGuestLs(connection, hostId)
     useUsers().useCurrentUser(connection, doc)
 
@@ -101,7 +101,7 @@ export async function createGuestSession(config: ConnectionConfig & { path: stri
       connection,
       doc,
       scope,
-      shadowTerminals,
+
     }
   })!
 }
