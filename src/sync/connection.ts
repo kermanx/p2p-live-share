@@ -6,8 +6,8 @@ import { Uri, window, workspace } from 'vscode'
 import { onSessionClosed } from '../session'
 import { normalizeUint8Array } from '../utils'
 import { makeTrackUri, parseTrackUri } from './share'
-import { useWebSocketGuestConnection } from './ws/guest'
 
+import { usarConexaoWebSocket } from './ws/socket'
 export type TargetPeers = string | string[]
 
 export type JsonValue = null | boolean | number | string | any[] | { [key: string]: any }
@@ -32,7 +32,7 @@ export interface InternalConnection {
 export function useConnection(config: ConnectionConfig) {
   let internal: InternalConnection
   if (config.type === 'ws' || config.type === 'wss') {
-    internal = useWebSocketGuestConnection(config)
+    internal = usarConexaoWebSocket(config)
   }
   else {
     throw new Error(`Unknown connection type: ${config.type}`)
