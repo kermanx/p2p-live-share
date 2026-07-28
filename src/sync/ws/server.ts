@@ -171,7 +171,10 @@ class WebSocketSignalingServer {
       ? Array.isArray(uplink.targetPeers) ? uplink.targetPeers : [uplink.targetPeers]
       : undefined
 
-    if (this.options.hostMode) {
+    // Never echo a message back to its sender, mirroring the `peerId !== senderId`
+    // guard on the WebSocket clients below. In host mode the host is not a WebSocket
+    // client, so without this check its own broadcasts are delivered back to itself.
+    if (this.options.hostMode && senderId !== this.options.hostMode.hostId) {
       if (!targets || targets.includes(this.options.hostMode.hostId)) {
         this.options.hostMode.onHostMessage(downlinkPayload)
       }
