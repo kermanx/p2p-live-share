@@ -172,7 +172,7 @@ class WebSocketSignalingServer {
       : undefined
 
     if (this.options.hostMode) {
-      if (!targets || targets.includes(this.options.hostMode.hostId)) {
+      if (senderId !== this.options.hostMode.hostId && (!targets || targets.includes(this.options.hostMode.hostId))) {
         this.options.hostMode.onHostMessage(downlinkPayload)
       }
     }
