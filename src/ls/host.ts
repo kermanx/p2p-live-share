@@ -8,6 +8,7 @@ import { createConverter as codeConverter } from 'vscode-languageclient/$test/co
 import { createConverter as protocolConverter } from 'vscode-languageclient/$test/common/protocolConverter'
 import * as lsp from 'vscode-languageserver'
 import { createConnection } from 'vscode-languageserver/browser'
+import { configs } from '../configs'
 import { ExecuteHostCommand, useLsConnection } from './common'
 
 export function useHostLs(connection: Connection) {
@@ -69,7 +70,7 @@ function setupConnection(lc: lsp.Connection, c: Connection) {
         renameProvider: true,
         documentLinkProvider: { resolveProvider: !1 },
         colorProvider: true,
-        executeCommandProvider: { commands: [] },
+        executeCommandProvider: { commands: [ExecuteHostCommand] },
         codeLensProvider: { resolveProvider: true },
       },
     }
@@ -183,7 +184,11 @@ function setupConnection(lc: lsp.Connection, c: Connection) {
         if (item.range && item.range.replacing) {
           item.range = item.range.replacing
         }
-        return c2p.asCompletionItem(item, true)
+        const result = c2p.asCompletionItem(item, true)
+        if (item.command) {
+          result.command = c2pExt.asCommand(item.command)
+        }
+        return result
       })
     }
   })
@@ -233,10 +238,12 @@ function setupConnection(lc: lsp.Connection, c: Connection) {
         range,
         undefined,
         Number.MAX_VALUE,
-      ) as vscode.CodeAction[] | undefined
+      ) as (vscode.CodeAction | vscode.Command)[] | undefined
 
-      return codeActions?.map((e) => {
-        return c2pExt.asCodeAction(e)
+      return codeActions?.map((action) => {
+        return isCommand(action)
+          ? c2pExt.asCommand(action)
+          : c2pExt.asCodeAction(action)
       })
     }
     catch (E) {
@@ -372,31 +379,40 @@ function setupConnection(lc: lsp.Connection, c: Connection) {
   })
 }
 
+function isCommand(action: vscode.CodeAction | vscode.Command): action is vscode.Command {
+  return typeof action.command === 'string'
+}
+
 function c2pExtension(c2p: CodeConverter) {
-  const commandArguments = new Map<string, any[]>()
+  const commandCapabilities = new Map<string, vscode.Command>()
 
   function asCommand(command: vscode.Command): lsp.Command {
     const id = nanoid()
-    commandArguments.set(id, command.arguments || [])
+    commandCapabilities.set(id, command)
     return c2p.asCommand({
       ...command,
       command: ExecuteHostCommand,
-      arguments: [command.command, id],
+      arguments: [id],
     })
   }
 
   async function executeCommand(params: lsp.ExecuteCommandParams) {
-    if (params.command.startsWith(ExecuteHostCommand)) {
-      const [command, id] = params.arguments!
-      const args = commandArguments.get(id)
-      if (!args) {
-        throw new Error(`No arguments found for command: ${command}`)
-      }
-      await commands.executeCommand(command, ...args)
-    }
-    else {
+    if (params.command !== ExecuteHostCommand) {
       throw new Error(`Unsupported command: ${params.command}`)
     }
+    if (!configs.languages.allowGuestCommandControl) {
+      throw new Error('The host has disabled guest command control.')
+    }
+
+    const [id, ...extraArguments] = params.arguments || []
+    if (typeof id !== 'string' || extraArguments.length > 0) {
+      throw new Error('Invalid guest command capability.')
+    }
+    const command = commandCapabilities.get(id)
+    if (!command) {
+      throw new Error('Guest command capability is no longer available.')
+    }
+    await commands.executeCommand(command.command, ...(command.arguments || []))
   }
 
   function asLocation(location: vscode.Location): lsp.Location {
