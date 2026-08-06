@@ -6,7 +6,7 @@ import picomatch from 'picomatch'
 import { useDisposable } from 'reactive-vscode'
 import { Disposable, FileChangeType, RelativePattern, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
-import { forceUpdateContent, fsErrorWrapper, setupTextDocumentUpdater, useTextDocumentWatcher } from './common'
+import { decodeTextFileContent, forceUpdateContent, fsErrorWrapper, setupTextDocumentUpdater, useTextDocumentWatcher } from './common'
 
 export function useHostFs(connection: Connection) {
   const { toHostUri, toTrackUri } = connection
@@ -46,7 +46,7 @@ export function useHostFs(connection: Connection) {
       const uri_ = toHostUri(Uri.parse(uri))
       setupTextDocumentUpdater(uri_, doc)
 
-      const newText = content ?? new TextDecoder().decode(await workspace.fs.readFile(uri_))
+      const newText = content ?? decodeTextFileContent(new Uint8Array(await workspace.fs.readFile(uri_)))
       doc.getText().insert(0, newText)
 
       return Y.encodeStateAsUpdateV2(doc)
