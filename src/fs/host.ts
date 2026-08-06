@@ -6,7 +6,7 @@ import picomatch from 'picomatch'
 import { useDisposable } from 'reactive-vscode'
 import { Disposable, FileChangeType, RelativePattern, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
-import { forceUpdateContent, fsErrorWrapper, setupTextDocumentUpdater, useTextDocumentWatcher } from './common'
+import { createDocUndoManager, forceUpdateContent, fsErrorWrapper, setupTextDocumentUpdater, unregisterUndoManager, useTextDocumentWatcher } from './common'
 
 export function useHostFs(connection: Connection) {
   const { toHostUri, toTrackUri } = connection
@@ -14,6 +14,7 @@ export function useHostFs(connection: Connection) {
   const files = new Map<string, {
     doc: Y.Doc
     trackers: Set<string>
+    undoManager: Y.UndoManager
   }>()
 
   const [send, recv] = connection.makeAction<Uint8Array, [string, TextDocumentChangeReason?]>('texts')
@@ -35,7 +36,8 @@ export function useHostFs(connection: Connection) {
     else {
       const doc = new Y.Doc()
       const trackers = new Set<string>([guestId])
-      files.set(uri, { doc, trackers })
+      const undoManager = createDocUndoManager(uri, doc)
+      files.set(uri, { doc, trackers, undoManager })
 
       doc.on('updateV2', async (update: Uint8Array, origin: any) => {
         if (origin?.peerId)
@@ -44,7 +46,7 @@ export function useHostFs(connection: Connection) {
       })
 
       const uri_ = toHostUri(Uri.parse(uri))
-      setupTextDocumentUpdater(uri_, doc)
+      setupTextDocumentUpdater(uri_, doc, undoManager)
 
       const newText = content ?? new TextDecoder().decode(await workspace.fs.readFile(uri_))
       doc.getText().insert(0, newText)
@@ -58,6 +60,7 @@ export function useHostFs(connection: Connection) {
       file.trackers.delete(guestId)
       if (file.trackers.size === 0) {
         files.delete(uri)
+        unregisterUndoManager(uri)
         file.doc.destroy()
       }
     }

@@ -1,5 +1,5 @@
 import type { FileChangeType, TextDocument, TextDocumentChangeReason, Uri } from 'vscode'
-import type * as Y from 'yjs'
+import * as Y from 'yjs'
 import { useDisposable } from 'reactive-vscode'
 import { FileSystemError, Range, window, workspace, WorkspaceEdit } from 'vscode'
 
@@ -8,6 +8,34 @@ export interface TrackContentRequest { guestId: string, uri: string, content?: s
 export interface FileChangeEvent { uri: string, type: FileChangeType }
 
 const editingUris = new Map<string, number>()
+
+// Module-level registry so undo/redo commands can find the right UndoManager
+const undoManagers = new Map<string, Y.UndoManager>()
+
+export function registerUndoManager(uri: string, um: Y.UndoManager) {
+  undoManagers.set(uri, um)
+}
+
+export function unregisterUndoManager(uri: string) {
+  undoManagers.delete(uri)
+}
+
+export function findUndoManager(uri: string): Y.UndoManager | undefined {
+  return undoManagers.get(uri)
+}
+
+/** Symbol to mark locally-originated Y.Doc transactions (for Y.UndoManager trackedOrigins) */
+const LocalOrigin = Symbol('local')
+
+/** Create a Y.UndoManager that only tracks local changes */
+export function createDocUndoManager(uri: string, doc: Y.Doc): Y.UndoManager {
+  const um = new Y.UndoManager(doc.getText(), {
+    trackedOrigins: new Set([LocalOrigin]),
+    captureTimeout: 200,
+  })
+  registerUndoManager(uri, um)
+  return um
+}
 
 export function useTextDocumentWatcher(getDoc: (document: TextDocument) => Y.Doc | null | undefined) {
   useDisposable(workspace.onDidChangeTextDocument(({ document, contentChanges, reason }) => {
@@ -27,13 +55,18 @@ export function useTextDocumentWatcher(getDoc: (document: TextDocument) => Y.Doc
         text.delete(change.rangeOffset, change.rangeLength)
         text.insert(change.rangeOffset, change.text)
       }
-    }, { reason })
+    }, LocalOrigin)
   }))
 }
 
-export function setupTextDocumentUpdater(uri_: Uri, doc: Y.Doc) {
+export function setupTextDocumentUpdater(
+  uri_: Uri,
+  doc: Y.Doc,
+  um?: Y.UndoManager,
+) {
   doc.getText().observe((event) => {
-    if (event.transaction.local)
+    // Skip local changes UNLESS they came from UndoManager (needs to sync to editor)
+    if (event.transaction.local && event.transaction.origin !== um)
       return
     applyTextDocumentDelta(uri_, event.delta, event.transaction.origin?.reason)
   })
