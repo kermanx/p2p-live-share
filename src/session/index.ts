@@ -1,6 +1,7 @@
 import { computed, defineService, onScopeDispose, shallowRef, useCommand, useVscodeContext, watch } from 'reactive-vscode'
 import { commands, env, Uri, window, workspace } from 'vscode'
 import { version } from '../../package.json'
+import { findUndoManager } from '../fs/common'
 import { CustomUriScheme } from '../fs/provider'
 import { copyShareLink, inquireHostConfig, makeTrackUri, parseTrackUri, validateShareLink } from '../sync/share'
 import { useUsers } from '../ui/users'
@@ -205,11 +206,29 @@ export const useActiveSession = defineService(() => {
   useVscodeContext('p2p-live-share:isHost', computed(() => session.value?.role === 'host'))
   useVscodeContext('p2p-live-share:isGuest', computed(() => session.value?.role === 'guest'))
 
+  function activeTrackUri(): string | undefined {
+    const editor = window.activeTextEditor
+    if (!editor || !session.value) return
+    return session.value.role === 'host'
+      ? toTrackUri(editor.document.uri)?.toString()
+      : editor.document.uri.toString()
+  }
+
   useCommand('p2p-live-share.host', host)
   useCommand('p2p-live-share.join', () => join(false))
   useCommand('p2p-live-share.joinNewWindow', () => join(true))
   useCommand('p2p-live-share.leave', leave)
   useCommand('p2p-live-share.stop', leave)
+  useCommand('p2p-live-share.undo', () => {
+    const uri = activeTrackUri()
+    const um = uri && findUndoManager(uri)
+    um ? um.undo() : commands.executeCommand('undo')
+  })
+  useCommand('p2p-live-share.redo', () => {
+    const uri = activeTrackUri()
+    const um = uri && findUndoManager(uri)
+    um ? um.redo() : commands.executeCommand('redo')
+  })
   useCommand('p2p-live-share.copyInviteLink', () => {
     if (session.value?.connection) {
       copyShareLink(session.value?.connection.config)

@@ -6,7 +6,7 @@ import type { FileChangeEvent } from './common'
 import { computed, defineConfig, useDisposable } from 'reactive-vscode'
 import { FileType, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
-import { forceUpdateContent, handleFsError, setupTextDocumentUpdater, useTextDocumentWatcher } from './common'
+import { createDocUndoManager, forceUpdateContent, handleFsError, setupTextDocumentUpdater, unregisterUndoManager, useTextDocumentWatcher } from './common'
 import { CustomUriScheme, useFsProvider } from './provider'
 
 const filesConfig = defineConfig<any>('files')
@@ -18,6 +18,7 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
     doc: Y.Doc
     mtime: number
     ctime?: number
+    undoManager: Y.UndoManager
   }>()
   const [send, recv] = connection.makeAction<Uint8Array, [string, TextDocumentChangeReason?]>('texts')
 
@@ -30,11 +31,13 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
 
   async function trackContent(uri: string) {
     const doc = new Y.Doc()
+    const undoManager = createDocUndoManager(uri, doc)
     const init = await rpc.trackContent({ guestId: connection.selfId, uri })
     Y.applyUpdateV2(doc, init)
     files.set(uri, {
       doc,
       mtime: Date.now(),
+      undoManager,
     })
 
     doc.on('updateV2', async (update: Uint8Array, origin: any) => {
@@ -42,7 +45,7 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
         return
       await send(update, hostId, [uri, origin?.reason])
     })
-    setupTextDocumentUpdater(Uri.parse(uri), doc)
+    setupTextDocumentUpdater(Uri.parse(uri), doc, undoManager)
   }
 
   useTextDocumentWatcher((document) => {
@@ -63,6 +66,7 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
   }))
   useDisposable(workspace.onDidCloseTextDocument(({ uri }) => {
     if (uri.scheme === CustomUriScheme) {
+      unregisterUndoManager(uri.toString())
       files.delete(uri.toString())
       rpc.untrackContent({ guestId: connection.selfId, uri: uri.toString() })
     }
