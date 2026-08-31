@@ -120,8 +120,29 @@ function createSequentialFunction<T extends (...args: any[]) => Promise<any>>(fn
   return ((...args) => lastPromise = lastPromise.then(() => fn(...args))) as T
 }
 
+/**
+ * 解码文件内容，自动处理 GB2312/GBK 编码。
+ * 先用 UTF-8 严格解码，失败时 fallback 到 GBK。
+ */
+export function decodeTextFileContent(content: Uint8Array): string {
+  try {
+    // 先尝试 UTF-8 严格解码 — 纯 ASCII 和 UTF-8 都能通过
+    return new TextDecoder('utf-8', { fatal: true }).decode(content)
+  }
+  catch {
+    // UTF-8 解码失败（包含非法字节序列），尝试 GBK/GB2312
+    try {
+      return new TextDecoder('gbk').decode(content)
+    }
+    catch {
+      // GBK 也不可用时，回退到宽松 UTF-8（可能乱码，但不会崩溃）
+      return new TextDecoder('utf-8', { fatal: false }).decode(content)
+    }
+  }
+}
+
 export function forceUpdateContent(uri: Uri | string, doc: Y.Doc, content: Uint8Array) {
-  const newText = new TextDecoder().decode(content)
+  const newText = decodeTextFileContent(content)
   const oldText = doc.getText().toString()
   if (oldText !== newText) {
     doc.transact(() => {
