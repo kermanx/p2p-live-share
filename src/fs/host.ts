@@ -3,10 +3,11 @@ import type { TextDocumentChangeReason } from 'vscode'
 import type { Connection } from '../sync/connection'
 import type { FileChangeEvent, TrackContentRequest } from './common'
 import picomatch from 'picomatch'
-import { useDisposable } from 'reactive-vscode'
+import { onScopeDispose, useDisposable } from 'reactive-vscode'
 import { Disposable, FileChangeType, RelativePattern, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
-import { createDocUndoManager, forceUpdateContent, fsErrorWrapper, setupTextDocumentUpdater, unregisterUndoManager, useTextDocumentWatcher } from './common'
+import { forceUpdateContent, fsErrorWrapper, setupTextDocumentUpdater, useTextDocumentWatcher, useUndoRedo } from './common'
+import { createDocUndoManager } from './undo-manager'
 
 export function useHostFs(connection: Connection) {
   const { toHostUri, toTrackUri } = connection
@@ -16,6 +17,16 @@ export function useHostFs(connection: Connection) {
     trackers: Set<string>
     undoManager: Y.UndoManager
   }>()
+
+  onScopeDispose(() => {
+    for (const file of files.values())
+      file.doc.destroy()
+    files.clear()
+  })
+  useUndoRedo((document) => {
+    const uri = toTrackUri(document.uri)
+    return uri ? files.get(uri.toString())?.undoManager : undefined
+  })
 
   const [send, recv] = connection.makeAction<Uint8Array, [string, TextDocumentChangeReason?]>('texts')
   recv((update, peerId, meta) => {
@@ -36,7 +47,7 @@ export function useHostFs(connection: Connection) {
     else {
       const doc = new Y.Doc()
       const trackers = new Set<string>([guestId])
-      const undoManager = createDocUndoManager(uri, doc)
+      const undoManager = createDocUndoManager(doc)
       files.set(uri, { doc, trackers, undoManager })
 
       doc.on('updateV2', async (update: Uint8Array, origin: any) => {
@@ -60,7 +71,6 @@ export function useHostFs(connection: Connection) {
       file.trackers.delete(guestId)
       if (file.trackers.size === 0) {
         files.delete(uri)
-        unregisterUndoManager(uri)
         file.doc.destroy()
       }
     }

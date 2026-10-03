@@ -3,11 +3,12 @@ import type { TextDocumentChangeReason } from 'vscode'
 import type { GuestFunctions, HostFunctions } from '../rpc/types'
 import type { Connection } from '../sync/connection'
 import type { FileChangeEvent } from './common'
-import { computed, defineConfig, useDisposable } from 'reactive-vscode'
+import { computed, defineConfig, onScopeDispose, useDisposable } from 'reactive-vscode'
 import { FileType, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
-import { createDocUndoManager, forceUpdateContent, handleFsError, setupTextDocumentUpdater, unregisterUndoManager, useTextDocumentWatcher } from './common'
+import { forceUpdateContent, handleFsError, setupTextDocumentUpdater, useTextDocumentWatcher, useUndoRedo } from './common'
 import { CustomUriScheme, useFsProvider } from './provider'
+import { createDocUndoManager } from './undo-manager'
 
 const filesConfig = defineConfig<any>('files')
 
@@ -20,6 +21,15 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
     ctime?: number
     undoManager: Y.UndoManager
   }>()
+  const pendingTracks = new Map<string, symbol>()
+  onScopeDispose(() => {
+    pendingTracks.clear()
+    for (const file of files.values())
+      file.doc.destroy()
+    files.clear()
+  })
+  useUndoRedo(document => files.get(document.uri.toString())?.undoManager)
+
   const [send, recv] = connection.makeAction<Uint8Array, [string, TextDocumentChangeReason?]>('texts')
 
   recv((update, peerId, meta) => {
@@ -30,22 +40,35 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
   })
 
   async function trackContent(uri: string) {
-    const doc = new Y.Doc()
-    const undoManager = createDocUndoManager(uri, doc)
-    const init = await rpc.trackContent({ guestId: connection.selfId, uri })
-    Y.applyUpdateV2(doc, init)
-    files.set(uri, {
-      doc,
-      mtime: Date.now(),
-      undoManager,
-    })
-
-    doc.on('updateV2', async (update: Uint8Array, origin: any) => {
-      if (origin?.peerId)
+    if (files.has(uri) || pendingTracks.has(uri))
+      return
+    const token = Symbol('trackContent')
+    pendingTracks.set(uri, token)
+    try {
+      const init = await rpc.trackContent({ guestId: connection.selfId, uri })
+      // The document may have closed, reopened, or left the session while loading.
+      if (pendingTracks.get(uri) !== token)
         return
-      await send(update, hostId, [uri, origin?.reason])
-    })
-    setupTextDocumentUpdater(Uri.parse(uri), doc, undoManager)
+      const doc = new Y.Doc()
+      Y.applyUpdateV2(doc, init)
+      const undoManager = createDocUndoManager(doc)
+      files.set(uri, {
+        doc,
+        mtime: Date.now(),
+        undoManager,
+      })
+
+      doc.on('updateV2', async (update: Uint8Array, origin: any) => {
+        if (origin?.peerId)
+          return
+        await send(update, hostId, [uri, origin?.reason])
+      })
+      setupTextDocumentUpdater(Uri.parse(uri), doc, undoManager)
+    }
+    finally {
+      if (pendingTracks.get(uri) === token)
+        pendingTracks.delete(uri)
+    }
   }
 
   useTextDocumentWatcher((document) => {
@@ -66,7 +89,8 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
   }))
   useDisposable(workspace.onDidCloseTextDocument(({ uri }) => {
     if (uri.scheme === CustomUriScheme) {
-      unregisterUndoManager(uri.toString())
+      pendingTracks.delete(uri.toString())
+      files.get(uri.toString())?.doc.destroy()
       files.delete(uri.toString())
       rpc.untrackContent({ guestId: connection.selfId, uri: uri.toString() })
     }

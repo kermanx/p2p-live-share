@@ -132,16 +132,6 @@
         "category": "P2P Live Share"
       },
       {
-        "command": "p2p-live-share.undo",
-        "title": "Undo",
-        "category": "P2P Live Share"
-      },
-      {
-        "command": "p2p-live-share.redo",
-        "title": "Redo",
-        "category": "P2P Live Share"
-      },
-      {
         "command": "p2p-live-share.scm.openChange",
         "title": "Open Changes",
         "category": "Live Share Source Control",
@@ -173,20 +163,6 @@
         "title": "Revert Changes",
         "category": "Live Share Source Control",
         "icon": "$(discard)"
-      }
-    ],
-    "keybindings": [
-      {
-        "command": "p2p-live-share.undo",
-        "key": "ctrl+z",
-        "mac": "cmd+z",
-        "when": "editorTextFocus && p2p-live-share:inSession"
-      },
-      {
-        "command": "p2p-live-share.redo",
-        "key": "ctrl+shift+z",
-        "mac": "cmd+shift+z",
-        "when": "editorTextFocus && p2p-live-share:inSession"
       }
     ],
     "viewsContainers": {

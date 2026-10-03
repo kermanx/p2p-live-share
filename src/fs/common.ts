@@ -1,7 +1,8 @@
 import type { FileChangeType, TextDocument, TextDocumentChangeReason, Uri } from 'vscode'
-import * as Y from 'yjs'
-import { useDisposable } from 'reactive-vscode'
-import { FileSystemError, Range, window, workspace, WorkspaceEdit } from 'vscode'
+import type * as Y from 'yjs'
+import { useCommand, useDisposable } from 'reactive-vscode'
+import { commands, FileSystemError, Range, window, workspace, WorkspaceEdit } from 'vscode'
+import { LocalOrigin } from './undo-manager'
 
 export type FilesMap = Y.Map<Y.Doc>
 export interface TrackContentRequest { guestId: string, uri: string, content?: string }
@@ -9,36 +10,29 @@ export interface FileChangeEvent { uri: string, type: FileChangeType }
 
 const editingUris = new Map<string, number>()
 
-// Module-level registry so undo/redo commands can find the right UndoManager
-const undoManagers = new Map<string, Y.UndoManager>()
+export function useUndoRedo(getUndoManager: (document: TextDocument) => Y.UndoManager | undefined) {
+  // Override commands, so custom keybindings and the Edit menu work too.
+  // These registrations are disposed with the host/guest session scope.
+  for (const command of ['undo', 'redo'] as const) {
+    useCommand(command, async (...args: unknown[]) => {
+      const editor = window.activeTextEditor
+      const undoManager = editor && getUndoManager(editor.document)
+      if (!editor || !undoManager)
+        return commands.executeCommand(`default:${command}`, ...args)
 
-export function registerUndoManager(uri: string, um: Y.UndoManager) {
-  undoManagers.set(uri, um)
-}
-
-export function unregisterUndoManager(uri: string) {
-  undoManagers.delete(uri)
-}
-
-export function findUndoManager(uri: string): Y.UndoManager | undefined {
-  return undoManagers.get(uri)
-}
-
-/** Symbol to mark locally-originated Y.Doc transactions (for Y.UndoManager trackedOrigins) */
-const LocalOrigin = Symbol('local')
-
-/** Create a Y.UndoManager that only tracks local changes */
-export function createDocUndoManager(uri: string, doc: Y.Doc): Y.UndoManager {
-  const um = new Y.UndoManager(doc.getText(), {
-    trackedOrigins: new Set([LocalOrigin]),
-    captureTimeout: 200,
-  })
-  registerUndoManager(uri, um)
-  return um
+      await applyTextDocumentDelta.wait()
+      if (getUndoManager(editor.document) !== undoManager)
+        return
+      undoManager[command]()
+      // An empty local stack must not fall back to VS Code's stack, which
+      // also contains remote edits. Wait for the resulting editor changes.
+      await applyTextDocumentDelta.wait()
+    })
+  }
 }
 
 export function useTextDocumentWatcher(getDoc: (document: TextDocument) => Y.Doc | null | undefined) {
-  useDisposable(workspace.onDidChangeTextDocument(({ document, contentChanges, reason }) => {
+  useDisposable(workspace.onDidChangeTextDocument(({ document, contentChanges }) => {
     if (contentChanges.length === 0 || editingUris.has(document.uri.toString())) {
       return
     }
@@ -75,17 +69,6 @@ export function setupTextDocumentUpdater(
 const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, delta: Y.YEvent<any>['delta'], _reason: TextDocumentChangeReason | undefined) => {
   try {
     editingUris.set(uri.toString(), (editingUris.get(uri.toString()) ?? 0) + 1)
-
-    // if (reason === TextDocumentChangeReason.Undo) {
-    //   window.showInformationMessage('UNDO')
-    //   await commands.executeCommand('default:undo')
-    //   return
-    // }
-    // else if (reason === TextDocumentChangeReason.Redo) {
-    //   window.showInformationMessage('REDO')
-    //   await commands.executeCommand('default:redo')
-    //   return
-    // }
 
     // Try updating via editor
     const editor = window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString())
@@ -148,9 +131,12 @@ const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, delta: 
   }
 })
 
-function createSequentialFunction<T extends (...args: any[]) => Promise<any>>(fn: T): T {
+function createSequentialFunction<T extends (...args: any[]) => Promise<any>>(fn: T) {
   let lastPromise: Promise<any> = Promise.resolve()
-  return ((...args) => lastPromise = lastPromise.then(() => fn(...args))) as T
+  return Object.assign(
+    ((...args) => lastPromise = lastPromise.then(() => fn(...args))) as T,
+    { wait: () => lastPromise },
+  )
 }
 
 export function forceUpdateContent(uri: Uri | string, doc: Y.Doc, content: Uint8Array) {
