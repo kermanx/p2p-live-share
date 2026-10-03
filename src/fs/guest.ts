@@ -3,6 +3,7 @@ import type { TextDocumentChangeReason } from 'vscode'
 import type { GuestFunctions, HostFunctions } from '../rpc/types'
 import type { Connection } from '../sync/connection'
 import type { FileChangeEvent } from './common'
+import type { DocUndoManager } from './undo-manager'
 import { computed, defineConfig, onScopeDispose, useDisposable } from 'reactive-vscode'
 import { FileType, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
@@ -19,7 +20,7 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
     doc: Y.Doc
     mtime: number
     ctime?: number
-    undoManager: Y.UndoManager
+    undoManager: DocUndoManager
   }>()
   const pendingTracks = new Map<string, symbol>()
   onScopeDispose(() => {

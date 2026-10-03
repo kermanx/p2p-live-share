@@ -1,16 +1,53 @@
-import type { FileChangeType, TextDocument, TextDocumentChangeReason, Uri } from 'vscode'
+import type { FileChangeType, TextDocument, TextDocumentChangeReason, TextEditor, Uri } from 'vscode'
 import type * as Y from 'yjs'
+import type { DocUndoManager, UndoSelection } from './undo-manager'
 import { useCommand, useDisposable } from 'reactive-vscode'
-import { commands, FileSystemError, Range, window, workspace, WorkspaceEdit } from 'vscode'
-import { LocalOrigin } from './undo-manager'
+import { commands, FileSystemError, Range, Selection, window, workspace, WorkspaceEdit } from 'vscode'
+import { getDocUndoManager, LocalOrigin } from './undo-manager'
 
 export type FilesMap = Y.Map<Y.Doc>
 export interface TrackContentRequest { guestId: string, uri: string, content?: string }
 export interface FileChangeEvent { uri: string, type: FileChangeType }
 
 const editingUris = new Map<string, number>()
+const editorSelections = new WeakMap<TextDocument, UndoSelection[]>()
 
-export function useUndoRedo(getUndoManager: (document: TextDocument) => Y.UndoManager | undefined) {
+function rememberSelection(editor: TextEditor) {
+  const selections = editor.selections.map(selection => ({
+    anchor: editor.document.offsetAt(selection.anchor),
+    active: editor.document.offsetAt(selection.active),
+  }))
+  editorSelections.set(editor.document, selections)
+  return selections
+}
+
+export function useUndoRedo(getUndoManager: (document: TextDocument) => DocUndoManager | undefined) {
+  for (const editor of window.visibleTextEditors)
+    rememberSelection(editor)
+  useDisposable(window.onDidChangeTextEditorSelection(({ textEditor }) => rememberSelection(textEditor)))
+  useDisposable(window.onDidChangeActiveTextEditor((editor) => {
+    if (editor)
+      rememberSelection(editor)
+  }))
+  const runUndoRedo = createSequentialFunction(async (editor: TextEditor, undoManager: DocUndoManager, command: 'undo' | 'redo') => {
+    await applyTextDocumentDelta.wait()
+    if (window.activeTextEditor !== editor || getUndoManager(editor.document) !== undoManager)
+      return
+    undoManager.captureSelection(rememberSelection(editor))
+    const item = undoManager[command]()
+    // An empty local stack must not fall back to VS Code's stack, which
+    // also contains remote edits. Wait for the resulting editor changes.
+    await applyTextDocumentDelta.wait()
+    if (item && window.activeTextEditor === editor && getUndoManager(editor.document) === undoManager) {
+      const selections = undoManager.restoreSelection()
+      if (selections?.length) {
+        editor.selections = selections.map(({ anchor, active }) => new Selection(
+          editor.document.positionAt(anchor),
+          editor.document.positionAt(active),
+        ))
+      }
+    }
+  })
   // Override commands, so custom keybindings and the Edit menu work too.
   // These registrations are disposed with the host/guest session scope.
   for (const command of ['undo', 'redo'] as const) {
@@ -20,13 +57,7 @@ export function useUndoRedo(getUndoManager: (document: TextDocument) => Y.UndoMa
       if (!editor || !undoManager)
         return commands.executeCommand(`default:${command}`, ...args)
 
-      await applyTextDocumentDelta.wait()
-      if (getUndoManager(editor.document) !== undoManager)
-        return
-      undoManager[command]()
-      // An empty local stack must not fall back to VS Code's stack, which
-      // also contains remote edits. Wait for the resulting editor changes.
-      await applyTextDocumentDelta.wait()
+      return runUndoRedo(editor, undoManager, command)
     })
   }
 }
@@ -42,6 +73,9 @@ export function useTextDocumentWatcher(getDoc: (document: TextDocument) => Y.Doc
       return
     }
 
+    const selections = editorSelections.get(document)
+    if (selections)
+      getDocUndoManager(doc)?.captureSelection(selections)
     doc.transact(() => {
       const text = doc.getText()
       const sortedChanges = contentChanges.slice().sort((a, b) => b.rangeOffset - a.rangeOffset)

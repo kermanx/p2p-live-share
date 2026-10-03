@@ -6,6 +6,44 @@ import * as Y from 'yjs'
 import { createDocUndoManager, LocalOrigin } from './undo-manager'
 
 describe('Y.UndoManager collaborative undo behavior', () => {
+  it('restores directed selections and rebases them around remote edits', () => {
+    const doc = new Y.Doc()
+    doc.getText().insert(0, 'abcd')
+    const undo = createDocUndoManager(doc)
+    undo.captureSelection([{ anchor: 3, active: 1 }, { anchor: 4, active: 4 }])
+    doc.transact(() => {
+      doc.getText().delete(1, 2)
+      doc.getText().insert(1, 'Z')
+    }, LocalOrigin)
+    doc.transact(() => doc.getText().insert(0, 'X'), { peerId: 'remote' })
+    undo.captureSelection([{ anchor: 3, active: 3 }])
+    undo.undo()
+    assert.equal(doc.getText().toString(), 'Xabcd')
+    assert.deepEqual(undo.restoreSelection(), [{ anchor: 4, active: 2 }, { anchor: 5, active: 5 }])
+    undo.captureSelection(undo.restoreSelection()!)
+    undo.redo()
+    assert.equal(doc.getText().toString(), 'XaZd')
+    assert.deepEqual(undo.restoreSelection(), [{ anchor: 3, active: 3 }])
+    doc.destroy()
+  })
+
+  it('retains the selection before the first edit in a captured group', () => {
+    const doc = new Y.Doc()
+    const undo = createDocUndoManager(doc)
+    undo.captureSelection([{ anchor: 0, active: 0 }])
+    doc.transact(() => doc.getText().insert(0, 'a'), LocalOrigin)
+    undo.captureSelection([{ anchor: 1, active: 1 }])
+    doc.transact(() => doc.getText().insert(1, 'b'), LocalOrigin)
+    undo.captureSelection([{ anchor: 2, active: 2 }])
+    undo.undo()
+    assert.equal(doc.getText().toString(), '')
+    assert.deepEqual(undo.restoreSelection(), [{ anchor: 0, active: 0 }])
+    undo.captureSelection(undo.restoreSelection()!)
+    undo.redo()
+    assert.deepEqual(undo.restoreSelection(), [{ anchor: 2, active: 2 }])
+    doc.destroy()
+  })
+
   it('keeps both peers in sync when each undoes and redoes their own interleaved edits', () => {
     const host = new Y.Doc()
     const guest = new Y.Doc()

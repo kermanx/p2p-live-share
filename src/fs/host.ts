@@ -2,6 +2,7 @@ import type { IDisposable } from 'node-pty'
 import type { TextDocumentChangeReason } from 'vscode'
 import type { Connection } from '../sync/connection'
 import type { FileChangeEvent, TrackContentRequest } from './common'
+import type { DocUndoManager } from './undo-manager'
 import picomatch from 'picomatch'
 import { onScopeDispose, useDisposable } from 'reactive-vscode'
 import { Disposable, FileChangeType, RelativePattern, Uri, workspace } from 'vscode'
@@ -15,7 +16,7 @@ export function useHostFs(connection: Connection) {
   const files = new Map<string, {
     doc: Y.Doc
     trackers: Set<string>
-    undoManager: Y.UndoManager
+    undoManager: DocUndoManager
   }>()
 
   onScopeDispose(() => {
