@@ -3,24 +3,99 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import * as Y from 'yjs'
 
-/**
- * 独立测试 Y.UndoManager 在协同编辑场景下的行为。
- * 不能直接 import common.ts（依赖 vscode 模块），
- * 所以这里用和 common.ts 相同的逻辑独立构造测试。
- */
-const LocalOrigin = Symbol('local')
-
-function createUndoManager(doc: Y.Doc): Y.UndoManager {
-  return new Y.UndoManager(doc.getText(), {
-    trackedOrigins: new Set([LocalOrigin]),
-    captureTimeout: 200,
-  })
-}
+import { createDocUndoManager, LocalOrigin } from './undo-manager'
 
 describe('Y.UndoManager collaborative undo behavior', () => {
+  it('keeps both peers in sync when each undoes and redoes their own interleaved edits', () => {
+    const host = new Y.Doc()
+    const guest = new Y.Doc()
+    const hostUndo = createDocUndoManager(host)
+    const guestUndo = createDocUndoManager(guest)
+    const sync = (from: Y.Doc, to: Y.Doc) => Y.applyUpdateV2(to, Y.encodeStateAsUpdateV2(from), { peerId: from.clientID })
+    const expectText = (text: string) => {
+      assert.equal(host.getText().toString(), text)
+      assert.equal(guest.getText().toString(), text)
+    }
+
+    host.transact(() => host.getText().insert(0, 'hello'), LocalOrigin)
+    sync(host, guest)
+    guest.transact(() => guest.getText().insert(3, 'X'), LocalOrigin)
+    sync(guest, host)
+    expectText('helXlo')
+
+    hostUndo.undo()
+    sync(host, guest)
+    expectText('X')
+    assert.equal(hostUndo.undo(), null, 'an empty local stack must leave the remote text intact')
+
+    guestUndo.undo()
+    sync(guest, host)
+    expectText('')
+    guestUndo.redo()
+    sync(guest, host)
+    expectText('X')
+    hostUndo.redo()
+    sync(host, guest)
+    expectText('helXlo')
+
+    host.destroy()
+    guest.destroy()
+  })
+
+  it('preserves remote edits received between undo and redo', () => {
+    const host = new Y.Doc()
+    const guest = new Y.Doc()
+    const undo = createDocUndoManager(host)
+    host.transact(() => host.getText().insert(0, 'hello'), LocalOrigin)
+    Y.applyUpdateV2(guest, Y.encodeStateAsUpdateV2(host))
+    guest.getText().insert(3, 'X')
+    Y.applyUpdateV2(host, Y.encodeStateAsUpdateV2(guest), { peerId: 'guest' })
+    undo.undo()
+    Y.applyUpdateV2(guest, Y.encodeStateAsUpdateV2(host))
+    guest.getText().insert(1, 'Y')
+    Y.applyUpdateV2(host, Y.encodeStateAsUpdateV2(guest), { peerId: 'guest' })
+    assert.equal(host.getText().toString(), 'XY')
+
+    undo.redo()
+    Y.applyUpdateV2(guest, Y.encodeStateAsUpdateV2(host))
+    assert.equal(host.getText().toString(), guest.getText().toString())
+    assert.equal(host.getText().toString().replace(/[XY]/g, ''), 'hello')
+    undo.undo()
+    Y.applyUpdateV2(guest, Y.encodeStateAsUpdateV2(host))
+    assert.equal(host.getText().toString(), 'XY')
+    assert.equal(guest.getText().toString(), 'XY')
+
+    host.destroy()
+    guest.destroy()
+  })
+
+  it('restores a local deletion without deleting a remote insertion', () => {
+    const doc = new Y.Doc()
+    doc.getText().insert(0, 'abcd')
+    const undo = createDocUndoManager(doc)
+    doc.transact(() => doc.getText().delete(1, 2), LocalOrigin)
+    doc.transact(() => doc.getText().insert(1, 'X'), { peerId: 'guest' })
+    assert.equal(doc.getText().toString(), 'aXd')
+    undo.undo()
+    assert.equal(doc.getText().toString().replace('X', ''), 'abcd')
+    undo.redo()
+    assert.equal(doc.getText().toString(), 'aXd')
+    doc.destroy()
+  })
+
+  it('does not track initial content and releases its observers when the document is destroyed', () => {
+    const doc = new Y.Doc()
+    const undo = createDocUndoManager(doc)
+    doc.getText().insert(0, 'initial')
+    assert.equal(undo.undo(), null)
+    doc.destroy()
+    doc.transact(() => doc.getText().insert(0, 'later'), LocalOrigin)
+    assert.equal(undo.undoStack.length, 0)
+  })
+
   it('tracks local changes, ignores remote changes', () => {
     const doc = new Y.Doc()
-    const um = createUndoManager(doc)
+    const um = createDocUndoManager(doc)
 
     // 模拟本地编辑
     doc.transact(() => {
@@ -38,15 +113,14 @@ describe('Y.UndoManager collaborative undo behavior', () => {
 
     // Undo: 只撤销本地变更
     um.undo()
-    assert.equal(doc.getText().toString(), '-remote',
-      `undo should leave only remote text, got "${doc.getText().toString()}"`)
+    assert.equal(doc.getText().toString(), '-remote', `undo should leave only remote text, got "${doc.getText().toString()}"`)
 
     doc.destroy()
   })
 
   it('correctly undoes with concurrent interleaved edits', () => {
     const doc = new Y.Doc()
-    const localUm = createUndoManager(doc)
+    const localUm = createDocUndoManager(doc)
 
     // 本地用户插入 "hello" — 5 个 CRDT items
     doc.transact(() => {
@@ -64,13 +138,11 @@ describe('Y.UndoManager collaborative undo behavior', () => {
 
     // 应用远程更新
     Y.applyUpdateV2(doc, remoteUpdate, { peerId: 'remote' })
-    assert.equal(doc.getText().toString(), 'helXlo',
-      `concurrent edit should produce "helXlo", got "${doc.getText().toString()}"`)
+    assert.equal(doc.getText().toString(), 'helXlo', `concurrent edit should produce "helXlo", got "${doc.getText().toString()}"`)
 
     // 本地 undo — UndoManager 知道 "hello" 对应的 CRDT items
     localUm.undo()
-    assert.equal(doc.getText().toString(), 'X',
-      `undo should leave only "X", got "${doc.getText().toString()}"`)
+    assert.equal(doc.getText().toString(), 'X', `undo should leave only "X", got "${doc.getText().toString()}"`)
 
     doc.destroy()
     remoteDoc.destroy()
@@ -78,7 +150,7 @@ describe('Y.UndoManager collaborative undo behavior', () => {
 
   it('undo then redo restores original text', () => {
     const doc = new Y.Doc()
-    const um = createUndoManager(doc)
+    const um = createDocUndoManager(doc)
 
     doc.transact(() => {
       doc.getText().insert(0, 'test')
@@ -100,7 +172,7 @@ describe('Y.UndoManager collaborative undo behavior', () => {
 
   it('only undoes local transactions, not remote ones mixed in between', () => {
     const doc = new Y.Doc()
-    const um = createUndoManager(doc)
+    const um = createDocUndoManager(doc)
 
     // 本地插入 "A"
     doc.transact(() => doc.getText().insert(0, 'A'), LocalOrigin)
@@ -118,15 +190,13 @@ describe('Y.UndoManager collaborative undo behavior', () => {
     while (um.undoStack.length > 0)
       um.undo()
 
-    assert.equal(doc.getText().toString(), 'B',
-      `after undoing all local changes, only remote "B" should remain, got "${doc.getText().toString()}"`)
+    assert.equal(doc.getText().toString(), 'B', `after undoing all local changes, only remote "B" should remain, got "${doc.getText().toString()}"`)
 
     // Redo 恢复本地变更
     while (um.redoStack.length > 0)
       um.redo()
 
-    assert.equal(doc.getText().toString(), 'ABC',
-      `after redo all should be "ABC", got "${doc.getText().toString()}"`)
+    assert.equal(doc.getText().toString(), 'ABC', `after redo all should be "ABC", got "${doc.getText().toString()}"`)
 
     doc.destroy()
   })
