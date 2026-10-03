@@ -1,9 +1,93 @@
+import type { DocUndoManager, UndoChange } from './undo-manager'
 import assert from 'node:assert/strict'
 // eslint-disable-next-line test/no-import-node-test
 import { describe, it } from 'node:test'
 import * as Y from 'yjs'
 
 import { createDocUndoManager, LocalOrigin } from './undo-manager'
+
+function edit(undo: DocUndoManager, ...changes: UndoChange[]) {
+  undo.captureChanges(changes)
+  undo.doc.transact(() => {
+    const text = undo.doc.getText()
+    for (const change of changes.slice().sort((a, b) => b.rangeOffset - a.rangeOffset)) {
+      text.delete(change.rangeOffset, change.rangeLength)
+      text.insert(change.rangeOffset, change.text)
+    }
+  }, LocalOrigin)
+}
+
+describe('editor undo groups', () => {
+  it('keeps adjacent typing together across ordinary typing pauses', async () => {
+    const doc = new Y.Doc()
+    const undo = createDocUndoManager(doc)
+    edit(undo, { rangeOffset: 0, rangeLength: 0, text: 'a' })
+    await new Promise(resolve => setTimeout(resolve, 300))
+    edit(undo, { rangeOffset: 1, rangeLength: 0, text: 'b' })
+    undo.undo()
+    assert.equal(doc.getText().toString(), '')
+    undo.redo()
+    assert.equal(doc.getText().toString(), 'ab')
+    doc.destroy()
+  })
+
+  it('starts a separate group for a word, paste, replacement and distant edit', () => {
+    const doc = new Y.Doc()
+    const undo = createDocUndoManager(doc)
+    for (const character of 'one two')
+      edit(undo, { rangeOffset: doc.getText().length, rangeLength: 0, text: character })
+    undo.undo()
+    assert.equal(doc.getText().toString(), 'one')
+    undo.redo()
+    edit(undo, { rangeOffset: 7, rangeLength: 0, text: 'PASTE' })
+    edit(undo, { rangeOffset: 12, rangeLength: 0, text: 'x' })
+    edit(undo, { rangeOffset: 0, rangeLength: 0, text: 'y' })
+    undo.undo()
+    assert.equal(doc.getText().toString(), 'one twoPASTEx')
+    undo.undo()
+    assert.equal(doc.getText().toString(), 'one twoPASTE')
+    undo.undo()
+    assert.equal(doc.getText().toString(), 'one two')
+    edit(undo, { rangeOffset: 0, rangeLength: 3, text: 'ONE' })
+    undo.undo()
+    assert.equal(doc.getText().toString(), 'one two')
+    doc.destroy()
+  })
+
+  it('separates incoming changes and explicit navigation from adjacent typing', () => {
+    const doc = new Y.Doc()
+    const undo = createDocUndoManager(doc)
+    edit(undo, { rangeOffset: 0, rangeLength: 0, text: 'a' })
+    doc.transact(() => doc.getText().insert(1, 'X'), { peerId: 'remote' })
+    edit(undo, { rangeOffset: 1, rangeLength: 0, text: 'b' })
+    undo.stopCapturing()
+    edit(undo, { rangeOffset: 2, rangeLength: 0, text: 'c' })
+    undo.undo()
+    assert.equal(doc.getText().toString(), 'abX')
+    undo.undo()
+    assert.equal(doc.getText().toString(), 'aX')
+    undo.undo()
+    assert.equal(doc.getText().toString(), 'X')
+    doc.destroy()
+  })
+
+  it('separates typing, backward deletion and forward deletion', () => {
+    const doc = new Y.Doc()
+    const undo = createDocUndoManager(doc)
+    for (const character of 'abcde')
+      edit(undo, { rangeOffset: doc.getText().length, rangeLength: 0, text: character })
+    edit(undo, { rangeOffset: 3, rangeLength: 1, text: '' })
+    edit(undo, { rangeOffset: 2, rangeLength: 1, text: '' })
+    edit(undo, { rangeOffset: 2, rangeLength: 1, text: '' })
+    undo.undo()
+    assert.equal(doc.getText().toString(), 'abe')
+    undo.undo()
+    assert.equal(doc.getText().toString(), 'abcde')
+    undo.undo()
+    assert.equal(doc.getText().toString(), '')
+    doc.destroy()
+  })
+})
 
 describe('Y.UndoManager collaborative undo behavior', () => {
   it('restores directed selections and rebases them around remote edits', () => {
@@ -220,9 +304,7 @@ describe('Y.UndoManager collaborative undo behavior', () => {
     doc.transact(() => doc.getText().insert(2, 'C'), LocalOrigin)
 
     assert.equal(doc.getText().toString(), 'ABC')
-    // captureTimeout=200ms 可能把两个本地事务合并为一个 undo step
-    // 重要的是：撤销后只删除本地插入的字符，不删远程的 "B"
-    assert.ok(um.undoStack.length >= 1, 'should have at least 1 local undo item')
+    assert.equal(um.undoStack.length, 2, 'remote changes separate the two local undo groups')
 
     // 撤销所有本地事务
     while (um.undoStack.length > 0)

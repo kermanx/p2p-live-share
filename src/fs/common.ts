@@ -11,6 +11,7 @@ export interface FileChangeEvent { uri: string, type: FileChangeType }
 
 const editingUris = new Map<string, number>()
 const editorSelections = new WeakMap<TextDocument, UndoSelection[]>()
+const selectionVersions = new WeakMap<TextEditor, number>()
 
 function rememberSelection(editor: TextEditor) {
   const selections = editor.selections.map(selection => ({
@@ -18,16 +19,29 @@ function rememberSelection(editor: TextEditor) {
     active: editor.document.offsetAt(selection.active),
   }))
   editorSelections.set(editor.document, selections)
+  selectionVersions.set(editor, editor.document.version)
   return selections
 }
 
 export function useUndoRedo(getUndoManager: (document: TextDocument) => DocUndoManager | undefined) {
   for (const editor of window.visibleTextEditors)
     rememberSelection(editor)
-  useDisposable(window.onDidChangeTextEditorSelection(({ textEditor }) => rememberSelection(textEditor)))
+  useDisposable(window.onDidChangeTextEditorSelection(({ textEditor }) => {
+    // Typing also moves the cursor, but changes the document version first.
+    // A selection change at the same version is a separate navigation action.
+    if (selectionVersions.get(textEditor) === textEditor.document.version)
+      getUndoManager(textEditor.document)?.stopCapturing()
+    rememberSelection(textEditor)
+  }))
+  let previousEditor = window.activeTextEditor
   useDisposable(window.onDidChangeActiveTextEditor((editor) => {
-    if (editor)
+    if (previousEditor)
+      getUndoManager(previousEditor.document)?.stopCapturing()
+    if (editor) {
+      getUndoManager(editor.document)?.stopCapturing()
       rememberSelection(editor)
+    }
+    previousEditor = editor
   }))
   const runUndoRedo = createSequentialFunction(async (editor: TextEditor, undoManager: DocUndoManager, command: 'undo' | 'redo') => {
     await applyTextDocumentDelta.wait()
@@ -74,8 +88,10 @@ export function useTextDocumentWatcher(getDoc: (document: TextDocument) => Y.Doc
     }
 
     const selections = editorSelections.get(document)
+    const undoManager = getDocUndoManager(doc)
+    undoManager?.captureChanges(contentChanges)
     if (selections)
-      getDocUndoManager(doc)?.captureSelection(selections)
+      undoManager?.captureSelection(selections)
     doc.transact(() => {
       const text = doc.getText()
       const sortedChanges = contentChanges.slice().sort((a, b) => b.rangeOffset - a.rangeOffset)
@@ -127,8 +143,8 @@ const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, delta: 
           }
         }
       }, {
-        undoStopBefore: false,
-        undoStopAfter: false,
+        undoStopBefore: true,
+        undoStopAfter: true,
       })
       return
     }
