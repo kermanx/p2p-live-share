@@ -3,10 +3,11 @@ import type { TextDocumentChangeReason } from 'vscode'
 import type { Connection } from '../sync/connection'
 import type { FileChangeEvent, TrackContentRequest } from './common'
 import picomatch from 'picomatch'
-import { useDisposable } from 'reactive-vscode'
+import { onScopeDispose, useDisposable } from 'reactive-vscode'
 import { Disposable, FileChangeType, RelativePattern, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
-import { forceUpdateContent, fsErrorWrapper, setupTextDocumentUpdater, useTextDocumentWatcher } from './common'
+import { forceUpdateContent, fsErrorWrapper, setupTextDocumentUpdater, useTextDocumentWatcher, useUndoRedo } from './common'
+import { DocUndoManager } from './undo-manager'
 
 export function useHostFs(connection: Connection) {
   const { toHostUri, toTrackUri } = connection
@@ -14,7 +15,18 @@ export function useHostFs(connection: Connection) {
   const files = new Map<string, {
     doc: Y.Doc
     trackers: Set<string>
+    undoManager: DocUndoManager
   }>()
+
+  onScopeDispose(() => {
+    for (const file of files.values())
+      file.doc.destroy()
+    files.clear()
+  })
+  useUndoRedo((document) => {
+    const uri = toTrackUri(document.uri)
+    return uri ? files.get(uri.toString())?.undoManager : undefined
+  })
 
   const [send, recv] = connection.makeAction<Uint8Array, [string, TextDocumentChangeReason?]>('texts')
   recv((update, peerId, meta) => {
@@ -35,7 +47,8 @@ export function useHostFs(connection: Connection) {
     else {
       const doc = new Y.Doc()
       const trackers = new Set<string>([guestId])
-      files.set(uri, { doc, trackers })
+      const undoManager = new DocUndoManager(doc)
+      files.set(uri, { doc, trackers, undoManager })
 
       doc.on('updateV2', async (update: Uint8Array, origin: any) => {
         if (origin?.peerId)
@@ -44,7 +57,7 @@ export function useHostFs(connection: Connection) {
       })
 
       const uri_ = toHostUri(Uri.parse(uri))
-      setupTextDocumentUpdater(uri_, doc)
+      setupTextDocumentUpdater(uri_, doc, undoManager)
 
       const newText = content ?? new TextDecoder().decode(await workspace.fs.readFile(uri_))
       doc.getText().insert(0, newText)
@@ -75,7 +88,7 @@ export function useHostFs(connection: Connection) {
     const uri = toTrackUri(document.uri)
     if (!uri)
       return
-    return files.get(uri.toString())?.doc
+    return files.get(uri.toString())?.undoManager
   })
 
   const [sendSave, _] = connection.makeAction<string>('textSave')
