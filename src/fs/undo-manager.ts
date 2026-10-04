@@ -13,7 +13,6 @@ interface EditGroup {
 }
 
 const selectionKey = Symbol('selection')
-const managers = new WeakMap<Y.Doc, DocUndoManager>()
 
 export class DocUndoManager extends Y.UndoManager {
   private selection?: { anchor: Y.RelativePosition, active: Y.RelativePosition }[]
@@ -39,10 +38,22 @@ export class DocUndoManager extends Y.UndoManager {
     })
   }
 
+  applyChanges(changes: readonly UndoChange[], selections?: readonly UndoSelection[]) {
+    this.captureChanges(changes)
+    this.captureSelection(selections)
+    this.doc.transact(() => {
+      const text = this.doc.getText()
+      for (const change of changes.slice().sort((a, b) => b.rangeOffset - a.rangeOffset)) {
+        text.delete(change.rangeOffset, change.rangeLength)
+        text.insert(change.rangeOffset, change.text)
+      }
+    }, LocalOrigin)
+  }
+
   // VS Code does not expose its undo boundaries. Merge only adjacent character
   // input/deletion here; replacements, paste and multi-edit operations stand
   // alone. Selection movement and incoming edits also end the current group.
-  captureChanges(changes: readonly UndoChange[]) {
+  private captureChanges(changes: readonly UndoChange[]) {
     const change = changes.length === 1 ? changes[0] : undefined
     const kind = change && change.rangeLength === 0 && change.text.length <= 2 && Array.from(change.text).length === 1 && !/[\r\n\t]/.test(change.text)
       ? 'insert'
@@ -85,9 +96,9 @@ export class DocUndoManager extends Y.UndoManager {
     super.destroy()
   }
 
-  captureSelection(selections: readonly UndoSelection[]) {
+  captureSelection(selections?: readonly UndoSelection[]) {
     const text = this.doc.getText()
-    this.selection = selections.map(({ anchor, active }) => ({
+    this.selection = selections?.map(({ anchor, active }) => ({
       anchor: Y.createRelativePositionFromTypeIndex(text, anchor),
       active: Y.createRelativePositionFromTypeIndex(text, active),
     }))
@@ -101,14 +112,4 @@ export class DocUndoManager extends Y.UndoManager {
     if (selections?.every(s => s.anchor !== undefined && s.active !== undefined))
       return selections as UndoSelection[]
   }
-}
-
-export function getDocUndoManager(doc: Y.Doc) {
-  return managers.get(doc)
-}
-
-export function createDocUndoManager(doc: Y.Doc): DocUndoManager {
-  const manager = new DocUndoManager(doc)
-  managers.set(doc, manager)
-  return manager
 }

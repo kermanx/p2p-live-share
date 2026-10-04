@@ -1,29 +1,17 @@
-import type { DocUndoManager, UndoChange } from './undo-manager'
 import assert from 'node:assert/strict'
 // eslint-disable-next-line test/no-import-node-test
 import { describe, it } from 'node:test'
 import * as Y from 'yjs'
 
-import { createDocUndoManager, LocalOrigin } from './undo-manager'
-
-function edit(undo: DocUndoManager, ...changes: UndoChange[]) {
-  undo.captureChanges(changes)
-  undo.doc.transact(() => {
-    const text = undo.doc.getText()
-    for (const change of changes.slice().sort((a, b) => b.rangeOffset - a.rangeOffset)) {
-      text.delete(change.rangeOffset, change.rangeLength)
-      text.insert(change.rangeOffset, change.text)
-    }
-  }, LocalOrigin)
-}
+import { DocUndoManager, LocalOrigin } from './undo-manager'
 
 describe('editor undo groups', () => {
   it('keeps adjacent typing together across ordinary typing pauses', async () => {
     const doc = new Y.Doc()
-    const undo = createDocUndoManager(doc)
-    edit(undo, { rangeOffset: 0, rangeLength: 0, text: 'a' })
+    const undo = new DocUndoManager(doc)
+    undo.applyChanges([{ rangeOffset: 0, rangeLength: 0, text: 'a' }])
     await new Promise(resolve => setTimeout(resolve, 300))
-    edit(undo, { rangeOffset: 1, rangeLength: 0, text: 'b' })
+    undo.applyChanges([{ rangeOffset: 1, rangeLength: 0, text: 'b' }])
     undo.undo()
     assert.equal(doc.getText().toString(), '')
     undo.redo()
@@ -33,22 +21,22 @@ describe('editor undo groups', () => {
 
   it('starts a separate group for a word, paste, replacement and distant edit', () => {
     const doc = new Y.Doc()
-    const undo = createDocUndoManager(doc)
+    const undo = new DocUndoManager(doc)
     for (const character of 'one two')
-      edit(undo, { rangeOffset: doc.getText().length, rangeLength: 0, text: character })
+      undo.applyChanges([{ rangeOffset: doc.getText().length, rangeLength: 0, text: character }])
     undo.undo()
     assert.equal(doc.getText().toString(), 'one')
     undo.redo()
-    edit(undo, { rangeOffset: 7, rangeLength: 0, text: 'PASTE' })
-    edit(undo, { rangeOffset: 12, rangeLength: 0, text: 'x' })
-    edit(undo, { rangeOffset: 0, rangeLength: 0, text: 'y' })
+    undo.applyChanges([{ rangeOffset: 7, rangeLength: 0, text: 'PASTE' }])
+    undo.applyChanges([{ rangeOffset: 12, rangeLength: 0, text: 'x' }])
+    undo.applyChanges([{ rangeOffset: 0, rangeLength: 0, text: 'y' }])
     undo.undo()
     assert.equal(doc.getText().toString(), 'one twoPASTEx')
     undo.undo()
     assert.equal(doc.getText().toString(), 'one twoPASTE')
     undo.undo()
     assert.equal(doc.getText().toString(), 'one two')
-    edit(undo, { rangeOffset: 0, rangeLength: 3, text: 'ONE' })
+    undo.applyChanges([{ rangeOffset: 0, rangeLength: 3, text: 'ONE' }])
     undo.undo()
     assert.equal(doc.getText().toString(), 'one two')
     doc.destroy()
@@ -56,12 +44,12 @@ describe('editor undo groups', () => {
 
   it('separates incoming changes and explicit navigation from adjacent typing', () => {
     const doc = new Y.Doc()
-    const undo = createDocUndoManager(doc)
-    edit(undo, { rangeOffset: 0, rangeLength: 0, text: 'a' })
+    const undo = new DocUndoManager(doc)
+    undo.applyChanges([{ rangeOffset: 0, rangeLength: 0, text: 'a' }])
     doc.transact(() => doc.getText().insert(1, 'X'), { peerId: 'remote' })
-    edit(undo, { rangeOffset: 1, rangeLength: 0, text: 'b' })
+    undo.applyChanges([{ rangeOffset: 1, rangeLength: 0, text: 'b' }])
     undo.stopCapturing()
-    edit(undo, { rangeOffset: 2, rangeLength: 0, text: 'c' })
+    undo.applyChanges([{ rangeOffset: 2, rangeLength: 0, text: 'c' }])
     undo.undo()
     assert.equal(doc.getText().toString(), 'abX')
     undo.undo()
@@ -73,12 +61,12 @@ describe('editor undo groups', () => {
 
   it('separates typing, backward deletion and forward deletion', () => {
     const doc = new Y.Doc()
-    const undo = createDocUndoManager(doc)
+    const undo = new DocUndoManager(doc)
     for (const character of 'abcde')
-      edit(undo, { rangeOffset: doc.getText().length, rangeLength: 0, text: character })
-    edit(undo, { rangeOffset: 3, rangeLength: 1, text: '' })
-    edit(undo, { rangeOffset: 2, rangeLength: 1, text: '' })
-    edit(undo, { rangeOffset: 2, rangeLength: 1, text: '' })
+      undo.applyChanges([{ rangeOffset: doc.getText().length, rangeLength: 0, text: character }])
+    undo.applyChanges([{ rangeOffset: 3, rangeLength: 1, text: '' }])
+    undo.applyChanges([{ rangeOffset: 2, rangeLength: 1, text: '' }])
+    undo.applyChanges([{ rangeOffset: 2, rangeLength: 1, text: '' }])
     undo.undo()
     assert.equal(doc.getText().toString(), 'abe')
     undo.undo()
@@ -93,7 +81,7 @@ describe('Y.UndoManager collaborative undo behavior', () => {
   it('restores directed selections and rebases them around remote edits', () => {
     const doc = new Y.Doc()
     doc.getText().insert(0, 'abcd')
-    const undo = createDocUndoManager(doc)
+    const undo = new DocUndoManager(doc)
     undo.captureSelection([{ anchor: 3, active: 1 }, { anchor: 4, active: 4 }])
     doc.transact(() => {
       doc.getText().delete(1, 2)
@@ -113,7 +101,7 @@ describe('Y.UndoManager collaborative undo behavior', () => {
 
   it('retains the selection before the first edit in a captured group', () => {
     const doc = new Y.Doc()
-    const undo = createDocUndoManager(doc)
+    const undo = new DocUndoManager(doc)
     undo.captureSelection([{ anchor: 0, active: 0 }])
     doc.transact(() => doc.getText().insert(0, 'a'), LocalOrigin)
     undo.captureSelection([{ anchor: 1, active: 1 }])
@@ -131,8 +119,8 @@ describe('Y.UndoManager collaborative undo behavior', () => {
   it('keeps both peers in sync when each undoes and redoes their own interleaved edits', () => {
     const host = new Y.Doc()
     const guest = new Y.Doc()
-    const hostUndo = createDocUndoManager(host)
-    const guestUndo = createDocUndoManager(guest)
+    const hostUndo = new DocUndoManager(host)
+    const guestUndo = new DocUndoManager(guest)
     const sync = (from: Y.Doc, to: Y.Doc) => Y.applyUpdateV2(to, Y.encodeStateAsUpdateV2(from), { peerId: from.clientID })
     const expectText = (text: string) => {
       assert.equal(host.getText().toString(), text)
@@ -167,7 +155,7 @@ describe('Y.UndoManager collaborative undo behavior', () => {
   it('preserves remote edits received between undo and redo', () => {
     const host = new Y.Doc()
     const guest = new Y.Doc()
-    const undo = createDocUndoManager(host)
+    const undo = new DocUndoManager(host)
     host.transact(() => host.getText().insert(0, 'hello'), LocalOrigin)
     Y.applyUpdateV2(guest, Y.encodeStateAsUpdateV2(host))
     guest.getText().insert(3, 'X')
@@ -194,7 +182,7 @@ describe('Y.UndoManager collaborative undo behavior', () => {
   it('restores a local deletion without deleting a remote insertion', () => {
     const doc = new Y.Doc()
     doc.getText().insert(0, 'abcd')
-    const undo = createDocUndoManager(doc)
+    const undo = new DocUndoManager(doc)
     doc.transact(() => doc.getText().delete(1, 2), LocalOrigin)
     doc.transact(() => doc.getText().insert(1, 'X'), { peerId: 'guest' })
     assert.equal(doc.getText().toString(), 'aXd')
@@ -207,7 +195,7 @@ describe('Y.UndoManager collaborative undo behavior', () => {
 
   it('does not track initial content and releases its observers when the document is destroyed', () => {
     const doc = new Y.Doc()
-    const undo = createDocUndoManager(doc)
+    const undo = new DocUndoManager(doc)
     doc.getText().insert(0, 'initial')
     assert.equal(undo.undo(), null)
     doc.destroy()
@@ -217,7 +205,7 @@ describe('Y.UndoManager collaborative undo behavior', () => {
 
   it('tracks local changes, ignores remote changes', () => {
     const doc = new Y.Doc()
-    const um = createDocUndoManager(doc)
+    const um = new DocUndoManager(doc)
 
     // 模拟本地编辑
     doc.transact(() => {
@@ -242,7 +230,7 @@ describe('Y.UndoManager collaborative undo behavior', () => {
 
   it('correctly undoes with concurrent interleaved edits', () => {
     const doc = new Y.Doc()
-    const localUm = createDocUndoManager(doc)
+    const localUm = new DocUndoManager(doc)
 
     // 本地用户插入 "hello" — 5 个 CRDT items
     doc.transact(() => {
@@ -272,7 +260,7 @@ describe('Y.UndoManager collaborative undo behavior', () => {
 
   it('undo then redo restores original text', () => {
     const doc = new Y.Doc()
-    const um = createDocUndoManager(doc)
+    const um = new DocUndoManager(doc)
 
     doc.transact(() => {
       doc.getText().insert(0, 'test')
@@ -294,7 +282,7 @@ describe('Y.UndoManager collaborative undo behavior', () => {
 
   it('only undoes local transactions, not remote ones mixed in between', () => {
     const doc = new Y.Doc()
-    const um = createDocUndoManager(doc)
+    const um = new DocUndoManager(doc)
 
     // 本地插入 "A"
     doc.transact(() => doc.getText().insert(0, 'A'), LocalOrigin)

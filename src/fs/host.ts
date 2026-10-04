@@ -2,13 +2,12 @@ import type { IDisposable } from 'node-pty'
 import type { TextDocumentChangeReason } from 'vscode'
 import type { Connection } from '../sync/connection'
 import type { FileChangeEvent, TrackContentRequest } from './common'
-import type { DocUndoManager } from './undo-manager'
 import picomatch from 'picomatch'
 import { onScopeDispose, useDisposable } from 'reactive-vscode'
 import { Disposable, FileChangeType, RelativePattern, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
 import { forceUpdateContent, fsErrorWrapper, setupTextDocumentUpdater, useTextDocumentWatcher, useUndoRedo } from './common'
-import { createDocUndoManager } from './undo-manager'
+import { DocUndoManager } from './undo-manager'
 
 export function useHostFs(connection: Connection) {
   const { toHostUri, toTrackUri } = connection
@@ -48,7 +47,7 @@ export function useHostFs(connection: Connection) {
     else {
       const doc = new Y.Doc()
       const trackers = new Set<string>([guestId])
-      const undoManager = createDocUndoManager(doc)
+      const undoManager = new DocUndoManager(doc)
       files.set(uri, { doc, trackers, undoManager })
 
       doc.on('updateV2', async (update: Uint8Array, origin: any) => {
@@ -89,7 +88,7 @@ export function useHostFs(connection: Connection) {
     const uri = toTrackUri(document.uri)
     if (!uri)
       return
-    return files.get(uri.toString())?.doc
+    return files.get(uri.toString())?.undoManager
   })
 
   const [sendSave, _] = connection.makeAction<string>('textSave')

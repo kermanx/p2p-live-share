@@ -3,13 +3,12 @@ import type { TextDocumentChangeReason } from 'vscode'
 import type { GuestFunctions, HostFunctions } from '../rpc/types'
 import type { Connection } from '../sync/connection'
 import type { FileChangeEvent } from './common'
-import type { DocUndoManager } from './undo-manager'
 import { computed, defineConfig, onScopeDispose, useDisposable } from 'reactive-vscode'
 import { FileType, Uri, workspace } from 'vscode'
 import * as Y from 'yjs'
 import { forceUpdateContent, handleFsError, setupTextDocumentUpdater, useTextDocumentWatcher, useUndoRedo } from './common'
 import { CustomUriScheme, useFsProvider } from './provider'
-import { createDocUndoManager } from './undo-manager'
+import { DocUndoManager } from './undo-manager'
 
 const filesConfig = defineConfig<any>('files')
 
@@ -52,7 +51,7 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
         return
       const doc = new Y.Doc()
       Y.applyUpdateV2(doc, init)
-      const undoManager = createDocUndoManager(doc)
+      const undoManager = new DocUndoManager(doc)
       files.set(uri, {
         doc,
         mtime: Date.now(),
@@ -77,7 +76,7 @@ export function useGuestFs(connection: Connection, rpc: BirpcReturn<HostFunction
       const uri = document.uri.toString()
       const file = files.get(uri)
       if (file)
-        return file.doc
+        return file.undoManager
 
       console.warn('Document updated before tracking:', uri)
       trackContent(uri)

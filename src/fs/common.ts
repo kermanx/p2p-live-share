@@ -3,7 +3,6 @@ import type * as Y from 'yjs'
 import type { DocUndoManager, UndoSelection } from './undo-manager'
 import { useCommand, useDisposable } from 'reactive-vscode'
 import { commands, FileSystemError, Range, Selection, window, workspace, WorkspaceEdit } from 'vscode'
-import { getDocUndoManager, LocalOrigin } from './undo-manager'
 
 export type FilesMap = Y.Map<Y.Doc>
 export interface TrackContentRequest { guestId: string, uri: string, content?: string }
@@ -76,30 +75,13 @@ export function useUndoRedo(getUndoManager: (document: TextDocument) => DocUndoM
   }
 }
 
-export function useTextDocumentWatcher(getDoc: (document: TextDocument) => Y.Doc | null | undefined) {
+export function useTextDocumentWatcher(getUndoManager: (document: TextDocument) => DocUndoManager | undefined) {
   useDisposable(workspace.onDidChangeTextDocument(({ document, contentChanges }) => {
     if (contentChanges.length === 0 || editingUris.has(document.uri.toString())) {
       return
     }
 
-    const doc = getDoc(document)
-    if (!doc) {
-      return
-    }
-
-    const selections = editorSelections.get(document)
-    const undoManager = getDocUndoManager(doc)
-    undoManager?.captureChanges(contentChanges)
-    if (selections)
-      undoManager?.captureSelection(selections)
-    doc.transact(() => {
-      const text = doc.getText()
-      const sortedChanges = contentChanges.slice().sort((a, b) => b.rangeOffset - a.rangeOffset)
-      for (const change of sortedChanges) {
-        text.delete(change.rangeOffset, change.rangeLength)
-        text.insert(change.rangeOffset, change.text)
-      }
-    }, LocalOrigin)
+    getUndoManager(document)?.applyChanges(contentChanges, editorSelections.get(document))
   }))
 }
 
