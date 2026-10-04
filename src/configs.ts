@@ -7,4 +7,7 @@ export const configs = defineConfig<{
   terminal: {
     dimensionsSource: 'host' | 'creator' | 'minimum' | 'maximum'
   }
+  languages: {
+    allowGuestCommandControl: boolean
+  }
 }>('p2p-live-share')
