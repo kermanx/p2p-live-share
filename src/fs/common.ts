@@ -1,14 +1,14 @@
-import type { FileChangeType, TextDocument, TextDocumentChangeReason, TextEditor, Uri } from 'vscode'
+import type { FileChangeType, TextDocument, TextEditor, Uri } from 'vscode'
 import type * as Y from 'yjs'
 import type { DocUndoManager, UndoSelection } from './undo-manager'
 import { useCommand, useDisposable } from 'reactive-vscode'
-import { commands, FileSystemError, Range, Selection, window, workspace, WorkspaceEdit } from 'vscode'
+import { commands, FileSystemError, Range, Selection, TextEdit, window, workspace, WorkspaceEdit } from 'vscode'
 
 export type FilesMap = Y.Map<Y.Doc>
 export interface TrackContentRequest { guestId: string, uri: string, content?: string }
 export interface FileChangeEvent { uri: string, type: FileChangeType }
 
-const editingUris = new Map<string, number>()
+const editingUris = new Set<string>()
 const editorSelections = new WeakMap<TextDocument, UndoSelection[]>()
 const selectionVersions = new WeakMap<TextEditor, number>()
 
@@ -94,47 +94,18 @@ export function setupTextDocumentUpdater(
     // Skip local changes UNLESS they came from UndoManager (needs to sync to editor)
     if (event.transaction.local && event.transaction.origin !== um)
       return
-    applyTextDocumentDelta(uri_, event.delta, event.transaction.origin?.reason)
+    applyTextDocumentDelta(uri_, event.delta)
   })
 }
 
-const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, delta: Y.YEvent<any>['delta'], _reason: TextDocumentChangeReason | undefined) => {
+const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, delta: Y.YEvent<any>['delta']) => {
+  const key = uri.toString()
   try {
-    editingUris.set(uri.toString(), (editingUris.get(uri.toString()) ?? 0) + 1)
-
-    // Try updating via editor
-    const editor = window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString())
-    if (editor) {
-      const doc = editor.document
-      await editor.edit((edits) => {
-        let index = 0
-        for (const d of delta) {
-          if (d.retain) {
-            index += d.retain
-          }
-          else if (d.insert) {
-            const insert = d.insert as string
-            edits.insert(doc.positionAt(index), insert)
-          }
-          else if (d.delete) {
-            edits.delete(new Range(
-              doc.positionAt(index),
-              doc.positionAt(index + d.delete),
-            ))
-            index += d.delete
-          }
-        }
-      }, {
-        undoStopBefore: true,
-        undoStopAfter: true,
-      })
-      return
-    }
-
-    // Update with document
-    // Should NOT use `workspace.fs.writeFile`, as the document may be unsaved
-    const doc = await workspace.openTextDocument(uri)
-    const edits = new WorkspaceEdit()
+    // Updates are serialized, so at most one application is active per URI.
+    editingUris.add(key)
+    const editor = window.visibleTextEditors.find(e => e.document.uri.toString() === key)
+    const doc = editor?.document ?? await workspace.openTextDocument(uri)
+    const edits: TextEdit[] = []
     let index = 0
     for (const d of delta) {
       if (d.retain) {
@@ -142,24 +113,35 @@ const applyTextDocumentDelta = createSequentialFunction(async (uri: Uri, delta: 
       }
       else if (d.insert) {
         const insert = d.insert as string
-        edits.insert(uri, doc.positionAt(index), insert)
+        edits.push(TextEdit.insert(doc.positionAt(index), insert))
       }
       else if (d.delete) {
-        edits.delete(uri, new Range(
+        edits.push(TextEdit.delete(new Range(
           doc.positionAt(index),
           doc.positionAt(index + d.delete),
-        ))
+        )))
         index += d.delete
       }
     }
-    await workspace.applyEdit(edits)
+    if (editor) {
+      await editor.edit((builder) => {
+        for (const edit of edits) {
+          if (edit.range.isEmpty)
+            builder.insert(edit.range.start, edit.newText)
+          else
+            builder.delete(edit.range)
+        }
+      }, { undoStopBefore: true, undoStopAfter: true })
+    }
+    else {
+      // Preserve unsaved content when the document is not visible.
+      const workspaceEdit = new WorkspaceEdit()
+      workspaceEdit.set(uri, edits)
+      await workspace.applyEdit(workspaceEdit)
+    }
   }
   finally {
-    const count = (editingUris.get(uri.toString()) ?? 1) - 1
-    if (count <= 0)
-      editingUris.delete(uri.toString())
-    else
-      editingUris.set(uri.toString(), count)
+    editingUris.delete(key)
   }
 })
 
