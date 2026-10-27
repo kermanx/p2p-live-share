@@ -263,6 +263,7 @@ export function onSessionClosed(options: {
   ).then(async (choice) => {
     if (choice === 'Reconnect') {
       await delay
+      await useWebview().ensureReady()
       state.value = await creator(config)
     }
   })

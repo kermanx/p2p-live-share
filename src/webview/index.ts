@@ -2,7 +2,7 @@ import type * as trystero from 'trystero'
 import type { Connection, InternalReceiver, InternalSender } from '../sync/connection'
 import type { ChatMessage } from './components/Chat'
 import { createBirpc } from 'birpc'
-import { computed, defineService, extensionContext, onScopeDispose, ref, shallowRef, useEventEmitter, useWebviewView, watchEffect } from 'reactive-vscode'
+import { computed, defineService, extensionContext, onScopeDispose, ref, shallowRef, useEventEmitter, useWebviewView, watch, watchEffect } from 'reactive-vscode'
 import { commands, Uri } from 'vscode'
 import { useActiveSession } from '../session'
 import { useUsers } from '../ui/users'
@@ -18,17 +18,18 @@ export interface WebviewFunctions {
   trysteroListenAction: (action: string) => void
   trysteroLeaveRoom: () => void
 
-  recvChatMessage: (message: ChatMessage | 'clear') => void
+  recvChatMessage: (message: ChatMessage | ChatMessage[] | 'clear') => void
   updateUIState: (state: UIState) => void
 }
 
 export interface TrysteroHandlers {
+  onTrysteroClose: () => void
   onTrysteroError: (message: string) => void
   onTrysteroUpdatePeers: (peers: string[]) => void
   onTrysteroMessage: InternalReceiver
 }
 
-export interface ExtensionFunctions extends TrysteroHandlers {
+export interface ExtensionFunctions extends Omit<TrysteroHandlers, 'onTrysteroClose'> {
   share: () => void
   join: (newWindow: boolean | 'auto') => void
   leave: () => void
@@ -51,11 +52,12 @@ export const useWebview = defineService(() => {
   const trysteroHandlers = shallowRef<TrysteroHandlers | null>(null)
 
   const isReady = ref<{ trysteroSelfId: string } | null>(null)
-  let onReady: (data: any) => void
-  const readyPromise = new Promise<void>(resolve => onReady = (data) => {
-    resolve()
-    isReady.value = data
-  })
+  let resolveReady: () => void
+  function waitForReady() {
+    return new Promise<void>(resolve => resolveReady = resolve)
+  }
+  let readyPromise = waitForReady()
+  let chatMessages: ChatMessage[] = []
 
   const webviewEvent = useEventEmitter<any>()
   const rpc = createBirpc<WebviewFunctions, ExtensionFunctions>(
@@ -82,7 +84,10 @@ export const useWebview = defineService(() => {
         useActiveSession().leave()
       },
       sendChatMessage(content) {
-        sendChatMessage.value?.(content)
+        if (sendChatMessage.value) {
+          chatMessages.push(content)
+          sendChatMessage.value(content)
+        }
       },
       async ping(peerId) {
         const { connection } = useActiveSession()
@@ -94,7 +99,9 @@ export const useWebview = defineService(() => {
     },
     {
       post: async (data) => {
-        await readyPromise
+        while (!isReady.value) {
+          await readyPromise
+        }
         const result = await postMessage(data)
         if (!result) {
           logger.error('Failed to post message to webview')
@@ -131,9 +138,17 @@ export const useWebview = defineService(() => {
       webviewOptions: {
         enableScripts: true,
       },
+      onDidDispose: () => {
+        isReady.value = null
+        resolveReady()
+        readyPromise = waitForReady()
+        // Trystero's WebRTC connections live in the destroyed webview.
+        trysteroHandlers.value?.onTrysteroClose()
+      },
       onDidReceiveMessage: (data) => {
         if (data.__webview_ready__) {
-          onReady(data)
+          isReady.value = data
+          resolveReady()
         }
         else {
           webviewEvent.fire(data)
@@ -151,20 +166,41 @@ export const useWebview = defineService(() => {
     if (!isReady.value) {
       showWebview()
     }
-    await readyPromise
+    while (!isReady.value) {
+      await readyPromise
+    }
   }
 
   const sendChatMessage = ref<(content: any) => void>()
   function useChat(connection: Connection) {
     const [send, recv] = connection.makeAction<ChatMessage>('chat')
     sendChatMessage.value = send
-    recv(message => rpc.recvChatMessage(message))
-    onScopeDispose(() => rpc.recvChatMessage('clear'))
+    recv((message) => {
+      chatMessages.push(message)
+      if (isReady.value) {
+        rpc.recvChatMessage.asEvent(message)
+      }
+    })
+    onScopeDispose(() => {
+      sendChatMessage.value = undefined
+      chatMessages = []
+      if (isReady.value) {
+        rpc.recvChatMessage.asEvent('clear')
+      }
+    })
   }
 
   setTimeout(() => {
     const { state, isJoining } = useActiveSession()
+    watch(isReady, (ready) => {
+      if (ready) {
+        rpc.recvChatMessage.asEvent(chatMessages)
+      }
+    }, { immediate: true })
     watchEffect(() => {
+      if (!isReady.value) {
+        return
+      }
       if (isJoining.value) {
         rpc.updateUIState('joining')
       }
@@ -179,11 +215,6 @@ export const useWebview = defineService(() => {
           roomId: state.value.connection.config.roomId,
           peers: state.value.connection.peers.value,
         })
-      }
-    })
-    watchEffect(() => {
-      if (view.value) {
-        view.value.title = state.value ? 'Chat' : undefined
       }
     })
   })

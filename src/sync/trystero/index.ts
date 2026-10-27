@@ -26,6 +26,10 @@ export function useTrysteroConnection(config: ConnectionConfig): InternalConnect
   )
 
   trysteroHandlers.value = {
+    onTrysteroClose: () => {
+      closed = true
+      onClose.fire()
+    },
     onTrysteroError: onError.fire,
     onTrysteroUpdatePeers: (p) => { peers.value = p },
     onTrysteroMessage: recv,
@@ -39,8 +43,11 @@ export function useTrysteroConnection(config: ConnectionConfig): InternalConnect
   })
 
   onScopeDispose(() => {
-    closed = true
-    rpc.trysteroLeaveRoom()
+    trysteroHandlers.value = null
+    if (!closed) {
+      closed = true
+      rpc.trysteroLeaveRoom()
+    }
   })
 
   return {
