@@ -202,6 +202,9 @@ class WebSocketSignalingServer {
   stop(): void {
     if (this.wss) {
       this.wss.close()
+      for (const client of this.wss.clients) {
+        client.close(1001, 'Server stopped')
+      }
       this.wss = null
     }
     if (this.httpServer) {
