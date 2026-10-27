@@ -1,4 +1,3 @@
-import { selfId } from 'trystero'
 import { defineComponent, nextTick, onMounted, ref, watchEffect } from 'vue'
 import { rpc, state } from '../main'
 
@@ -18,9 +17,12 @@ export interface ChatMessage {
 
 const chatMessages = ref<ChatMessage[]>([])
 
-export function recvChatMessage(message: ChatMessage | 'clear') {
+export function recvChatMessage(message: ChatMessage | ChatMessage[] | 'clear') {
   if (message === 'clear') {
     chatMessages.value = []
+  }
+  else if (Array.isArray(message)) {
+    chatMessages.value = message
   }
   else {
     chatMessages.value.push(message)
@@ -28,6 +30,7 @@ export function recvChatMessage(message: ChatMessage | 'clear') {
 }
 
 export default defineComponent(() => {
+  const selfId = typeof state.value === 'object' ? state.value.selfId : ''
   const editingMessage = ref('')
   const textareaRef = ref<HTMLElement | null>(null)
   const messagesContainerRef = ref<HTMLElement | null>(null)

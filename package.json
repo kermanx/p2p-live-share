@@ -196,7 +196,7 @@
         },
         {
           "id": "p2p-live-share.webview",
-          "name": "",
+          "name": "Chat",
           "type": "webview"
         }
       ]
