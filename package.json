@@ -481,6 +481,12 @@
           ],
           "default": "minimum",
           "description": "Determines how terminal dimensions are calculated for shared terminals."
+        },
+        "p2p-live-share.languages.allowGuestCommandControl": {
+          "type": "boolean",
+          "default": false,
+          "scope": "machine",
+          "description": "Allow guests to execute commands returned by language features on the host."
         }
       }
     },
