@@ -59,7 +59,9 @@ export function useHostFs(connection: Connection) {
       const uri_ = toHostUri(Uri.parse(uri))
       setupTextDocumentUpdater(uri_, doc, undoManager)
 
-      const newText = content ?? new TextDecoder().decode(await workspace.fs.readFile(uri_))
+      // Open document may have unsaved changes
+      const openDocument = workspace.textDocuments.find(d => d.uri.toString() === uri_.toString())
+      const newText = content ?? openDocument?.getText() ?? new TextDecoder().decode(await workspace.fs.readFile(uri_))
       doc.getText().insert(0, newText)
 
       return Y.encodeStateAsUpdateV2(doc)
